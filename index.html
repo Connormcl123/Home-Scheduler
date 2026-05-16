@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home Mirror</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="mirror-shell" aria-label="Home mirror dashboard">
+      <section class="top-bar">
+        <div>
+          <p class="eyebrow">Home Mirror</p>
+          <h1 id="clock">12:00</h1>
+        </div>
+        <div class="date-stack">
+          <span id="weekday">Saturday</span>
+          <strong id="today">May 16</strong>
+        </div>
+      </section>
+
+      <section class="viewport" id="viewport">
+        <div class="slides" id="slides">
+          <article class="panel calendar-panel" aria-label="Family calendar">
+            <div class="calendar-top">
+              <div>
+                <p class="eyebrow">Family Calendar</p>
+                <h2 id="week-title">This Week</h2>
+              </div>
+              <div class="calendar-actions">
+                <button class="pill-button" id="previous-week" type="button" aria-label="Previous week">Prev</button>
+                <button class="pill-button" id="today-week" type="button">Today</button>
+                <button class="pill-button" id="next-week" type="button" aria-label="Next week">Next</button>
+                <button class="icon-button" id="add-event" type="button" aria-label="Add calendar event" title="Add event">+</button>
+              </div>
+            </div>
+            <div class="family-row" aria-label="Family profiles">
+              <span class="profile-chip family">Family</span>
+              <span class="profile-chip home">Home</span>
+              <span class="profile-chip kids">Kids</span>
+              <span class="profile-chip meal">Meals</span>
+            </div>
+            <div class="calendar-workspace">
+              <section class="week-board" aria-label="Weekly schedule">
+                <div class="week-grid" id="week-grid"></div>
+              </section>
+              <aside class="detail-drawer" aria-label="Calendar details">
+                <div class="drawer-tabs" role="tablist" aria-label="Calendar detail tabs">
+                  <button class="drawer-tab active" data-drawer-tab="agenda" type="button" role="tab">Agenda</button>
+                  <button class="drawer-tab" data-drawer-tab="notes" type="button" role="tab">Notes</button>
+                  <button class="drawer-tab" data-drawer-tab="chores" type="button" role="tab">Chores</button>
+                  <button class="drawer-tab" data-drawer-tab="meals" type="button" role="tab">Meals</button>
+                </div>
+                <div class="drawer-panel active" id="drawer-agenda" role="tabpanel">
+                  <div class="selected-day" id="selected-day"></div>
+                  <div class="event-list" id="event-list"></div>
+                </div>
+                <div class="drawer-panel" id="drawer-notes" role="tabpanel">
+                  <div class="drawer-heading">
+                    <span>Weekly notes</span>
+                    <button class="mini-button" id="add-calendar-note" type="button">Add</button>
+                  </div>
+                  <div class="notes-list compact" id="calendar-notes-list"></div>
+                </div>
+                <div class="drawer-panel" id="drawer-chores" role="tabpanel">
+                  <div class="drawer-heading">
+                    <span>Chores</span>
+                    <button class="mini-button" id="add-chore" type="button">Add</button>
+                  </div>
+                  <div class="task-list" id="chore-list"></div>
+                </div>
+                <div class="drawer-panel" id="drawer-meals" role="tabpanel">
+                  <div class="drawer-heading">
+                    <span>Dinner plan</span>
+                    <button class="mini-button" id="add-meal" type="button">Add</button>
+                  </div>
+                  <div class="task-list" id="meal-list"></div>
+                </div>
+              </aside>
+            </div>
+          </article>
+
+          <article class="panel weather-panel" aria-label="Weather and news">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Weather</p>
+                <h2>Today</h2>
+              </div>
+              <div class="temperature">72<span>F</span></div>
+            </div>
+            <div class="weather-grid">
+              <div class="forecast-card">
+                <span>Morning</span>
+                <strong>68 F</strong>
+                <p>Clear, calm wind</p>
+              </div>
+              <div class="forecast-card">
+                <span>Afternoon</span>
+                <strong>76 F</strong>
+                <p>Light clouds</p>
+              </div>
+              <div class="forecast-card">
+                <span>Evening</span>
+                <strong>64 F</strong>
+                <p>Comfortable</p>
+              </div>
+            </div>
+            <div class="news-band">
+              <p class="eyebrow">Headlines</p>
+              <ul id="news-list">
+                <li>Local headlines will appear here once a news source is connected.</li>
+                <li>Swipe left or right to move between mirror modules.</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="panel notes-panel" aria-label="Weekly notes">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Weekly Notes</p>
+                <h2>House Board</h2>
+              </div>
+              <button class="icon-button" id="add-note" type="button" aria-label="Add note" title="Add note">+</button>
+            </div>
+            <div class="notes-list" id="notes-list"></div>
+          </article>
+
+          <article class="panel photo-panel" aria-label="Photo album">
+            <div class="photo-stage">
+              <img id="album-photo" alt="Selected family album photo">
+              <div class="photo-empty" id="photo-empty">
+                <p class="eyebrow">Photo Album</p>
+                <h2>Choose a local album folder</h2>
+                <p>When the mirror is idle, this panel can rotate through selected photos.</p>
+                <button class="primary-button" id="choose-album" type="button">Choose Album</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <nav class="dock" aria-label="Mirror modules">
+        <button class="dock-button active" data-slide="0" type="button">Calendar</button>
+        <button class="dock-button" data-slide="1" type="button">Weather</button>
+        <button class="dock-button" data-slide="2" type="button">Notes</button>
+        <button class="dock-button" data-slide="3" type="button">Photos</button>
+      </nav>
+    </main>
+
+    <dialog id="event-dialog">
+      <form method="dialog" class="dialog-card" id="event-form">
+        <h3>Add Calendar Event</h3>
+        <label>
+          Title
+          <input id="event-title" name="title" required autocomplete="off">
+        </label>
+        <label>
+          Date
+          <input id="event-date" name="date" type="date" required>
+        </label>
+        <label>
+          Time
+          <input id="event-time" name="time" type="time" required>
+        </label>
+        <label>
+          Profile
+          <select id="event-profile" name="profile">
+            <option value="family">Family</option>
+            <option value="home">Home</option>
+            <option value="kids">Kids</option>
+            <option value="meal">Meals</option>
+          </select>
+        </label>
+        <div class="dialog-actions">
+          <button value="cancel" type="button" id="cancel-event">Cancel</button>
+          <button value="default" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
