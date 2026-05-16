@@ -1,4 +1,4 @@
-# Home Mirror
+# Home Scheduler
 
 A touch-friendly Magic Mirror style dashboard for a Raspberry Pi 3 Model B+.
 
