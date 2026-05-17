@@ -9,6 +9,7 @@ $source = Join-Path $repoRoot "magicmirror\modules\MMM-HomeScheduler"
 $target = Join-Path $MagicMirrorPath "modules\MMM-HomeScheduler"
 $configSource = Join-Path $repoRoot "magicmirror\config\config.js"
 $configTarget = Join-Path $MagicMirrorPath "config\config.js"
+$photoDir = Join-Path $MagicMirrorPath "photos"
 $thirdPartyModules = @(
   @{ Name = "MMM-CalendarExt3"; Repo = "https://github.com/MMRIZE/MMM-CalendarExt3.git" },
   @{ Name = "MMM-GooglePhotos"; Repo = "https://github.com/hermanho/MMM-GooglePhotos.git" },
@@ -26,6 +27,7 @@ if (Test-Path -LiteralPath $target) {
 
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 Copy-Item -Path (Join-Path $source "*") -Destination $target -Recurse -Force
+New-Item -ItemType Directory -Force -Path $photoDir | Out-Null
 
 foreach ($module in $thirdPartyModules) {
   $modulePath = Join-Path $MagicMirrorPath "modules\$($module.Name)"

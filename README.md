@@ -65,6 +65,24 @@ It also installs these companion modules:
 - `MMM-Remote-Control` for browser-based mirror management.
 
 The sample config includes default `calendar`, `weather`, and `newsfeed` modules too. Modules that need API keys, OAuth, or private calendar URLs are present but disabled until configured.
+The no-credential modules are enabled by default: `calendar`, `MMM-CalendarExt3`, `newsfeed`, `MMM-Random-local-image`, `MMM-Remote-Control`, and `MMM-HomeScheduler`.
+
+Put local family photos in:
+
+```bash
+~/MagicMirror/photos
+```
+
+Weather turns on automatically when `OPENWEATHER_API_KEY` is set before starting MagicMirror:
+
+```bash
+export OPENWEATHER_API_KEY="your-api-key"
+export MIRROR_WEATHER_LOCATION="Your City"
+cd ~/MagicMirror
+npm run start
+```
+
+Google Photos stays off until `GOOGLE_PHOTOS_ALBUMS` is set and the module's OAuth setup has been completed.
 
 If MagicMirror already exists and you want this repo's base config to replace the current MagicMirror config, run:
 

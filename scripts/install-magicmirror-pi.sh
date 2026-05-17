@@ -22,6 +22,7 @@ MODULE_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/modules/MMM-HomeScheduler"
 MODULE_TARGET="$MAGICMIRROR_DIR/modules/MMM-HomeScheduler"
 CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.js"
 CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.js"
+PHOTO_DIR="$MAGICMIRROR_DIR/photos"
 THIRD_PARTY_MODULES=(
   "MMM-CalendarExt3|https://github.com/MMRIZE/MMM-CalendarExt3.git"
   "MMM-GooglePhotos|https://github.com/hermanho/MMM-GooglePhotos.git"
@@ -52,6 +53,9 @@ rm -rf "$MODULE_TARGET"
 mkdir -p "$MODULE_TARGET"
 cp -R "$MODULE_SOURCE/." "$MODULE_TARGET/"
 echo "Installed fresh MMM-HomeScheduler module at $MODULE_TARGET"
+
+mkdir -p "$PHOTO_DIR"
+echo "Local photo folder ready at $PHOTO_DIR"
 
 for module_info in "${THIRD_PARTY_MODULES[@]}"; do
   IFS="|" read -r module_name module_repo <<< "$module_info"

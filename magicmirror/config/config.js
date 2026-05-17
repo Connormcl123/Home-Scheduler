@@ -1,4 +1,9 @@
 const config = {
+  electronOptions: {
+    webPreferences: {
+      webviewTag: true
+    }
+  },
   address: "0.0.0.0",
   port: 8080,
   basePath: "/",
@@ -22,8 +27,11 @@ const config = {
       module: "calendar",
       header: "Family Calendar Feed",
       position: "top_left",
-      disabled: true,
       config: {
+        colored: true,
+        coloredText: true,
+        maximumEntries: 30,
+        maximumNumberOfDays: 45,
         broadcastPastEvents: true,
         calendars: [
           {
@@ -45,31 +53,32 @@ const config = {
     {
       module: "MMM-CalendarExt3",
       position: "fullscreen_below",
-      disabled: true,
       config: {
         mode: "week",
         instanceId: "familyWeek",
         locale: "en-US",
+        firstDayOfWeek: 0,
         weeksInView: 1,
+        maxEventLines: 5,
+        waitFetch: 5000,
         calendarSet: ["family"]
       }
     },
     {
       module: "weather",
       position: "top_right",
-      disabled: true,
+      disabled: !process.env.OPENWEATHER_API_KEY,
       config: {
         weatherProvider: "openweathermap",
         type: "current",
-        location: "New York",
-        locationID: "",
-        apiKey: "YOUR_OPENWEATHER_API_KEY"
+        location: process.env.MIRROR_WEATHER_LOCATION || "New York",
+        locationID: process.env.OPENWEATHER_LOCATION_ID || "",
+        apiKey: process.env.OPENWEATHER_API_KEY || ""
       }
     },
     {
       module: "newsfeed",
       position: "bottom_bar",
-      disabled: true,
       config: {
         feeds: [
           {
@@ -86,9 +95,9 @@ const config = {
     {
       module: "MMM-GooglePhotos",
       position: "fullscreen_below",
-      disabled: true,
+      disabled: !process.env.GOOGLE_PHOTOS_ALBUMS,
       config: {
-        albums: [],
+        albums: process.env.GOOGLE_PHOTOS_ALBUMS ? process.env.GOOGLE_PHOTOS_ALBUMS.split(",") : [],
         updateInterval: 1000 * 60 * 10,
         sort: "random"
       }
@@ -96,9 +105,10 @@ const config = {
     {
       module: "MMM-Random-local-image",
       position: "fullscreen_below",
-      disabled: true,
       config: {
-        photoDir: "./modules/MMM-Random-local-image/exampleImages/"
+        photoDir: "photos",
+        updateInterval: 1000 * 60,
+        animationSpeed: 1000
       }
     },
     {
