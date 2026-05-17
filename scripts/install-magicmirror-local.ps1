@@ -39,9 +39,9 @@ foreach ($module in $thirdPartyModules) {
   }
 
   if (Test-Path -LiteralPath (Join-Path $modulePath "package-lock.json")) {
-    npm --prefix $modulePath ci --omit=dev
+    npm --prefix $modulePath ci
   } elseif (Test-Path -LiteralPath (Join-Path $modulePath "package.json")) {
-    npm --prefix $modulePath install --omit=dev
+    npm --prefix $modulePath install
   }
 }
 

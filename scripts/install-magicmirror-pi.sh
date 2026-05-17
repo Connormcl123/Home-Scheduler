@@ -42,9 +42,9 @@ install_module_dependencies() {
   local module_dir="$1"
 
   if [ -f "$module_dir/package-lock.json" ]; then
-    (cd "$module_dir" && npm ci --omit=dev)
+    (cd "$module_dir" && npm ci)
   elif [ -f "$module_dir/package.json" ]; then
-    (cd "$module_dir" && npm install --omit=dev)
+    (cd "$module_dir" && npm install)
   fi
 }
 
