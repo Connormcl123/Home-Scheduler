@@ -35,9 +35,17 @@ foreach ($module in $thirdPartyModules) {
   if (Test-Path -LiteralPath (Join-Path $modulePath ".git")) {
     Write-Host "Updating $($module.Name)"
     git -C $modulePath pull --ff-only
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "Update failed for $($module.Name). Removing and recloning."
+      Remove-Item -LiteralPath $modulePath -Recurse -Force
+      git clone --recurse-submodules $module.Repo $modulePath
+    }
   } else {
     Write-Host "Installing $($module.Name)"
-    git clone $module.Repo $modulePath
+    if (Test-Path -LiteralPath $modulePath) {
+      Remove-Item -LiteralPath $modulePath -Recurse -Force
+    }
+    git clone --recurse-submodules $module.Repo $modulePath
   }
 
   if (Test-Path -LiteralPath (Join-Path $modulePath "package-lock.json")) {

@@ -94,6 +94,13 @@ The script backs up the previous config first. The module folder is replaced on 
 
 After editing `~/MagicMirror/config/config.js`, enable modules by changing `disabled: true` to `disabled: false` or removing the `disabled` line.
 
+If a third-party module install fails with a corrupted Git submodule error, remove that module and rerun the installer:
+
+```bash
+rm -rf ~/MagicMirror/modules/MMM-CalendarExt3
+bash scripts/install-magicmirror-pi.sh --replace-config
+```
+
 Start MagicMirror:
 
 ```bash

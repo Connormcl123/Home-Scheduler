@@ -49,6 +49,32 @@ install_module_dependencies() {
   fi
 }
 
+install_third_party_module() {
+  local module_name="$1"
+  local module_repo="$2"
+  local module_dir="$MAGICMIRROR_DIR/modules/$module_name"
+
+  if [ -d "$module_dir/.git" ]; then
+    echo "Updating $module_name"
+    if ! (cd "$module_dir" && git pull --ff-only); then
+      echo "Update failed for $module_name. Removing and recloning."
+      rm -rf "$module_dir"
+      git clone --recurse-submodules "$module_repo" "$module_dir"
+    fi
+  else
+    echo "Installing $module_name"
+    rm -rf "$module_dir"
+    git clone --recurse-submodules "$module_repo" "$module_dir"
+  fi
+
+  if ! install_module_dependencies "$module_dir"; then
+    echo "Dependency install failed for $module_name. Removing and recloning once."
+    rm -rf "$module_dir"
+    git clone --recurse-submodules "$module_repo" "$module_dir"
+    install_module_dependencies "$module_dir"
+  fi
+}
+
 rm -rf "$MODULE_TARGET"
 mkdir -p "$MODULE_TARGET"
 cp -R "$MODULE_SOURCE/." "$MODULE_TARGET/"
@@ -59,17 +85,7 @@ echo "Local photo folder ready at $PHOTO_DIR"
 
 for module_info in "${THIRD_PARTY_MODULES[@]}"; do
   IFS="|" read -r module_name module_repo <<< "$module_info"
-  module_dir="$MAGICMIRROR_DIR/modules/$module_name"
-
-  if [ -d "$module_dir/.git" ]; then
-    echo "Updating $module_name"
-    (cd "$module_dir" && git pull --ff-only)
-  else
-    echo "Installing $module_name"
-    git clone "$module_repo" "$module_dir"
-  fi
-
-  install_module_dependencies "$module_dir"
+  install_third_party_module "$module_name" "$module_repo"
 done
 
 if [ ! -f "$CONFIG_TARGET" ]; then
