@@ -1,9 +1,4 @@
 const config = {
-  electronOptions: {
-    webPreferences: {
-      webviewTag: true
-    }
-  },
   address: "0.0.0.0",
   port: 8080,
   basePath: "/",
@@ -27,7 +22,6 @@ const config = {
       module: "calendar",
       header: "Family Calendar Feed",
       position: "top_left",
-      hiddenOnStartup: true,
       config: {
         colored: true,
         coloredText: true,
@@ -45,19 +39,8 @@ const config = {
       }
     },
     {
-      module: "MMM-HomeScheduler",
-      position: "fullscreen_above",
-      config: {
-        title: "Home Scheduler",
-        calendarProvider: "calendar",
-        photoProvider: "local",
-        useCalendarBroadcasts: true
-      }
-    },
-    {
       module: "MMM-CalendarExt3",
-      position: "fullscreen_below",
-      disabled: true,
+      position: "middle_center",
       config: {
         mode: "week",
         instanceId: "familyWeek",
@@ -84,7 +67,6 @@ const config = {
     {
       module: "newsfeed",
       position: "bottom_bar",
-      disabled: true,
       config: {
         feeds: [
           {
@@ -93,25 +75,12 @@ const config = {
           }
         ],
         showSourceTitle: true,
-        showPublishDate: true,
-        broadcastNewsFeeds: true,
-        broadcastNewsUpdates: true
-      }
-    },
-    {
-      module: "MMM-GooglePhotos",
-      position: "fullscreen_below",
-      disabled: !process.env.GOOGLE_PHOTOS_ALBUMS,
-      config: {
-        albums: process.env.GOOGLE_PHOTOS_ALBUMS ? process.env.GOOGLE_PHOTOS_ALBUMS.split(",") : [],
-        updateInterval: 1000 * 60 * 10,
-        sort: "random"
+        showPublishDate: true
       }
     },
     {
       module: "MMM-Random-local-image",
-      position: "fullscreen_below",
-      disabled: true,
+      position: "bottom_left",
       config: {
         photoDir: "photos",
         updateInterval: 1000 * 60,

@@ -66,6 +66,15 @@ It also installs these companion modules:
 
 The sample config includes default `calendar`, `weather`, and `newsfeed` modules too. Modules that need API keys, OAuth, or private calendar URLs are present but disabled until configured.
 The no-credential modules are enabled by default: `calendar`, `MMM-CalendarExt3`, `newsfeed`, `MMM-Random-local-image`, `MMM-Remote-Control`, and `MMM-HomeScheduler`.
+The primary config keeps `MMM-HomeScheduler` as the only full-screen visual layer. CalendarExt3, newsfeed, and local image modules are installed and configured, but duplicate visual modules are disabled when they would sit behind the scheduler. The default `calendar` module still feeds events into `MMM-HomeScheduler`.
+
+There is also a module-demo config at:
+
+```text
+magicmirror/config/config.modules-demo.js
+```
+
+Use that only when you want to test the third-party modules directly without the HomeScheduler full-screen interface.
 
 Put local family photos in:
 

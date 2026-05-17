@@ -3,6 +3,7 @@ Module.register("MMM-HomeScheduler", {
     title: "Home Scheduler",
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
+    useCalendarBroadcasts: true,
     profiles: [
       { id: "family", label: "Family" },
       { id: "home", label: "Home" },
@@ -57,6 +58,25 @@ Module.register("MMM-HomeScheduler", {
     wrapper.innerHTML = this.renderShell();
     this.bindDom(wrapper);
     return wrapper;
+  },
+
+  notificationReceived: function (notification, payload) {
+    if (notification !== "CALENDAR_EVENTS" || !this.config.useCalendarBroadcasts || !Array.isArray(payload)) {
+      return;
+    }
+
+    const calendarEvents = payload
+      .map((event) => this.normalizeCalendarEvent(event))
+      .filter(Boolean);
+
+    if (!calendarEvents.length) {
+      return;
+    }
+
+    this.events = this.events
+      .filter((event) => event.source !== "calendar" && event.source !== "sample")
+      .concat(calendarEvents);
+    this.updateDom(250);
   },
 
   suspend: function () {
@@ -363,7 +383,7 @@ Module.register("MMM-HomeScheduler", {
     if (!title) return;
     const time = prompt("Event time, like 18:30", "09:00") || "09:00";
     const profile = prompt("Profile: family, home, kids, meal", "family") || "family";
-    this.events.push({ id: this.id(), title: title.trim(), date: this.isoDate(this.selectedDay), time, profile });
+    this.events.push({ id: this.id(), title: title.trim(), date: this.isoDate(this.selectedDay), time, profile, source: "local" });
     this.writeItems("events", this.events);
   },
 
@@ -462,8 +482,26 @@ Module.register("MMM-HomeScheduler", {
       title: event.title,
       date: this.isoDate(this.addDays(new Date(), event.dayOffset)),
       time: event.time,
-      profile: event.profile
+      profile: event.profile,
+      source: "sample"
     }));
+  },
+
+  normalizeCalendarEvent: function (event) {
+    const start = new Date(event.startDate || event.start || event.date);
+
+    if (Number.isNaN(start.getTime())) {
+      return null;
+    }
+
+    return {
+      id: event.uid || event.id || `${event.title}-${start.getTime()}`,
+      title: event.title || event.summary || "Calendar event",
+      date: this.isoDate(start),
+      time: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
+      profile: event.calendarName === "family" ? "family" : "home",
+      source: "calendar"
+    };
   },
 
   readItems: function (name, fallback) {
