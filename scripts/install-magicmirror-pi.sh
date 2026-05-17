@@ -22,6 +22,12 @@ MODULE_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/modules/MMM-HomeScheduler"
 MODULE_TARGET="$MAGICMIRROR_DIR/modules/MMM-HomeScheduler"
 CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.js"
 CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.js"
+THIRD_PARTY_MODULES=(
+  "MMM-CalendarExt3|https://github.com/MMRIZE/MMM-CalendarExt3.git"
+  "MMM-GooglePhotos|https://github.com/hermanho/MMM-GooglePhotos.git"
+  "MMM-Remote-Control|https://github.com/Jopyth/MMM-Remote-Control.git"
+  "MMM-Random-local-image|https://github.com/miccl/MMM-Random-local-image.git"
+)
 
 if [ ! -d "$MAGICMIRROR_DIR/.git" ]; then
   git clone https://github.com/MagicMirrorOrg/MagicMirror.git "$MAGICMIRROR_DIR"
@@ -32,10 +38,35 @@ fi
 cd "$MAGICMIRROR_DIR"
 npm install
 
+install_module_dependencies() {
+  local module_dir="$1"
+
+  if [ -f "$module_dir/package-lock.json" ]; then
+    (cd "$module_dir" && npm ci --omit=dev)
+  elif [ -f "$module_dir/package.json" ]; then
+    (cd "$module_dir" && npm install --omit=dev)
+  fi
+}
+
 rm -rf "$MODULE_TARGET"
 mkdir -p "$MODULE_TARGET"
 cp -R "$MODULE_SOURCE/." "$MODULE_TARGET/"
 echo "Installed fresh MMM-HomeScheduler module at $MODULE_TARGET"
+
+for module_info in "${THIRD_PARTY_MODULES[@]}"; do
+  IFS="|" read -r module_name module_repo <<< "$module_info"
+  module_dir="$MAGICMIRROR_DIR/modules/$module_name"
+
+  if [ -d "$module_dir/.git" ]; then
+    echo "Updating $module_name"
+    (cd "$module_dir" && git pull --ff-only)
+  else
+    echo "Installing $module_name"
+    git clone "$module_repo" "$module_dir"
+  fi
+
+  install_module_dependencies "$module_dir"
+done
 
 if [ ! -f "$CONFIG_TARGET" ]; then
   cp "$CONFIG_SOURCE" "$CONFIG_TARGET"

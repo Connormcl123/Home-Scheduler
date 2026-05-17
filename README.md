@@ -57,6 +57,15 @@ bash scripts/install-magicmirror-pi.sh
 
 The script installs the official MagicMirror repo at `~/MagicMirror`, copies `MMM-HomeScheduler` into `~/MagicMirror/modules`, and creates `~/MagicMirror/config/config.js` if one does not exist.
 
+It also installs these companion modules:
+
+- `MMM-CalendarExt3` for richer week/month calendar views.
+- `MMM-GooglePhotos` for Google Photos album rotation.
+- `MMM-Random-local-image` for local photo folders.
+- `MMM-Remote-Control` for browser-based mirror management.
+
+The sample config includes default `calendar`, `weather`, and `newsfeed` modules too. Modules that need API keys, OAuth, or private calendar URLs are present but disabled until configured.
+
 If MagicMirror already exists and you want this repo's base config to replace the current MagicMirror config, run:
 
 ```bash
@@ -64,6 +73,8 @@ bash scripts/install-magicmirror-pi.sh --replace-config
 ```
 
 The script backs up the previous config first. The module folder is replaced on every install so updates from this repo are applied cleanly.
+
+After editing `~/MagicMirror/config/config.js`, enable modules by changing `disabled: true` to `disabled: false` or removing the `disabled` line.
 
 Start MagicMirror:
 

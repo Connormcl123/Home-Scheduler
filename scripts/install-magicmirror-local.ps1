@@ -9,6 +9,12 @@ $source = Join-Path $repoRoot "magicmirror\modules\MMM-HomeScheduler"
 $target = Join-Path $MagicMirrorPath "modules\MMM-HomeScheduler"
 $configSource = Join-Path $repoRoot "magicmirror\config\config.js"
 $configTarget = Join-Path $MagicMirrorPath "config\config.js"
+$thirdPartyModules = @(
+  @{ Name = "MMM-CalendarExt3"; Repo = "https://github.com/MMRIZE/MMM-CalendarExt3.git" },
+  @{ Name = "MMM-GooglePhotos"; Repo = "https://github.com/hermanho/MMM-GooglePhotos.git" },
+  @{ Name = "MMM-Remote-Control"; Repo = "https://github.com/Jopyth/MMM-Remote-Control.git" },
+  @{ Name = "MMM-Random-local-image"; Repo = "https://github.com/miccl/MMM-Random-local-image.git" }
+)
 
 if (-not (Test-Path -LiteralPath $MagicMirrorPath)) {
   throw "MagicMirror was not found at $MagicMirrorPath. Clone https://github.com/MagicMirrorOrg/MagicMirror.git first."
@@ -20,6 +26,24 @@ if (Test-Path -LiteralPath $target) {
 
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 Copy-Item -Path (Join-Path $source "*") -Destination $target -Recurse -Force
+
+foreach ($module in $thirdPartyModules) {
+  $modulePath = Join-Path $MagicMirrorPath "modules\$($module.Name)"
+
+  if (Test-Path -LiteralPath (Join-Path $modulePath ".git")) {
+    Write-Host "Updating $($module.Name)"
+    git -C $modulePath pull --ff-only
+  } else {
+    Write-Host "Installing $($module.Name)"
+    git clone $module.Repo $modulePath
+  }
+
+  if (Test-Path -LiteralPath (Join-Path $modulePath "package-lock.json")) {
+    npm --prefix $modulePath ci --omit=dev
+  } elseif (Test-Path -LiteralPath (Join-Path $modulePath "package.json")) {
+    npm --prefix $modulePath install --omit=dev
+  }
+}
 
 if (-not (Test-Path -LiteralPath $configTarget)) {
   Copy-Item -Path $configSource -Destination $configTarget
