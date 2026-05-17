@@ -57,6 +57,14 @@ bash scripts/install-magicmirror-pi.sh
 
 The script installs the official MagicMirror repo at `~/MagicMirror`, copies `MMM-HomeScheduler` into `~/MagicMirror/modules`, and creates `~/MagicMirror/config/config.js` if one does not exist.
 
+If MagicMirror already exists and you want this repo's base config to replace the current MagicMirror config, run:
+
+```bash
+bash scripts/install-magicmirror-pi.sh --replace-config
+```
+
+The script backs up the previous config first. The module folder is replaced on every install so updates from this repo are applied cleanly.
+
 Start MagicMirror:
 
 ```bash
