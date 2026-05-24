@@ -117,6 +117,20 @@ cd ~/MagicMirror
 npm run start
 ```
 
+When starting MagicMirror from SSH but displaying it on the Pi HDMI desktop, use:
+
+```bash
+cd ~/Home-Scheduler
+bash scripts/start-magicmirror-hdmi.sh
+```
+
+If Electron has trouble with the Pi desktop display backend, force one explicitly:
+
+```bash
+bash scripts/start-magicmirror-hdmi.sh wayland
+bash scripts/start-magicmirror-hdmi.sh x11
+```
+
 For local development against MagicMirror on another machine, copy:
 
 ```text
