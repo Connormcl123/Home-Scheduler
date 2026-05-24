@@ -18,22 +18,26 @@ case "$MODE" in
       export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
       unset ELECTRON_OZONE_PLATFORM_HINT
       echo "Starting MagicMirror on Pi HDMI using Wayland display $WAYLAND_DISPLAY"
+      START_SCRIPT="start:wayland"
     else
       export DISPLAY="${DISPLAY:-:0}"
       export ELECTRON_OZONE_PLATFORM_HINT="x11"
       echo "Starting MagicMirror on Pi HDMI using X11 display $DISPLAY"
+      START_SCRIPT="start:x11"
     fi
     ;;
   wayland)
     export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
     unset ELECTRON_OZONE_PLATFORM_HINT
     echo "Starting MagicMirror on Pi HDMI using Wayland display $WAYLAND_DISPLAY"
+    START_SCRIPT="start:wayland"
     ;;
   x11)
     export DISPLAY="${DISPLAY:-:0}"
     export ELECTRON_OZONE_PLATFORM_HINT="x11"
     unset WAYLAND_DISPLAY
     echo "Starting MagicMirror on Pi HDMI using X11 display $DISPLAY"
+    START_SCRIPT="start:x11"
     ;;
   *)
     echo "Usage: $0 [auto|wayland|x11]"
@@ -42,4 +46,4 @@ case "$MODE" in
 esac
 
 cd "$MAGICMIRROR_DIR"
-npm run start
+node --run "$START_SCRIPT"

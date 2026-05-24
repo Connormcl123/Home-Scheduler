@@ -131,6 +131,8 @@ bash scripts/start-magicmirror-hdmi.sh wayland
 bash scripts/start-magicmirror-hdmi.sh x11
 ```
 
+On Raspberry Pi OS with X11, MagicMirror should be launched with `node --run start:x11`. On Wayland, use `node --run start:wayland`.
+
 For local development against MagicMirror on another machine, copy:
 
 ```text
