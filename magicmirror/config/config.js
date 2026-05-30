@@ -52,7 +52,14 @@ const config = {
         displayMode: "compact",
         calendarProvider: "calendar",
         photoProvider: "local",
-        useCalendarBroadcasts: true
+        useCalendarBroadcasts: true,
+        googleCalendar: {
+          enabled: false,
+          calendarId: "primary",
+          credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
+          tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
+          timeZone: "America/New_York"
+        }
       }
     },
     {

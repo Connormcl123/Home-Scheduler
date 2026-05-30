@@ -116,6 +116,56 @@ npm run start
 
 Google Photos stays off until `GOOGLE_PHOTOS_ALBUMS` is set and the module's OAuth setup has been completed.
 
+## Google Calendar Editing
+
+The mirror can display Google Calendar events through the default MagicMirror `calendar` module using a private iCal URL. To create, move, resize, and delete events from the touchscreen and sync them back into Google Calendar, enable the `MMM-HomeScheduler` Google Calendar API helper.
+
+1. In Google Cloud, create OAuth credentials with application type `Desktop app`.
+2. Copy the downloaded JSON to the Pi:
+
+```bash
+mkdir -p ~/Home-Scheduler/secrets
+cp ~/Downloads/YOUR_GOOGLE_CLIENT_JSON.json ~/Home-Scheduler/secrets/google-calendar-credentials.json
+```
+
+3. Install/update the module dependencies:
+
+```bash
+cd ~/Home-Scheduler
+git pull
+bash scripts/install-magicmirror-pi.sh
+```
+
+4. Run the one-time authorization:
+
+```bash
+cd ~/MagicMirror/modules/MMM-HomeScheduler
+node ~/Home-Scheduler/scripts/authorize-google-calendar.js
+```
+
+Follow the URL shown in the terminal, approve access, and let the script save `~/Home-Scheduler/secrets/google-calendar-token.json`.
+
+5. Enable Google sync in `~/MagicMirror/config/config.js`:
+
+```js
+googleCalendar: {
+  enabled: true,
+  calendarId: "primary",
+  credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
+  tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
+  timeZone: "America/New_York"
+}
+```
+
+6. Restart MagicMirror:
+
+```bash
+cd ~/MagicMirror
+node --run start:x11
+```
+
+Touch-created, moved, resized, and deleted local events will then sync to Google Calendar.
+
 If MagicMirror already exists and you want this repo's base config to replace the current MagicMirror config, run:
 
 ```bash

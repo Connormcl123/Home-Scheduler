@@ -5,6 +5,13 @@ Module.register("MMM-HomeScheduler", {
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
     useCalendarBroadcasts: true,
+    googleCalendar: {
+      enabled: false,
+      calendarId: "primary",
+      credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
+      tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
+      timeZone: "America/New_York"
+    },
     profiles: [
       { id: "family", label: "Family" },
       { id: "home", label: "Home" },
@@ -53,6 +60,9 @@ Module.register("MMM-HomeScheduler", {
     this.meals = this.readItems("meals", this.config.sampleMeals.map((meal) => ({ id: this.id(), ...meal })));
     this.markActivity();
     this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    this.sendSocketNotification("HS_CONFIG", {
+      googleCalendar: this.config.googleCalendar
+    });
   },
 
   getStyles: function () {
@@ -84,6 +94,20 @@ Module.register("MMM-HomeScheduler", {
       .filter((event) => event.source !== "calendar" && event.source !== "sample")
       .concat(calendarEvents);
     this.updateDom(250);
+  },
+
+  socketNotificationReceived: function (notification, payload) {
+    if (notification === "HS_GOOGLE_EVENT_SAVED") {
+      const event = this.events.find((item) => item.id === payload.localId);
+      if (event) {
+        event.googleEventId = payload.googleEventId;
+        this.writeItems("events", this.events);
+      }
+    }
+
+    if (notification === "HS_GOOGLE_ERROR") {
+      console.error(`MMM-HomeScheduler Google Calendar error: ${payload.message}`);
+    }
   },
 
   suspend: function () {
@@ -609,6 +633,7 @@ Module.register("MMM-HomeScheduler", {
       this.selectedDay = this.parseLocalDate(targetEvent.date);
       this.weekStart = this.startOfWeek(this.selectedDay);
       this.writeItems("events", this.events);
+      this.syncGoogleEvent(targetEvent);
     }
 
     this.clearDragVisuals();
@@ -703,11 +728,14 @@ Module.register("MMM-HomeScheduler", {
       source: "local"
     };
 
+    const existing = this.events.find((event) => event.id === saved.id);
+    saved.googleEventId = existing?.googleEventId || "";
     this.events = this.events.filter((event) => event.id !== saved.id).concat(saved);
     this.selectedDay = this.parseLocalDate(saved.date);
     this.weekStart = this.startOfWeek(this.selectedDay);
     this.editor = null;
     this.writeItems("events", this.events);
+    this.syncGoogleEvent(saved);
     this.touch();
   },
 
@@ -795,9 +823,21 @@ Module.register("MMM-HomeScheduler", {
   },
 
   removeItem: function (collection, id) {
+    const removed = this[collection].find((item) => item.id === id);
     this[collection] = this[collection].filter((item) => item.id !== id);
     this.writeItems(collection, this[collection]);
+    if (collection === "events" && removed?.googleEventId) {
+      this.sendSocketNotification("HS_DELETE_GOOGLE_EVENT", removed);
+    }
     this.touch();
+  },
+
+  syncGoogleEvent: function (event) {
+    if (!this.config.googleCalendar?.enabled || event.source === "calendar") {
+      return;
+    }
+
+    this.sendSocketNotification("HS_UPSERT_GOOGLE_EVENT", event);
   },
 
   defaultEvents: function () {
@@ -821,6 +861,7 @@ Module.register("MMM-HomeScheduler", {
 
     return {
       id: event.uid || event.id || `${event.title}-${start.getTime()}`,
+      googleEventId: event.id || "",
       title: event.title || event.summary || "Calendar event",
       date: this.isoDate(start),
       time: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
@@ -868,10 +909,12 @@ Module.register("MMM-HomeScheduler", {
 
   resizeEnd: function () {
     if (!this.resizeState) return;
+    const targetEvent = this.events.find((item) => item.id === this.resizeState.id);
     document.removeEventListener("pointermove", this.boundResizeMove);
     document.removeEventListener("pointerup", this.boundResizeEnd);
     this.resizeState = null;
     this.writeItems("events", this.events);
+    if (targetEvent) this.syncGoogleEvent(targetEvent);
     this.touch();
   },
 
