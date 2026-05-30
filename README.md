@@ -1,6 +1,6 @@
 # Home Scheduler
 
-A touch-friendly Magic Mirror style dashboard for a Raspberry Pi 3 Model B+.
+A touch-friendly Magic Mirror style dashboard for a Raspberry Pi 4 Model B running Raspberry Pi OS with the full desktop over HDMI.
 
 ## First Working Slice
 
@@ -38,7 +38,15 @@ Then visit `http://localhost:4173`.
 
 The album folder picker requires a Chromium-based browser and works best from `http://localhost:4173`.
 
-## Raspberry Pi Direction
+## Raspberry Pi 4 Direction
+
+Target setup:
+
+- Raspberry Pi 4 Model B
+- Raspberry Pi OS with desktop
+- HDMI display attached to the Pi
+- SSH from a laptop for installation and maintenance
+- MagicMirror displayed on the Pi's physical HDMI screen
 
 This repo now supports two paths:
 
@@ -133,7 +141,7 @@ bash scripts/start-magicmirror-hdmi.sh x11
 
 On Raspberry Pi OS with X11, MagicMirror should be launched with `node --run start:x11`. On Wayland, use `node --run start:wayland`.
 
-To stop the HDMI display from sleeping or blanking:
+To stop the HDMI display from sleeping or blanking on Raspberry Pi OS:
 
 ```bash
 cd ~/Home-Scheduler
@@ -175,7 +183,7 @@ powershell -ExecutionPolicy Bypass -File .\start-mirror.ps1
 
 Then visit `http://localhost:4173`.
 
-The Pi target can also run the standalone prototype in Chromium kiosk mode:
+The Pi 4 target can also run the standalone prototype in Chromium kiosk mode:
 
 ```bash
 chromium-browser --kiosk http://localhost:4173

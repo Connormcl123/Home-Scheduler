@@ -3,11 +3,16 @@ set -euo pipefail
 
 MAGICMIRROR_DIR="${MAGICMIRROR_DIR:-$HOME/MagicMirror}"
 MODE="${1:-auto}"
+PI_MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
 
 if [ ! -d "$MAGICMIRROR_DIR" ]; then
   echo "MagicMirror was not found at $MAGICMIRROR_DIR"
   echo "Run: bash ~/Home-Scheduler/scripts/install-magicmirror-pi.sh"
   exit 1
+fi
+
+if [ -n "$PI_MODEL" ]; then
+  echo "Detected hardware: $PI_MODEL"
 fi
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"

@@ -27,6 +27,14 @@ add_line_once "$XPROFILE_FILE" "xset s off"
 add_line_once "$XPROFILE_FILE" "xset -dpms"
 add_line_once "$XPROFILE_FILE" "xset s noblank"
 
+if command -v raspi-config >/dev/null 2>&1; then
+  if command -v sudo >/dev/null 2>&1; then
+    sudo raspi-config nonint do_blanking 0 || true
+  else
+    raspi-config nonint do_blanking 0 || true
+  fi
+fi
+
 if command -v xset >/dev/null 2>&1; then
   export DISPLAY="${DISPLAY:-:0}"
   xset s off || true
