@@ -84,6 +84,21 @@ magicmirror/config/config.modules-demo.js
 
 Use that only when you want to test the third-party modules directly without the HomeScheduler full-screen interface.
 
+For smaller HDMI touchscreens, set the scheduler to compact mode in `~/MagicMirror/config/config.js`:
+
+```js
+{
+  module: "MMM-HomeScheduler",
+  position: "fullscreen_above",
+  config: {
+    title: "Home Scheduler",
+    displayMode: "compact"
+  }
+}
+```
+
+Use `displayMode: "auto"` to let CSS compact the view based on screen size.
+
 Put local family photos in:
 
 ```bash

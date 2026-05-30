@@ -1,6 +1,7 @@
 Module.register("MMM-HomeScheduler", {
   defaults: {
     title: "Home Scheduler",
+    displayMode: "auto",
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
     useCalendarBroadcasts: true,
@@ -54,7 +55,7 @@ Module.register("MMM-HomeScheduler", {
 
   getDom: function () {
     const wrapper = document.createElement("div");
-    wrapper.className = "hs-shell";
+    wrapper.className = `hs-shell hs-mode-${this.config.displayMode}`;
     wrapper.innerHTML = this.renderShell();
     this.bindDom(wrapper);
     return wrapper;

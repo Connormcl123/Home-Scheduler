@@ -501,3 +501,380 @@
   background: rgba(143, 199, 189, 0.18);
   color: var(--hs-text);
 }
+
+@media (max-width: 1024px), (max-height: 700px) {
+  .hs-shell {
+    --hs-compact-active: 1;
+  }
+}
+
+.hs-shell.hs-mode-compact {
+  --hs-compact-active: 1;
+}
+
+@media (max-width: 1024px), (max-height: 700px) {
+  .hs-shell {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .hs-topbar h1 {
+    font-size: 42px;
+  }
+
+  .hs-date strong {
+    font-size: 22px;
+  }
+
+  .hs-panel {
+    padding: 10px;
+  }
+
+  .hs-panel h2 {
+    font-size: 28px;
+  }
+
+  .hs-calendar {
+    gap: 8px;
+  }
+
+  .hs-calendar-top {
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .hs-actions {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .hs-shell button {
+    min-height: 30px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .hs-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 22px;
+  }
+
+  .hs-profiles {
+    gap: 5px;
+  }
+
+  .hs-profiles span,
+  .hs-meal span {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .hs-calendar-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(126px, 0.34fr);
+    gap: 8px;
+  }
+
+  .hs-week-grid {
+    grid-template-columns: 40px repeat(7, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .hs-time-column,
+  .hs-day-column {
+    grid-template-rows: 46px repeat(6, minmax(44px, 1fr));
+  }
+
+  .hs-time-column {
+    font-size: 10px;
+  }
+
+  .hs-time-column span {
+    padding-top: 5px;
+  }
+
+  .hs-day-column > button {
+    gap: 1px;
+    padding: 5px;
+  }
+
+  .hs-day-column > button span {
+    font-size: 10px;
+  }
+
+  .hs-day-column > button strong {
+    font-size: 18px;
+  }
+
+  .hs-slot {
+    padding: 3px;
+  }
+
+  .hs-block {
+    min-height: 32px;
+    margin-bottom: 3px;
+    padding: 4px;
+    border-radius: 5px;
+  }
+
+  .hs-block span {
+    font-size: 8px;
+  }
+
+  .hs-block strong {
+    font-size: 10px;
+  }
+
+  .hs-tabs button {
+    min-height: 32px;
+    font-size: 11px;
+  }
+
+  .hs-drawer-panel {
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .hs-drawer-panel h3,
+  .hs-drawer-heading {
+    font-size: 16px;
+  }
+
+  .hs-card,
+  .hs-task,
+  .hs-meal,
+  .hs-forecast > div,
+  .hs-news {
+    gap: 3px;
+    padding: 9px;
+    border-radius: 6px;
+  }
+
+  .hs-card span,
+  .hs-task span,
+  .hs-meal span {
+    font-size: 10px;
+  }
+
+  .hs-card strong,
+  .hs-task strong,
+  .hs-meal strong {
+    font-size: 14px;
+  }
+
+  .hs-card button,
+  .hs-task button:last-child,
+  .hs-meal button {
+    top: 4px;
+    right: 7px;
+    font-size: 18px;
+  }
+
+  .hs-dock {
+    gap: 6px;
+  }
+
+  .hs-dock button {
+    min-width: 76px;
+    min-height: 34px;
+  }
+
+  .hs-forecast {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 18px;
+  }
+}
+
+.hs-shell.hs-mode-compact {
+  padding: 10px;
+  gap: 8px;
+}
+
+.hs-shell.hs-mode-compact .hs-topbar h1 {
+  font-size: 42px;
+}
+
+.hs-shell.hs-mode-compact .hs-date strong {
+  font-size: 22px;
+}
+
+.hs-shell.hs-mode-compact .hs-panel {
+  padding: 10px;
+}
+
+.hs-shell.hs-mode-compact .hs-panel h2 {
+  font-size: 28px;
+}
+
+.hs-shell.hs-mode-compact .hs-calendar,
+.hs-shell.hs-mode-compact .hs-drawer-panel {
+  gap: 8px;
+}
+
+.hs-shell.hs-mode-compact .hs-calendar-top {
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.hs-shell.hs-mode-compact .hs-actions {
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.hs-shell.hs-mode-compact button {
+  min-height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.hs-shell.hs-mode-compact .hs-icon {
+  width: 34px;
+  height: 34px;
+  font-size: 22px;
+}
+
+.hs-shell.hs-mode-compact .hs-profiles {
+  gap: 5px;
+}
+
+.hs-shell.hs-mode-compact .hs-profiles span,
+.hs-shell.hs-mode-compact .hs-meal span {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.hs-shell.hs-mode-compact .hs-calendar-workspace {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) minmax(126px, 0.34fr);
+  gap: 8px;
+}
+
+.hs-shell.hs-mode-compact .hs-week-grid {
+  grid-template-columns: 40px repeat(7, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.hs-shell.hs-mode-compact .hs-time-column,
+.hs-shell.hs-mode-compact .hs-day-column {
+  grid-template-rows: 46px repeat(6, minmax(44px, 1fr));
+}
+
+.hs-shell.hs-mode-compact .hs-time-column {
+  font-size: 10px;
+}
+
+.hs-shell.hs-mode-compact .hs-day-column > button {
+  gap: 1px;
+  padding: 5px;
+}
+
+.hs-shell.hs-mode-compact .hs-day-column > button span {
+  font-size: 10px;
+}
+
+.hs-shell.hs-mode-compact .hs-day-column > button strong {
+  font-size: 18px;
+}
+
+.hs-shell.hs-mode-compact .hs-slot {
+  padding: 3px;
+}
+
+.hs-shell.hs-mode-compact .hs-block {
+  min-height: 32px;
+  margin-bottom: 3px;
+  padding: 4px;
+}
+
+.hs-shell.hs-mode-compact .hs-block span {
+  font-size: 8px;
+}
+
+.hs-shell.hs-mode-compact .hs-block strong {
+  font-size: 10px;
+}
+
+.hs-shell.hs-mode-compact .hs-tabs button {
+  min-height: 32px;
+  font-size: 11px;
+}
+
+.hs-shell.hs-mode-compact .hs-drawer-panel {
+  padding: 8px;
+}
+
+.hs-shell.hs-mode-compact .hs-drawer-panel h3,
+.hs-shell.hs-mode-compact .hs-drawer-heading {
+  font-size: 16px;
+}
+
+.hs-shell.hs-mode-compact .hs-card,
+.hs-shell.hs-mode-compact .hs-task,
+.hs-shell.hs-mode-compact .hs-meal,
+.hs-shell.hs-mode-compact .hs-forecast > div,
+.hs-shell.hs-mode-compact .hs-news {
+  gap: 3px;
+  padding: 9px;
+  border-radius: 6px;
+}
+
+.hs-shell.hs-mode-compact .hs-card span,
+.hs-shell.hs-mode-compact .hs-task span,
+.hs-shell.hs-mode-compact .hs-meal span {
+  font-size: 10px;
+}
+
+.hs-shell.hs-mode-compact .hs-card strong,
+.hs-shell.hs-mode-compact .hs-task strong,
+.hs-shell.hs-mode-compact .hs-meal strong {
+  font-size: 14px;
+}
+
+.hs-shell.hs-mode-compact .hs-dock {
+  gap: 6px;
+}
+
+.hs-shell.hs-mode-compact .hs-dock button {
+  min-width: 76px;
+  min-height: 34px;
+}
+
+@media (max-width: 720px) {
+  .hs-topbar {
+    align-items: flex-start;
+  }
+
+  .hs-date {
+    font-size: 12px;
+  }
+
+  .hs-calendar-top {
+    flex-direction: column;
+  }
+
+  .hs-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .hs-week-grid {
+    grid-template-columns: 34px repeat(7, minmax(38px, 1fr));
+  }
+
+  .hs-time-column,
+  .hs-day-column {
+    grid-template-rows: 42px repeat(6, minmax(38px, 1fr));
+  }
+
+  .hs-block span {
+    display: none;
+  }
+
+  .hs-block strong {
+    font-size: 9px;
+  }
+}

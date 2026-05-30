@@ -49,6 +49,7 @@ const config = {
       position: "fullscreen_above",
       config: {
         title: "Home Scheduler",
+        displayMode: "compact",
         calendarProvider: "calendar",
         photoProvider: "local",
         useCalendarBroadcasts: true
