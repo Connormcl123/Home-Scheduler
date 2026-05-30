@@ -38,6 +38,9 @@ Module.register("MMM-HomeScheduler", {
     this.editor = null;
     this.keyboardTarget = null;
     this.resizeState = null;
+    this.dragState = null;
+    this.dragPressTimer = null;
+    this.suppressNextEventClick = false;
     this.selectedDay = this.startOfDay(new Date());
     this.weekStart = this.startOfWeek(new Date());
     this.photoFiles = [];
@@ -194,7 +197,8 @@ Module.register("MMM-HomeScheduler", {
         <button class="hs-resize hs-resize-bottom" data-resize-event="${event.id}" data-resize-edge="bottom" type="button" aria-label="Extend or shrink event"></button>
       </div>
     `).join("");
-    return `<div class="hs-slot" data-add-slot="${this.isoDate(day)}" data-slot-hour="${hour}" role="button" tabindex="0">${blocks}</div>`;
+    const slotLabel = `${new Intl.DateTimeFormat([], { weekday: "short" }).format(day)} ${this.formatHour(hour)}`;
+    return `<div class="hs-slot" data-add-slot="${this.isoDate(day)}" data-slot-hour="${hour}" data-slot-label="${slotLabel}" role="button" tabindex="0">${blocks}</div>`;
   },
 
   renderEventEditor: function () {
@@ -494,13 +498,155 @@ Module.register("MMM-HomeScheduler", {
     wrapper.querySelectorAll("[data-event-id]").forEach((block) => {
       block.addEventListener("click", (event) => {
         if (event.target.closest("[data-resize-event]")) return;
+        if (this.suppressNextEventClick) {
+          this.suppressNextEventClick = false;
+          return;
+        }
         const existing = this.events.find((item) => item.id === block.dataset.eventId);
         if (existing) this.openEventEditor(existing);
       });
+      block.addEventListener("pointerdown", (event) => this.queueEventDrag(event, block));
     });
     wrapper.querySelectorAll("[data-resize-event]").forEach((handle) => {
       handle.addEventListener("pointerdown", (event) => this.startResize(event, handle));
     });
+  },
+
+  queueEventDrag: function (event, block) {
+    if (event.target.closest("[data-resize-event]")) {
+      return;
+    }
+
+    event.stopPropagation();
+    this.clearDragPress();
+
+    const eventItem = this.events.find((item) => item.id === block.dataset.eventId);
+    if (!eventItem) {
+      return;
+    }
+
+    this.dragPressTimer = setTimeout(() => {
+      this.startEventDrag(event, block, eventItem);
+    }, 280);
+
+    document.addEventListener("pointermove", this.boundPendingDragMove = (moveEvent) => {
+      if (Math.abs(moveEvent.clientX - event.clientX) > 8 || Math.abs(moveEvent.clientY - event.clientY) > 8) {
+        this.clearDragPress();
+      }
+    });
+    document.addEventListener("pointerup", this.boundPendingDragEnd = () => this.clearDragPress());
+  },
+
+  clearDragPress: function () {
+    clearTimeout(this.dragPressTimer);
+    this.dragPressTimer = null;
+    if (this.boundPendingDragMove) {
+      document.removeEventListener("pointermove", this.boundPendingDragMove);
+      this.boundPendingDragMove = null;
+    }
+    if (this.boundPendingDragEnd) {
+      document.removeEventListener("pointerup", this.boundPendingDragEnd);
+      this.boundPendingDragEnd = null;
+    }
+  },
+
+  startEventDrag: function (event, block, eventItem) {
+    this.clearDragPress();
+    this.suppressNextEventClick = true;
+    this.markActivity();
+
+    const rect = block.getBoundingClientRect();
+    const ghost = block.cloneNode(true);
+    ghost.classList.add("hs-drag-ghost");
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.minHeight = `${rect.height}px`;
+    document.body.appendChild(ghost);
+
+    block.classList.add("hs-drag-origin");
+    this.dragState = {
+      id: eventItem.id,
+      ghost,
+      originBlock: block,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      targetSlot: null
+    };
+
+    this.moveEventDrag(event);
+    document.addEventListener("pointermove", this.boundEventDragMove = (moveEvent) => this.moveEventDrag(moveEvent));
+    document.addEventListener("pointerup", this.boundEventDragEnd = (upEvent) => this.endEventDrag(upEvent));
+  },
+
+  moveEventDrag: function (event) {
+    if (!this.dragState) {
+      return;
+    }
+
+    this.dragState.ghost.style.transform = `translate(${event.clientX - this.dragState.offsetX}px, ${event.clientY - this.dragState.offsetY}px)`;
+
+    const slot = this.slotFromPoint(event.clientX, event.clientY);
+    if (slot !== this.dragState.targetSlot) {
+      document.querySelectorAll(".hs-drop-target").forEach((target) => target.classList.remove("hs-drop-target"));
+      this.dragState.targetSlot = slot;
+      if (slot) {
+        slot.classList.add("hs-drop-target");
+      }
+    }
+  },
+
+  endEventDrag: function () {
+    if (!this.dragState) {
+      return;
+    }
+
+    const { id, targetSlot } = this.dragState;
+    const targetEvent = this.events.find((event) => event.id === id);
+
+    if (targetEvent && targetSlot) {
+      targetEvent.date = targetSlot.dataset.addSlot;
+      targetEvent.time = `${String(targetSlot.dataset.slotHour).padStart(2, "0")}:00`;
+      targetEvent.source = "local";
+      this.selectedDay = this.parseLocalDate(targetEvent.date);
+      this.weekStart = this.startOfWeek(this.selectedDay);
+      this.writeItems("events", this.events);
+    }
+
+    this.clearDragVisuals();
+    this.touch();
+  },
+
+  clearDragVisuals: function () {
+    document.querySelectorAll(".hs-drop-target").forEach((target) => target.classList.remove("hs-drop-target"));
+    if (this.dragState?.originBlock) {
+      this.dragState.originBlock.classList.remove("hs-drag-origin");
+    }
+    if (this.dragState?.ghost) {
+      this.dragState.ghost.remove();
+    }
+    if (this.boundEventDragMove) {
+      document.removeEventListener("pointermove", this.boundEventDragMove);
+      this.boundEventDragMove = null;
+    }
+    if (this.boundEventDragEnd) {
+      document.removeEventListener("pointerup", this.boundEventDragEnd);
+      this.boundEventDragEnd = null;
+    }
+    this.dragState = null;
+    setTimeout(() => {
+      this.suppressNextEventClick = false;
+    }, 0);
+  },
+
+  slotFromPoint: function (x, y) {
+    const ghost = this.dragState?.ghost;
+    if (ghost) {
+      ghost.style.pointerEvents = "none";
+    }
+    const element = document.elementFromPoint(x, y);
+    if (ghost) {
+      ghost.style.pointerEvents = "";
+    }
+    return element?.closest?.("[data-add-slot]") || null;
   },
 
   handleAction: function (action) {
