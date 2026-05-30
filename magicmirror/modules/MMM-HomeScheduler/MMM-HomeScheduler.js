@@ -926,7 +926,11 @@ Module.register("MMM-HomeScheduler", {
   },
 
   formatTime: function (date) {
-    return new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" }).format(date);
+    return new Intl.DateTimeFormat([], {
+      hour: "numeric",
+      hour12: true,
+      minute: "2-digit"
+    }).format(date).replace(" AM", " am").replace(" PM", " pm");
   },
 
   formatEventTime: function (time) {
@@ -973,7 +977,10 @@ Module.register("MMM-HomeScheduler", {
   formatHour: function (hour) {
     const date = new Date();
     date.setHours(hour, 0, 0, 0);
-    return new Intl.DateTimeFormat([], { hour: "numeric" }).format(date);
+    return new Intl.DateTimeFormat([], {
+      hour: "numeric",
+      hour12: true
+    }).format(date).replace(" AM", " am").replace(" PM", " pm");
   },
 
   formatShortDate: function (date) {
