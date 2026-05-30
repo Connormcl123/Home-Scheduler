@@ -39,7 +39,7 @@ const config = {
             name: "family",
             color: "#6fb4ff",
             symbol: "calendar",
-            url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
+            url: process.env.GOOGLE_CALENDAR_ICAL_URL || "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
           }
         ]
       }
@@ -54,7 +54,7 @@ const config = {
         photoProvider: "local",
         useCalendarBroadcasts: true,
         googleCalendar: {
-          enabled: false,
+          enabled: true,
           calendarId: "primary",
           credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
           tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
