@@ -1,9 +1,12 @@
 const path = require("node:path");
 const fs = require("node:fs/promises");
-const { authenticate } = require("@google-cloud/local-auth");
+const Module = require("node:module");
+
+const home = process.env.HOME || process.cwd();
+const moduleRequire = Module.createRequire(path.join(home, "MagicMirror/modules/MMM-HomeScheduler/package.json"));
+const { authenticate } = moduleRequire("@google-cloud/local-auth");
 
 async function main() {
-  const home = process.env.HOME || process.cwd();
   const credentialsPath = process.argv[2] || path.join(home, "Home-Scheduler/secrets/google-calendar-credentials.json");
   const tokenPath = process.argv[3] || path.join(home, "Home-Scheduler/secrets/google-calendar-token.json");
 
