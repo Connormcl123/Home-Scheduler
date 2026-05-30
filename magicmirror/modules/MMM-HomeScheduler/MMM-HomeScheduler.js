@@ -36,6 +36,7 @@ Module.register("MMM-HomeScheduler", {
     this.activeSlide = 0;
     this.drawerTab = "agenda";
     this.editor = null;
+    this.keyboardTarget = null;
     this.resizeState = null;
     this.selectedDay = this.startOfDay(new Date());
     this.weekStart = this.startOfWeek(new Date());
@@ -210,8 +211,9 @@ Module.register("MMM-HomeScheduler", {
           </div>
           <label>
             Title
-            <input name="title" value="${this.escape(this.editor.title)}" required autocomplete="off">
+            <input name="title" value="${this.escape(this.editor.title)}" required autocomplete="off" data-keyboard-field="title">
           </label>
+          ${this.renderTouchKeyboard()}
           <label>
             Date
             <input name="date" type="date" value="${this.editor.date}" required>
@@ -243,6 +245,30 @@ Module.register("MMM-HomeScheduler", {
             <button type="submit">Save</button>
           </div>
         </form>
+      </div>
+    `;
+  },
+
+  renderTouchKeyboard: function () {
+    const rows = [
+      ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+      ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+      ["Z", "X", "C", "V", "B", "N", "M"]
+    ];
+
+    return `
+      <div class="hs-keyboard" aria-label="Touch keyboard">
+        ${rows.map((row) => `
+          <div class="hs-key-row">
+            ${row.map((key) => `<button data-key="${key}" type="button">${key}</button>`).join("")}
+          </div>
+        `).join("")}
+        <div class="hs-key-row hs-key-row-actions">
+          <button data-key="space" type="button">Space</button>
+          <button data-key="backspace" type="button">Back</button>
+          <button data-key="clear" type="button">Clear</button>
+          <button data-key="done" type="button">Done</button>
+        </div>
       </div>
     `;
   },
@@ -403,8 +429,45 @@ Module.register("MMM-HomeScheduler", {
     const editor = wrapper.querySelector("[data-event-editor]");
     if (editor) {
       editor.addEventListener("submit", (event) => this.saveEditor(event));
+      editor.querySelectorAll("[data-keyboard-field]").forEach((field) => {
+        field.addEventListener("focus", () => {
+          this.keyboardTarget = field.dataset.keyboardField;
+        });
+        field.addEventListener("click", () => {
+          this.keyboardTarget = field.dataset.keyboardField;
+        });
+        field.addEventListener("input", () => {
+          this.editor[field.dataset.keyboardField] = field.value;
+        });
+      });
+      editor.querySelectorAll("[data-key]").forEach((key) => {
+        key.addEventListener("click", () => this.handleKeyboardKey(key.dataset.key));
+      });
     }
     this.bindRemoveButtons(wrapper);
+  },
+
+  handleKeyboardKey: function (key) {
+    if (!this.editor || (this.keyboardTarget && this.keyboardTarget !== "title")) {
+      return;
+    }
+
+    this.keyboardTarget = "title";
+    const current = this.editor.title || "";
+
+    if (key === "backspace") {
+      this.editor.title = current.slice(0, -1);
+    } else if (key === "clear") {
+      this.editor.title = "";
+    } else if (key === "space") {
+      this.editor.title = `${current} `;
+    } else if (key === "done") {
+      this.keyboardTarget = null;
+    } else {
+      this.editor.title = `${current}${key}`;
+    }
+
+    this.updateDom(0);
   },
 
   bindRemoveButtons: function (wrapper) {

@@ -366,6 +366,45 @@
   font: inherit;
 }
 
+.hs-keyboard {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--hs-line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.hs-key-row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.hs-key-row:nth-child(2) {
+  padding: 0 5%;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+
+.hs-key-row:nth-child(3) {
+  padding: 0 13%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.hs-key-row-actions {
+  padding: 0;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+}
+
+.hs-keyboard button {
+  min-width: 0;
+  min-height: 42px;
+  border-radius: 6px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .hs-editor-row,
 .hs-editor-actions {
   display: grid;
@@ -930,6 +969,20 @@
 .hs-shell.hs-mode-compact .hs-dock button {
   min-width: 76px;
   min-height: 34px;
+}
+
+.hs-shell.hs-mode-compact .hs-keyboard {
+  gap: 5px;
+  padding: 7px;
+}
+
+.hs-shell.hs-mode-compact .hs-key-row {
+  gap: 4px;
+}
+
+.hs-shell.hs-mode-compact .hs-keyboard button {
+  min-height: 32px;
+  font-size: 12px;
 }
 
 @media (max-width: 720px) {
