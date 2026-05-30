@@ -35,6 +35,8 @@ Module.register("MMM-HomeScheduler", {
   start: function () {
     this.activeSlide = 0;
     this.drawerTab = "agenda";
+    this.editor = null;
+    this.resizeState = null;
     this.selectedDay = this.startOfDay(new Date());
     this.weekStart = this.startOfWeek(new Date());
     this.photoFiles = [];
@@ -115,6 +117,7 @@ Module.register("MMM-HomeScheduler", {
           <button class="${index === this.activeSlide ? "active" : ""}" data-slide="${index}" type="button">${label}</button>
         `).join("")}
       </nav>
+      ${this.renderEventEditor()}
     `;
   },
 
@@ -170,24 +173,78 @@ Module.register("MMM-HomeScheduler", {
             <span>${new Intl.DateTimeFormat([], { weekday: "short" }).format(day)}</span>
             <strong>${day.getDate()}</strong>
           </button>
-          ${hours.map((hour) => this.renderTimeSlot(dayEvents, hour)).join("")}
+          ${hours.map((hour) => this.renderTimeSlot(day, dayEvents, hour)).join("")}
         </div>
       `;
     }).join("");
     return `<div class="hs-week-grid">${timeColumn}${dayColumns}</div>`;
   },
 
-  renderTimeSlot: function (dayEvents, hour) {
+  renderTimeSlot: function (day, dayEvents, hour) {
     const blocks = dayEvents.filter((event) => {
       const eventHour = Number(event.time.split(":")[0]);
       return eventHour >= hour && eventHour < hour + 3;
     }).map((event) => `
-      <div class="hs-block ${event.profile || "family"}">
+      <div class="hs-block ${event.profile || "family"}" data-event-id="${event.id}" style="min-height: ${this.eventBlockHeight(event)}px;">
+        <button class="hs-resize hs-resize-top" data-resize-event="${event.id}" data-resize-edge="top" type="button" aria-label="Move event start earlier or later"></button>
         <span>${this.formatEventTime(event.time)} / ${this.profileLabel(event.profile)}</span>
         <strong>${this.escape(event.title)}</strong>
+        <em>${this.eventTimeRange(event)}</em>
+        <button class="hs-resize hs-resize-bottom" data-resize-event="${event.id}" data-resize-edge="bottom" type="button" aria-label="Extend or shrink event"></button>
       </div>
     `).join("");
-    return `<div class="hs-slot">${blocks}</div>`;
+    return `<div class="hs-slot" data-add-slot="${this.isoDate(day)}" data-slot-hour="${hour}" role="button" tabindex="0">${blocks}</div>`;
+  },
+
+  renderEventEditor: function () {
+    if (!this.editor) {
+      return "";
+    }
+
+    return `
+      <div class="hs-editor-backdrop">
+        <form class="hs-editor" data-event-editor>
+          <div>
+            <p class="hs-eyebrow">${this.editor.id ? "Edit Event" : "Add Event"}</p>
+            <h2>${this.escape(this.editor.title || "New event")}</h2>
+          </div>
+          <label>
+            Title
+            <input name="title" value="${this.escape(this.editor.title)}" required autocomplete="off">
+          </label>
+          <label>
+            Date
+            <input name="date" type="date" value="${this.editor.date}" required>
+          </label>
+          <div class="hs-editor-row">
+            <label>
+              Start
+              <input name="time" type="time" value="${this.editor.time}" required>
+            </label>
+            <label>
+              Duration
+              <select name="durationMinutes">
+                ${[15, 30, 45, 60, 90, 120, 180].map((duration) => `
+                  <option value="${duration}" ${Number(this.editor.durationMinutes) === duration ? "selected" : ""}>${duration} min</option>
+                `).join("")}
+              </select>
+            </label>
+          </div>
+          <label>
+            Profile
+            <select name="profile">
+              ${this.config.profiles.map((profile) => `
+                <option value="${profile.id}" ${this.editor.profile === profile.id ? "selected" : ""}>${this.escape(profile.label)}</option>
+              `).join("")}
+            </select>
+          </label>
+          <div class="hs-editor-actions">
+            <button data-action="cancel-editor" type="button">Cancel</button>
+            <button type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+    `;
   },
 
   renderDrawerPanel: function () {
@@ -329,9 +386,24 @@ Module.register("MMM-HomeScheduler", {
       this.markActivity();
     });
     wrapper.addEventListener("pointerup", (event) => this.handleSwipe(event));
+    wrapper.querySelectorAll("[data-add-slot]").forEach((slot) => {
+      slot.addEventListener("click", (event) => {
+        if (event.target.closest("[data-resize-event]") || event.target.closest("[data-event-id]")) {
+          return;
+        }
+        this.openEventEditor({
+          date: slot.dataset.addSlot,
+          time: `${String(slot.dataset.slotHour).padStart(2, "0")}:00`
+        });
+      });
+    });
     wrapper.querySelectorAll("[data-action]").forEach((button) => {
       button.addEventListener("click", () => this.handleAction(button.dataset.action));
     });
+    const editor = wrapper.querySelector("[data-event-editor]");
+    if (editor) {
+      editor.addEventListener("submit", (event) => this.saveEditor(event));
+    }
     this.bindRemoveButtons(wrapper);
   },
 
@@ -356,6 +428,16 @@ Module.register("MMM-HomeScheduler", {
     wrapper.querySelectorAll("[data-remove-meal]").forEach((button) => {
       button.addEventListener("click", () => this.removeItem("meals", button.dataset.removeMeal));
     });
+    wrapper.querySelectorAll("[data-event-id]").forEach((block) => {
+      block.addEventListener("click", (event) => {
+        if (event.target.closest("[data-resize-event]")) return;
+        const existing = this.events.find((item) => item.id === block.dataset.eventId);
+        if (existing) this.openEventEditor(existing);
+      });
+    });
+    wrapper.querySelectorAll("[data-resize-event]").forEach((handle) => {
+      handle.addEventListener("pointerdown", (event) => this.startResize(event, handle));
+    });
   },
 
   handleAction: function (action) {
@@ -371,21 +453,53 @@ Module.register("MMM-HomeScheduler", {
       this.weekStart = this.addDays(this.weekStart, 7);
       this.selectedDay = this.weekStart;
     }
-    if (action === "add-event") this.addEvent();
+    if (action === "add-event") this.openEventEditor({
+      date: this.isoDate(this.selectedDay),
+      time: "09:00"
+    });
     if (action === "add-note") this.addNote();
     if (action === "add-chore") this.addChore();
     if (action === "add-meal") this.addMeal();
     if (action === "choose-album") this.chooseAlbum();
+    if (action === "cancel-editor") this.editor = null;
     this.touch();
   },
 
-  addEvent: function () {
-    const title = prompt("Event title");
-    if (!title) return;
-    const time = prompt("Event time, like 18:30", "09:00") || "09:00";
-    const profile = prompt("Profile: family, home, kids, meal", "family") || "family";
-    this.events.push({ id: this.id(), title: title.trim(), date: this.isoDate(this.selectedDay), time, profile, source: "local" });
+  openEventEditor: function (event) {
+    this.editor = {
+      id: event.id || "",
+      title: event.title || "",
+      date: event.date || this.isoDate(this.selectedDay),
+      time: event.time || "09:00",
+      durationMinutes: event.durationMinutes || 60,
+      profile: event.profile || "family",
+      source: event.source || "local"
+    };
+    this.activeSlide = 0;
+    this.drawerTab = "agenda";
+    this.touch();
+  },
+
+  saveEditor: function (submitEvent) {
+    submitEvent.preventDefault();
+    const form = submitEvent.currentTarget;
+    const formData = new FormData(form);
+    const saved = {
+      id: this.editor.id || this.id(),
+      title: String(formData.get("title") || "Untitled event").trim(),
+      date: String(formData.get("date")),
+      time: String(formData.get("time")),
+      durationMinutes: Number(formData.get("durationMinutes")) || 60,
+      profile: String(formData.get("profile") || "family"),
+      source: "local"
+    };
+
+    this.events = this.events.filter((event) => event.id !== saved.id).concat(saved);
+    this.selectedDay = this.parseLocalDate(saved.date);
+    this.weekStart = this.startOfWeek(this.selectedDay);
+    this.editor = null;
     this.writeItems("events", this.events);
+    this.touch();
   },
 
   addNote: function () {
@@ -483,6 +597,7 @@ Module.register("MMM-HomeScheduler", {
       title: event.title,
       date: this.isoDate(this.addDays(new Date(), event.dayOffset)),
       time: event.time,
+      durationMinutes: event.durationMinutes || 60,
       profile: event.profile,
       source: "sample"
     }));
@@ -500,9 +615,55 @@ Module.register("MMM-HomeScheduler", {
       title: event.title || event.summary || "Calendar event",
       date: this.isoDate(start),
       time: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
+      durationMinutes: this.calendarEventDuration(event, start),
       profile: event.calendarName === "family" ? "family" : "home",
       source: "calendar"
     };
+  },
+
+  startResize: function (event, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const targetEvent = this.events.find((item) => item.id === handle.dataset.resizeEvent);
+    if (!targetEvent) return;
+
+    this.resizeState = {
+      id: targetEvent.id,
+      edge: handle.dataset.resizeEdge,
+      startY: event.clientY,
+      originalMinutes: this.timeToMinutes(targetEvent.time),
+      originalDuration: targetEvent.durationMinutes || 60
+    };
+
+    document.addEventListener("pointermove", this.boundResizeMove = (moveEvent) => this.resizeMove(moveEvent));
+    document.addEventListener("pointerup", this.boundResizeEnd = () => this.resizeEnd());
+  },
+
+  resizeMove: function (event) {
+    if (!this.resizeState) return;
+    const targetEvent = this.events.find((item) => item.id === this.resizeState.id);
+    if (!targetEvent) return;
+
+    const minutesDelta = Math.round((event.clientY - this.resizeState.startY) / 12) * 15;
+
+    if (this.resizeState.edge === "bottom") {
+      targetEvent.durationMinutes = Math.max(15, this.resizeState.originalDuration + minutesDelta);
+    } else {
+      const newStart = this.clampMinutes(this.resizeState.originalMinutes + minutesDelta);
+      const end = this.resizeState.originalMinutes + this.resizeState.originalDuration;
+      targetEvent.time = this.minutesToTime(newStart);
+      targetEvent.durationMinutes = Math.max(15, end - newStart);
+    }
+  },
+
+  resizeEnd: function () {
+    if (!this.resizeState) return;
+    document.removeEventListener("pointermove", this.boundResizeMove);
+    document.removeEventListener("pointerup", this.boundResizeEnd);
+    this.resizeState = null;
+    this.writeItems("events", this.events);
+    this.touch();
   },
 
   readItems: function (name, fallback) {
@@ -564,6 +725,40 @@ Module.register("MMM-HomeScheduler", {
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
     return this.formatTime(date);
+  },
+
+  eventTimeRange: function (event) {
+    const start = this.timeToMinutes(event.time);
+    const end = start + (event.durationMinutes || 60);
+    return `${this.formatEventTime(event.time)} - ${this.formatEventTime(this.minutesToTime(end))}`;
+  },
+
+  eventBlockHeight: function (event) {
+    return Math.max(34, Math.min(120, Math.round((event.durationMinutes || 60) * 0.65)));
+  },
+
+  calendarEventDuration: function (event, start) {
+    const endValue = event.endDate || event.end;
+    if (!endValue) return 60;
+    const end = new Date(endValue);
+    if (Number.isNaN(end.getTime())) return 60;
+    return Math.max(15, Math.round((end.getTime() - start.getTime()) / 60000));
+  },
+
+  timeToMinutes: function (time) {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  },
+
+  minutesToTime: function (minutes) {
+    const clamped = this.clampMinutes(minutes);
+    const hours = Math.floor(clamped / 60);
+    const mins = clamped % 60;
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+  },
+
+  clampMinutes: function (minutes) {
+    return Math.max(0, Math.min(23 * 60 + 45, minutes));
   },
 
   formatHour: function (hour) {
