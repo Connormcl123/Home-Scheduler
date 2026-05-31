@@ -17,6 +17,15 @@ const calendarFeeds = [
     : null
 ].filter(Boolean);
 
+const displayCalendarFeeds = calendarFeeds.length ? calendarFeeds : [
+  {
+    name: "sample-holidays",
+    color: "#6fb4ff",
+    symbol: "calendar",
+    url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
+  }
+];
+
 const config = {
   electronOptions: {
     webPreferences: {
@@ -42,6 +51,29 @@ const config = {
     {
       module: "updatenotification",
       position: "top_bar"
+    },
+    {
+      module: "clock",
+      classes: "page-default",
+      position: "top_left"
+    },
+    {
+      module: "compliments",
+      classes: "page-default",
+      position: "lower_third"
+    },
+    {
+      module: "calendar",
+      header: "Calendar",
+      classes: "page-default",
+      position: "top_right",
+      config: {
+        colored: true,
+        coloredText: true,
+        maximumEntries: 8,
+        maximumNumberOfDays: 14,
+        calendars: displayCalendarFeeds
+      }
     },
     {
       module: "calendar",
@@ -93,22 +125,20 @@ const config = {
       header: "Stock Calendar",
       classes: "page-calendar-stock",
       position: "fullscreen_above",
-      disabled: calendarFeeds.length === 0,
       config: {
         colored: true,
         coloredText: true,
         maximumEntries: 20,
         maximumNumberOfDays: 30,
         broadcastEvents: false,
-        calendars: calendarFeeds
+        calendars: displayCalendarFeeds
       }
     },
     {
       module: "MMM-CalendarExt2",
       classes: "page-calendar-ext2",
-      disabled: calendarFeeds.length === 0,
       config: {
-        calendars: calendarFeeds.map((calendar) => ({
+        calendars: displayCalendarFeeds.map((calendar) => ({
           name: calendar.name,
           url: calendar.url,
           className: `${calendar.name}-calendar`
@@ -118,7 +148,7 @@ const config = {
             name: "family_week",
             mode: "week",
             position: "fullscreen_above",
-            calendars: calendarFeeds.map((calendar) => calendar.name),
+            calendars: displayCalendarFeeds.map((calendar) => calendar.name),
             slotCount: 7,
             fromNow: 0
           },
@@ -126,7 +156,7 @@ const config = {
             name: "today_agenda",
             mode: "daily",
             position: "fullscreen_above",
-            calendars: calendarFeeds.map((calendar) => calendar.name),
+            calendars: displayCalendarFeeds.map((calendar) => calendar.name),
             slotCount: 1,
             fromNow: 0
           }
@@ -178,25 +208,19 @@ const config = {
       module: "MMM-pages",
       config: {
         modules: [
+          ["page-default"],
           ["page-calendar"],
           ["page-calendar-stock"],
           ["page-calendar-ext2"],
           ["page-finance"],
           ["page-notes"]
         ],
-        fixed: ["MMM-HomePageControls", "alert", "updatenotification"],
+        fixed: ["alert", "updatenotification"],
         homePage: 0,
         timings: {
-          default: 0
+          default: 20000
         },
         animationTime: 350
-      }
-    },
-    {
-      module: "MMM-HomePageControls",
-      position: "bottom_bar",
-      config: {
-        labels: ["Home Cal", "Stock Cal", "Ext2 Cal", "Finance", "Notes"]
       }
     },
     {

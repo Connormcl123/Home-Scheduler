@@ -17,6 +17,15 @@ const calendarFeeds = [
     : null
 ].filter(Boolean);
 
+const displayCalendarFeeds = calendarFeeds.length ? calendarFeeds : [
+  {
+    name: "sample-holidays",
+    color: "#6fb4ff",
+    symbol: "calendar",
+    url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
+  }
+];
+
 const config = {
   electronOptions: {
     webPreferences: {
@@ -42,6 +51,29 @@ const config = {
     {
       module: "updatenotification",
       position: "top_bar"
+    },
+    {
+      module: "clock",
+      classes: "page-default",
+      position: "top_left"
+    },
+    {
+      module: "compliments",
+      classes: "page-default",
+      position: "lower_third"
+    },
+    {
+      module: "calendar",
+      header: "Calendar",
+      classes: "page-default",
+      position: "top_right",
+      config: {
+        colored: true,
+        coloredText: true,
+        maximumEntries: 8,
+        maximumNumberOfDays: 14,
+        calendars: displayCalendarFeeds
+      }
     },
     {
       module: "calendar",
@@ -127,23 +159,17 @@ const config = {
       module: "MMM-pages",
       config: {
         modules: [
+          ["page-default"],
           ["page-calendar"],
           ["page-finance"],
           ["page-notes"]
         ],
-        fixed: ["MMM-HomePageControls", "alert", "updatenotification"],
+        fixed: ["alert", "updatenotification"],
         homePage: 0,
         timings: {
-          default: 0
+          default: 20000
         },
         animationTime: 350
-      }
-    },
-    {
-      module: "MMM-HomePageControls",
-      position: "bottom_bar",
-      config: {
-        labels: ["Calendar", "Finance", "Notes"]
       }
     },
     {

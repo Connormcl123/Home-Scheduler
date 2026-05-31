@@ -21,13 +21,16 @@ bash scripts/start-magicmirror-experiments.sh x11
 
 The launcher copies the experimental config to `~/MagicMirror/config/config.experiments.js` and starts MagicMirror with `MM_CONFIG_FILE=config/config.experiments.js`. Your normal `~/MagicMirror/config/config.js` is not replaced. The experimental pages are:
 
+- Default MagicMirror
 - Home Cal
 - Stock Cal
 - Ext2 Cal
 - Finance
 - Notes
 
-Stock Cal and Ext2 Cal require at least one iCal feed. Set one or both:
+Pages auto-cycle through `MMM-pages` every 20 seconds. The Home Scheduler bubble tabs are disabled in this layout.
+
+Stock Cal and Ext2 Cal use your iCal feeds when available, and fall back to a public US holidays feed so those pages are not blank during testing. Set one or both real feeds to test your own events:
 
 ```bash
 bash scripts/set-google-calendar-ical.sh "YOUR_GOOGLE_ICAL_URL"
