@@ -26,6 +26,8 @@ PAGE_CONTROLS_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/modules/MMM-HomePageContro
 PAGE_CONTROLS_TARGET="$MAGICMIRROR_DIR/modules/MMM-HomePageControls"
 CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.js"
 CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.js"
+EXPERIMENT_CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.experiments.js"
+EXPERIMENT_CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.experiments.js"
 PHOTO_DIR="$MAGICMIRROR_DIR/photos"
 SECRETS_DIR="$HOME_SCHEDULER_DIR/secrets"
 THIRD_PARTY_MODULES=(
@@ -124,6 +126,9 @@ else
   echo "Keeping it unchanged. To replace it with Home Scheduler's base config, rerun:"
   echo "  bash scripts/install-magicmirror-pi.sh --replace-config"
 fi
+
+cp "$EXPERIMENT_CONFIG_SOURCE" "$EXPERIMENT_CONFIG_TARGET"
+echo "Installed experimental config at $EXPERIMENT_CONFIG_TARGET"
 
 echo "Run MagicMirror with:"
 echo "  cd $MAGICMIRROR_DIR"

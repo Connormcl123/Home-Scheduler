@@ -2,6 +2,38 @@
 
 This project has three realistic calendar display paths. The important distinction is display versus editing: MagicMirror calendar display modules are excellent at showing `.ics` feeds, but they do not natively support the touch editing features we built into `MMM-HomeScheduler`.
 
+## Running The Experiment Config
+
+The repo includes a separate experimental config at:
+
+```text
+magicmirror/config/config.experiments.js
+```
+
+On the Pi, install dependencies and launch the experimental version:
+
+```bash
+cd ~/Home-Scheduler
+git pull
+bash scripts/install-magicmirror-pi.sh --replace-config
+bash scripts/start-magicmirror-experiments.sh x11
+```
+
+The launcher temporarily replaces `~/MagicMirror/config/config.js`, starts MagicMirror, and restores the previous config when MagicMirror exits. The experimental pages are:
+
+- Home Cal
+- Stock Cal
+- Ext2 Cal
+- Finance
+- Notes
+
+Stock Cal and Ext2 Cal require at least one iCal feed. Set one or both:
+
+```bash
+bash scripts/set-google-calendar-ical.sh "YOUR_GOOGLE_ICAL_URL"
+bash scripts/set-apple-calendar-ical.sh "YOUR_APPLE_HTTPS_ICAL_URL"
+```
+
 ## 1. Current HomeScheduler Calendar
 
 Best fit when the touchscreen is the priority.
