@@ -158,7 +158,9 @@ googleCalendar: {
   credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
   tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
   timeZone: "America/New_York",
-  syncInterval: 300000
+  syncInterval: 300000,
+  fetchDaysBefore: 7,
+  fetchDaysAfter: 60
 }
 ```
 

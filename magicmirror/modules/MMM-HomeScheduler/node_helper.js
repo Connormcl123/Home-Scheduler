@@ -107,9 +107,9 @@ module.exports = NodeHelper.create({
       return;
     }
 
-    const weekStart = this.parseWeekStart(payload.weekStart);
-    const timeMin = weekStart.toISOString();
-    const timeMax = new Date(weekStart.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString();
+    const syncWindow = this.getSyncWindow(payload.weekStart);
+    const timeMin = syncWindow.start.toISOString();
+    const timeMax = syncWindow.end.toISOString();
     const responses = await Promise.all(this.getCalendarIds().map(async (calendarId) => {
       const response = await calendar.events.list({
         auth: this.auth,
@@ -240,6 +240,19 @@ module.exports = NodeHelper.create({
     }
 
     return [this.config.googleCalendar.calendarId || "primary"];
+  },
+
+  getSyncWindow(weekStartValue) {
+    const weekStart = this.parseWeekStart(weekStartValue);
+    const beforeDays = Number(this.config.googleCalendar.fetchDaysBefore ?? 7);
+    const afterDays = Number(this.config.googleCalendar.fetchDaysAfter ?? 60);
+    const start = new Date(weekStart);
+    const end = new Date(weekStart);
+
+    start.setDate(start.getDate() - beforeDays);
+    end.setDate(end.getDate() + afterDays);
+
+    return { start, end };
   },
 
   eventDate(date, time) {

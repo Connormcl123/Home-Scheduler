@@ -702,14 +702,17 @@ Module.register("MMM-HomeScheduler", {
     if (action === "previous-week") {
       this.weekStart = this.addDays(this.weekStart, -7);
       this.selectedDay = this.weekStart;
+      this.requestGoogleEvents(false);
     }
     if (action === "today-week") {
       this.selectedDay = this.startOfDay(new Date());
       this.weekStart = this.startOfWeek(new Date());
+      this.requestGoogleEvents(false);
     }
     if (action === "next-week") {
       this.weekStart = this.addDays(this.weekStart, 7);
       this.selectedDay = this.weekStart;
+      this.requestGoogleEvents(false);
     }
     if (action === "add-event") this.openEventEditor({
       date: this.isoDate(this.selectedDay),
@@ -864,7 +867,7 @@ Module.register("MMM-HomeScheduler", {
     this.sendSocketNotification("HS_UPSERT_GOOGLE_EVENT", event);
   },
 
-  requestGoogleEvents: function () {
+  requestGoogleEvents: function (resetTimer = true) {
     if (!this.config.googleCalendar?.enabled) {
       return;
     }
@@ -873,12 +876,14 @@ Module.register("MMM-HomeScheduler", {
       weekStart: this.isoDate(this.weekStart)
     });
 
-    clearInterval(this.googleSyncTimer);
-    this.googleSyncTimer = setInterval(() => {
-      this.sendSocketNotification("HS_FETCH_GOOGLE_EVENTS", {
-        weekStart: this.isoDate(this.weekStart)
-      });
-    }, this.config.googleCalendar.syncInterval || 300000);
+    if (resetTimer) {
+      clearInterval(this.googleSyncTimer);
+      this.googleSyncTimer = setInterval(() => {
+        this.sendSocketNotification("HS_FETCH_GOOGLE_EVENTS", {
+          weekStart: this.isoDate(this.weekStart)
+        });
+      }, this.config.googleCalendar.syncInterval || 300000);
+    }
   },
 
   defaultEvents: function () {
