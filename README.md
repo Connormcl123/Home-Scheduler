@@ -183,7 +183,9 @@ Touch-created, moved, resized, and deleted local events will then sync to Google
 
 ## Finance Dashboard
 
-The Finance slide is enabled in `MMM-HomeScheduler` and starts with local/manual budget data so the UI can be tested safely on the Pi before any bank connection is added. It includes monthly budget progress, recent spending, manual transaction entry, manual budget entry, and a **Daily Summary** action.
+The Finance dashboard now runs as its own MagicMirror module, `MMM-HomeFinance`, and is shown through `MMM-pages` on its own page. The default page flow is **Calendar → Finance → Notes**, with `MMM-HomePageControls` handling touch swipes and page buttons.
+
+The finance module starts with local/manual budget data so the UI can be tested safely on the Pi before any bank connection is added. It includes monthly budget progress, recent spending, manual transaction entry, manual budget entry, and a **Daily Summary** action.
 
 Rocket Money-style account linking is wired through Plaid. Do not store bank usernames, passwords, or card credentials in this repo or on the Pi. Plaid Link handles the bank login flow, then Home Scheduler stores only Plaid access tokens and normalized transaction data in `~/Home-Scheduler/secrets/plaid-items.json`.
 

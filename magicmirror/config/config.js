@@ -61,13 +61,16 @@ const config = {
     },
     {
       module: "MMM-HomeScheduler",
+      classes: "page-calendar",
       position: "fullscreen_above",
       config: {
         title: "Home Scheduler",
         displayMode: "compact",
         calendarProvider: "calendar",
+        enableCalendar: true,
         enableWeather: false,
-        enableFinance: true,
+        enableFinance: false,
+        enableNotes: false,
         photoProvider: "disabled",
         enablePhotos: false,
         useCalendarBroadcasts: true,
@@ -82,13 +85,65 @@ const config = {
           syncInterval: 300000,
           fetchDaysBefore: 7,
           fetchDaysAfter: 60
-        },
+        }
+      }
+    },
+    {
+      module: "MMM-HomeFinance",
+      classes: "page-finance",
+      position: "fullscreen_above",
+      config: {
         finance: {
           enabled: true,
           provider: "plaid",
           tokenPath: "Home-Scheduler/secrets/plaid-items.json",
           syncInterval: 900000
         }
+      }
+    },
+    {
+      module: "MMM-HomeScheduler",
+      classes: "page-notes",
+      position: "fullscreen_above",
+      config: {
+        title: "Home Scheduler",
+        displayMode: "compact",
+        enableCalendar: false,
+        enableWeather: false,
+        enableFinance: false,
+        enableNotes: true,
+        photoProvider: "disabled",
+        enablePhotos: false,
+        useCalendarBroadcasts: false,
+        googleCalendar: {
+          enabled: false
+        },
+        finance: {
+          enabled: false
+        }
+      }
+    },
+    {
+      module: "MMM-pages",
+      config: {
+        modules: [
+          ["page-calendar"],
+          ["page-finance"],
+          ["page-notes"]
+        ],
+        fixed: ["MMM-HomePageControls", "alert", "updatenotification"],
+        homePage: 0,
+        timings: {
+          default: 0
+        },
+        animationTime: 350
+      }
+    },
+    {
+      module: "MMM-HomePageControls",
+      position: "bottom_bar",
+      config: {
+        labels: ["Calendar", "Finance", "Notes"]
       }
     },
     {

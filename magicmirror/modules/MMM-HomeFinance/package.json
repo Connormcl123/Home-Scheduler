@@ -1,0 +1,8 @@
+{
+  "name": "mmm-homefinance",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "plaid": "^38.1.0"
+  }
+}

@@ -2,8 +2,10 @@ Module.register("MMM-HomeScheduler", {
   defaults: {
     title: "Home Scheduler",
     displayMode: "auto",
+    enableCalendar: true,
     enableWeather: true,
     enableFinance: true,
+    enableNotes: true,
     enablePhotos: true,
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
@@ -91,10 +93,12 @@ Module.register("MMM-HomeScheduler", {
     if (this.config.enablePhotos) {
       this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
     }
-    this.sendSocketNotification("HS_CONFIG", {
-      googleCalendar: this.config.googleCalendar,
-      finance: this.config.finance
-    });
+    if (this.config.googleCalendar?.enabled || this.config.finance?.enabled) {
+      this.sendSocketNotification("HS_CONFIG", {
+        googleCalendar: this.config.googleCalendar,
+        finance: this.config.finance
+      });
+    }
     this.requestGoogleEvents();
     this.requestFinanceSync();
   },
@@ -207,9 +211,11 @@ Module.register("MMM-HomeScheduler", {
   },
 
   renderShell: function () {
-    const slides = [
-      { label: "Calendar", content: this.renderCalendar() }
-    ];
+    const slides = [];
+
+    if (this.config.enableCalendar) {
+      slides.push({ label: "Calendar", content: this.renderCalendar() });
+    }
 
     if (this.config.enableWeather) {
       slides.push({ label: "Weather", content: this.renderWeather() });
@@ -219,7 +225,9 @@ Module.register("MMM-HomeScheduler", {
       slides.push({ label: "Finance", content: this.renderFinance() });
     }
 
-    slides.push({ label: "Notes", content: this.renderNotesSlide() });
+    if (this.config.enableNotes) {
+      slides.push({ label: "Notes", content: this.renderNotesSlide() });
+    }
 
     if (this.config.enablePhotos) {
       slides.push({ label: "Photos", content: this.renderPhotos() });
@@ -241,11 +249,11 @@ Module.register("MMM-HomeScheduler", {
           ${slides.map((slide) => slide.content).join("")}
         </div>
       </section>
-      <nav class="hs-dock">
+      ${slides.length > 1 ? `<nav class="hs-dock">
         ${slides.map((slide, index) => `
           <button class="${index === this.activeSlide ? "active" : ""}" data-slide="${index}" type="button">${slide.label}</button>
         `).join("")}
-      </nav>
+      </nav>` : ""}
       ${this.renderEventEditor()}
     `;
   },
@@ -1136,9 +1144,11 @@ Module.register("MMM-HomeScheduler", {
   },
 
   slideCount: function () {
-    return 2
+    return 0
+      + (this.config.enableCalendar ? 1 : 0)
       + (this.config.enableWeather ? 1 : 0)
       + (this.config.enableFinance ? 1 : 0)
+      + (this.config.enableNotes ? 1 : 0)
       + (this.config.enablePhotos ? 1 : 0);
   },
 
@@ -1154,7 +1164,7 @@ Module.register("MMM-HomeScheduler", {
     }
 
     this.idleTimer = setTimeout(() => {
-      this.activeSlide = 3;
+      this.activeSlide = this.slideCount() - 1;
       this.updateDom(250);
     }, this.config.idlePhotoDelay);
   },

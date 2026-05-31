@@ -1,0 +1,32 @@
+.hpc-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100vw;
+  padding: 0 18px 14px;
+  box-sizing: border-box;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.hpc-controls button {
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #b7b2aa;
+  font: inherit;
+}
+
+.hpc-pills {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hpc-pills button.active {
+  border-color: #8fc7bd;
+  background: rgba(143, 199, 189, 0.18);
+  color: #f5f1e9;
+}
