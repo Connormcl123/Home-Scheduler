@@ -9,6 +9,11 @@ Module.register("MMM-HomeScheduler", {
     enablePhotos: true,
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
+    backgroundPhoto: {
+      enabled: false,
+      directory: "MagicMirror/photos/default-backgrounds",
+      rotationInterval: 3600000
+    },
     useCalendarBroadcasts: true,
     googleCalendar: {
       enabled: false,
@@ -84,6 +89,9 @@ Module.register("MMM-HomeScheduler", {
     this.photoIndex = 0;
     this.idleTimer = null;
     this.photoTimer = null;
+    this.backgroundPhoto = null;
+    this.backgroundPhotoStatus = "";
+    this.backgroundPhotoTimer = null;
     this.googleSyncTimer = null;
     this.financeSyncTimer = null;
     this.financeSummary = "";
@@ -98,6 +106,12 @@ Module.register("MMM-HomeScheduler", {
     this.markActivity();
     if (this.config.enablePhotos) {
       this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    }
+    if (this.config.displayMode === "default-agenda" && this.config.backgroundPhoto?.enabled) {
+      this.requestBackgroundPhoto();
+      this.backgroundPhotoTimer = setInterval(() => {
+        this.requestBackgroundPhoto();
+      }, this.config.backgroundPhoto.rotationInterval || 3600000);
     }
     if (this.config.googleCalendar?.enabled || this.config.finance?.enabled) {
       this.sendSocketNotification("HS_CONFIG", {
@@ -157,6 +171,18 @@ Module.register("MMM-HomeScheduler", {
   },
 
   socketNotificationReceived: function (notification, payload) {
+    if (notification === "HS_BACKGROUND_PHOTO") {
+      this.backgroundPhoto = payload?.dataUrl || null;
+      this.backgroundPhotoStatus = payload?.fileName ? `Showing ${payload.fileName}` : "";
+      this.updateDom(500);
+    }
+
+    if (notification === "HS_BACKGROUND_PHOTO_ERROR") {
+      this.backgroundPhoto = null;
+      this.backgroundPhotoStatus = payload?.message || "Background photo unavailable";
+      this.updateDom(500);
+    }
+
     if (notification === "HS_GOOGLE_EVENT_SAVED") {
       const event = this.events.find((item) => item.id === payload.localId);
       if (event) {
@@ -212,6 +238,7 @@ Module.register("MMM-HomeScheduler", {
   suspend: function () {
     clearTimeout(this.idleTimer);
     clearInterval(this.photoTimer);
+    clearInterval(this.backgroundPhotoTimer);
     clearInterval(this.googleSyncTimer);
     clearInterval(this.financeSyncTimer);
   },
@@ -220,6 +247,12 @@ Module.register("MMM-HomeScheduler", {
     this.markActivity();
     if (this.config.enablePhotos) {
       this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    }
+    if (this.config.displayMode === "default-agenda" && this.config.backgroundPhoto?.enabled) {
+      this.requestBackgroundPhoto();
+      this.backgroundPhotoTimer = setInterval(() => {
+        this.requestBackgroundPhoto();
+      }, this.config.backgroundPhoto.rotationInterval || 3600000);
     }
     this.requestGoogleEvents();
     this.requestFinanceSync();
@@ -277,10 +310,13 @@ Module.register("MMM-HomeScheduler", {
     const events = this.upcomingEvents(6);
     const todos = this.visibleTodos(5);
     return `
-      <article class="hs-default-panel">
+      <section class="hs-default-scene">
+        ${this.backgroundPhoto ? `<img class="hs-default-photo" src="${this.backgroundPhoto}" alt="">` : ""}
+        <div class="hs-default-scrim"></div>
+        <article class="hs-default-panel">
         <div class="hs-default-heading">
           <p class="hs-eyebrow">Family Calendar</p>
-          <strong>${this.escape(this.calendarStatus)}</strong>
+          <strong>${this.escape(this.backgroundPhotoStatus || this.calendarStatus)}</strong>
         </div>
         ${events.length ? events.map((event) => `
           <div class="hs-default-event ${event.profile || "family"}">
@@ -303,7 +339,8 @@ Module.register("MMM-HomeScheduler", {
             <strong>Tap + to add one</strong>
           </div>
         `}
-      </article>
+        </article>
+      </section>
     `;
   },
 
@@ -1193,6 +1230,10 @@ Module.register("MMM-HomeScheduler", {
         this.sendSocketNotification("HS_SYNC_PLAID_TRANSACTIONS");
       }, this.config.finance.syncInterval || 900000);
     }
+  },
+
+  requestBackgroundPhoto: function () {
+    this.sendSocketNotification("HS_FETCH_BACKGROUND_PHOTO", this.config.backgroundPhoto);
   },
 
   chooseAlbum: async function () {

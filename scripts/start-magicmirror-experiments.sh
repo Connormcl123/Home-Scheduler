@@ -42,6 +42,11 @@ if [ -f "$HOME/Home-Scheduler/secrets/plaid.env" ]; then
   source "$HOME/Home-Scheduler/secrets/plaid.env"
 fi
 
+if [ -f "$HOME/Home-Scheduler/secrets/background-photo.env" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/Home-Scheduler/secrets/background-photo.env"
+fi
+
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 case "$MODE" in

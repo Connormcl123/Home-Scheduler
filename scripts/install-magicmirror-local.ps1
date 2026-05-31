@@ -10,6 +10,7 @@ $target = Join-Path $MagicMirrorPath "modules\MMM-HomeScheduler"
 $configSource = Join-Path $repoRoot "magicmirror\config\config.js"
 $configTarget = Join-Path $MagicMirrorPath "config\config.js"
 $photoDir = Join-Path $MagicMirrorPath "photos"
+$backgroundPhotoDir = Join-Path $photoDir "default-backgrounds"
 $thirdPartyModules = @(
   @{ Name = "MMM-GooglePhotos"; Repo = "https://github.com/hermanho/MMM-GooglePhotos.git" },
   @{ Name = "MMM-Remote-Control"; Repo = "https://github.com/Jopyth/MMM-Remote-Control.git" },
@@ -27,6 +28,7 @@ if (Test-Path -LiteralPath $target) {
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 Copy-Item -Path (Join-Path $source "*") -Destination $target -Recurse -Force
 New-Item -ItemType Directory -Force -Path $photoDir | Out-Null
+New-Item -ItemType Directory -Force -Path $backgroundPhotoDir | Out-Null
 
 foreach ($module in $thirdPartyModules) {
   $modulePath = Join-Path $MagicMirrorPath "modules\$($module.Name)"

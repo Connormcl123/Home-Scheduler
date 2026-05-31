@@ -63,6 +63,14 @@ module.exports = NodeHelper.create({
         this.sendPlaidError(error);
       });
     }
+
+    if (notification === "HS_FETCH_BACKGROUND_PHOTO") {
+      this.fetchBackgroundPhoto(payload).catch((error) => {
+        this.sendSocketNotification("HS_BACKGROUND_PHOTO_ERROR", {
+          message: error.message || String(error)
+        });
+      });
+    }
   },
 
   async getCalendarClient() {
@@ -475,6 +483,39 @@ module.exports = NodeHelper.create({
       pending: Boolean(transaction.pending),
       source: "plaid"
     };
+  },
+
+  async fetchBackgroundPhoto(config = {}) {
+    if (!config.enabled) {
+      return;
+    }
+
+    const directory = this.resolvePath(config.directory || "MagicMirror/photos/default-backgrounds");
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    const files = entries
+      .filter((entry) => entry.isFile() && /\.(jpe?g|png|webp|gif)$/i.test(entry.name))
+      .map((entry) => entry.name);
+
+    if (!files.length) {
+      throw new Error(`No photos found in ${directory}`);
+    }
+
+    const fileName = files[Math.floor(Math.random() * files.length)];
+    const filePath = path.join(directory, fileName);
+    const extension = path.extname(fileName).toLowerCase();
+    const mimeType = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+      ".gif": "image/gif"
+    }[extension] || "application/octet-stream";
+    const image = await fs.readFile(filePath);
+
+    this.sendSocketNotification("HS_BACKGROUND_PHOTO", {
+      fileName,
+      dataUrl: `data:${mimeType};base64,${image.toString("base64")}`
+    });
   },
 
   async readPlaidState() {

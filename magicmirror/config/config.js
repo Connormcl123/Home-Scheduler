@@ -56,7 +56,7 @@ const config = {
     {
       module: "MMM-HomeScheduler",
       classes: "page-default",
-      position: "top_right",
+      position: "fullscreen_below",
       config: {
         title: "Home Scheduler",
         displayMode: "default-agenda",
@@ -67,6 +67,11 @@ const config = {
         enableNotes: false,
         photoProvider: "disabled",
         enablePhotos: false,
+        backgroundPhoto: {
+          enabled: true,
+          directory: process.env.HOME_SCHEDULER_BACKGROUND_PHOTO_DIR || "MagicMirror/photos/default-backgrounds",
+          rotationInterval: 1000 * 60 * 60
+        },
         useCalendarBroadcasts: true,
         googleCalendar: {
           enabled: true,

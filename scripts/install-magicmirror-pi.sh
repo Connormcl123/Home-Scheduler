@@ -29,6 +29,7 @@ CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.js"
 EXPERIMENT_CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.experiments.js"
 EXPERIMENT_CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.experiments.js"
 PHOTO_DIR="$MAGICMIRROR_DIR/photos"
+BACKGROUND_PHOTO_DIR="$PHOTO_DIR/default-backgrounds"
 SECRETS_DIR="$HOME_SCHEDULER_DIR/secrets"
 THIRD_PARTY_MODULES=(
   "MMM-pages|https://github.com/edward-shen/MMM-pages.git"
@@ -101,8 +102,10 @@ echo "Installed fresh MMM-HomePageControls module at $PAGE_CONTROLS_TARGET"
 install_module_dependencies "$PAGE_CONTROLS_TARGET"
 
 mkdir -p "$PHOTO_DIR"
+mkdir -p "$BACKGROUND_PHOTO_DIR"
 mkdir -p "$SECRETS_DIR"
 echo "Local photo folder ready at $PHOTO_DIR"
+echo "Default background photo folder ready at $BACKGROUND_PHOTO_DIR"
 echo "Secrets folder ready at $SECRETS_DIR"
 
 for module_info in "${THIRD_PARTY_MODULES[@]}"; do
