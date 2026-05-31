@@ -82,6 +82,12 @@ const config = {
           syncInterval: 300000,
           fetchDaysBefore: 7,
           fetchDaysAfter: 60
+        },
+        finance: {
+          enabled: true,
+          provider: "plaid",
+          tokenPath: "Home-Scheduler/secrets/plaid-items.json",
+          syncInterval: 900000
         }
       }
     },

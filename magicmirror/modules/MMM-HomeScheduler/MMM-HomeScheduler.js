@@ -16,6 +16,12 @@ Module.register("MMM-HomeScheduler", {
       timeZone: "America/New_York",
       syncInterval: 300000
     },
+    finance: {
+      enabled: true,
+      provider: "plaid",
+      tokenPath: "Home-Scheduler/secrets/plaid-items.json",
+      syncInterval: 900000
+    },
     profiles: [
       { id: "family", label: "Family" },
       { id: "home", label: "Home" },
@@ -72,7 +78,9 @@ Module.register("MMM-HomeScheduler", {
     this.idleTimer = null;
     this.photoTimer = null;
     this.googleSyncTimer = null;
+    this.financeSyncTimer = null;
     this.financeSummary = "";
+    this.financeStatus = "Manual finance mode";
     this.events = this.readItems("events", this.defaultEvents());
     this.notes = this.readItems("notes", this.config.sampleNotes.map((text) => ({ id: this.id(), text })));
     this.chores = this.readItems("chores", this.config.sampleChores.map((chore) => ({ id: this.id(), ...chore })));
@@ -84,9 +92,15 @@ Module.register("MMM-HomeScheduler", {
       this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
     }
     this.sendSocketNotification("HS_CONFIG", {
-      googleCalendar: this.config.googleCalendar
+      googleCalendar: this.config.googleCalendar,
+      finance: this.config.finance
     });
     this.requestGoogleEvents();
+    this.requestFinanceSync();
+  },
+
+  getScripts: function () {
+    return this.config.finance?.enabled ? ["https://cdn.plaid.com/link/v2/stable/link-initialize.js"] : [];
   },
 
   getStyles: function () {
@@ -149,12 +163,38 @@ Module.register("MMM-HomeScheduler", {
       console.error(`MMM-HomeScheduler Google Calendar error: ${payload.message}`);
       this.updateDom(250);
     }
+
+    if (notification === "HS_PLAID_STATUS") {
+      this.financeStatus = payload.message || "Finance sync updated";
+      this.updateDom(250);
+    }
+
+    if (notification === "HS_PLAID_LINK_TOKEN") {
+      this.openPlaidLink(payload.linkToken);
+    }
+
+    if (notification === "HS_PLAID_TRANSACTIONS") {
+      const imported = Array.isArray(payload.transactions) ? payload.transactions : [];
+      this.financeStatus = `Synced ${imported.length} bank transaction${imported.length === 1 ? "" : "s"}`;
+      this.transactions = this.transactions
+        .filter((transaction) => transaction.source !== "plaid")
+        .concat(imported);
+      this.writeItems("transactions", this.transactions);
+      this.updateDom(250);
+    }
+
+    if (notification === "HS_PLAID_ERROR") {
+      this.financeStatus = `Finance sync error: ${payload.message}`;
+      console.error(`MMM-HomeScheduler finance error: ${payload.message}`);
+      this.updateDom(250);
+    }
   },
 
   suspend: function () {
     clearTimeout(this.idleTimer);
     clearInterval(this.photoTimer);
     clearInterval(this.googleSyncTimer);
+    clearInterval(this.financeSyncTimer);
   },
 
   resume: function () {
@@ -163,6 +203,7 @@ Module.register("MMM-HomeScheduler", {
       this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
     }
     this.requestGoogleEvents();
+    this.requestFinanceSync();
   },
 
   renderShell: function () {
@@ -468,6 +509,8 @@ Module.register("MMM-HomeScheduler", {
           </div>
           <div class="hs-actions">
             <button data-action="finance-summary" type="button">Daily Summary</button>
+            <button data-action="connect-finance" type="button">Connect Bank</button>
+            <button data-action="sync-finance" type="button">Sync</button>
             <button data-action="add-transaction" type="button">Add Spend</button>
             <button data-action="add-budget" type="button">Budget</button>
           </div>
@@ -488,7 +531,7 @@ Module.register("MMM-HomeScheduler", {
             </div>
             <div class="hs-finance-note">
               <p class="hs-eyebrow">Account Linking</p>
-              <p>Rocket Money-style bank syncing should use a secure provider such as Plaid. This mirror view is ready for imported transactions, while manual entries keep testing local and private.</p>
+              <p>${this.escape(this.financeStatus)}</p>
             </div>
           </section>
           <section class="hs-budget-list">
@@ -857,6 +900,8 @@ Module.register("MMM-HomeScheduler", {
     if (action === "add-budget") this.addBudget();
     if (action === "add-transaction") this.addTransaction();
     if (action === "finance-summary") this.createFinanceSummary();
+    if (action === "connect-finance") this.connectFinance();
+    if (action === "sync-finance") this.requestFinanceSync(false);
     if (action === "choose-album") this.chooseAlbum();
     if (action === "cancel-editor") this.editor = null;
     this.touch();
@@ -974,6 +1019,59 @@ Module.register("MMM-HomeScheduler", {
     const largestText = largest ? ` Largest charge: ${largest.merchant} at ${this.formatMoney(largest.amount)}.` : "";
 
     this.financeSummary = `Today you spent ${this.formatMoney(todayTotal)} across ${todayTransactions.length} transaction${todayTransactions.length === 1 ? "" : "s"}.${largestText} Monthly budget progress is ${progress}% with ${this.formatMoney(budgetTotal - monthTotal)} remaining.`;
+  },
+
+  connectFinance: function () {
+    if (!this.config.finance?.enabled) {
+      this.financeStatus = "Finance connection is disabled in config.";
+      return;
+    }
+
+    this.financeStatus = "Requesting secure Plaid Link...";
+    this.sendSocketNotification("HS_CREATE_PLAID_LINK_TOKEN");
+  },
+
+  openPlaidLink: function (linkToken) {
+    if (!linkToken) {
+      this.financeStatus = "Plaid did not return a Link token.";
+      this.updateDom(250);
+      return;
+    }
+
+    if (!window.Plaid) {
+      this.financeStatus = "Plaid Link did not load. Check internet access on the Pi.";
+      this.updateDom(250);
+      return;
+    }
+
+    const handler = window.Plaid.create({
+      token: linkToken,
+      onSuccess: (publicToken, metadata) => {
+        this.financeStatus = `Connected ${metadata?.institution?.name || "bank"}. Syncing transactions...`;
+        this.sendSocketNotification("HS_EXCHANGE_PLAID_PUBLIC_TOKEN", { publicToken });
+      },
+      onExit: () => {
+        this.financeStatus = "Bank connection was closed.";
+        this.updateDom(250);
+      }
+    });
+
+    handler.open();
+  },
+
+  requestFinanceSync: function (resetTimer = true) {
+    if (!this.config.finance?.enabled) {
+      return;
+    }
+
+    this.sendSocketNotification("HS_SYNC_PLAID_TRANSACTIONS");
+
+    if (resetTimer) {
+      clearInterval(this.financeSyncTimer);
+      this.financeSyncTimer = setInterval(() => {
+        this.sendSocketNotification("HS_SYNC_PLAID_TRANSACTIONS");
+      }, this.config.finance.syncInterval || 900000);
+    }
   },
 
   chooseAlbum: async function () {

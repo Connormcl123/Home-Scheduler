@@ -25,6 +25,11 @@ if [ -f "$HOME/Home-Scheduler/secrets/apple-calendar.env" ]; then
   source "$HOME/Home-Scheduler/secrets/apple-calendar.env"
 fi
 
+if [ -f "$HOME/Home-Scheduler/secrets/plaid.env" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/Home-Scheduler/secrets/plaid.env"
+fi
+
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 case "$MODE" in
