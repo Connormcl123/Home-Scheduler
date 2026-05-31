@@ -135,41 +135,6 @@ const config = {
       }
     },
     {
-      module: "MMM-CalendarExt2",
-      classes: "page-calendar-ext2",
-      config: {
-        calendars: displayCalendarFeeds.map((calendar) => ({
-          name: calendar.name,
-          url: calendar.url,
-          className: `${calendar.name}-calendar`
-        })),
-        views: [
-          {
-            name: "family_week",
-            mode: "week",
-            position: "fullscreen_above",
-            calendars: displayCalendarFeeds.map((calendar) => calendar.name),
-            slotCount: 7,
-            fromNow: 0
-          },
-          {
-            name: "today_agenda",
-            mode: "daily",
-            position: "fullscreen_above",
-            calendars: displayCalendarFeeds.map((calendar) => calendar.name),
-            slotCount: 1,
-            fromNow: 0
-          }
-        ],
-        scenes: [
-          {
-            name: "family_calendar",
-            views: ["family_week", "today_agenda"]
-          }
-        ]
-      }
-    },
-    {
       module: "MMM-HomeFinance",
       classes: "page-finance",
       position: "fullscreen_above",
@@ -211,7 +176,6 @@ const config = {
           ["page-default"],
           ["page-calendar"],
           ["page-calendar-stock"],
-          ["page-calendar-ext2"],
           ["page-finance"],
           ["page-notes"]
         ],
@@ -227,7 +191,7 @@ const config = {
       module: "MMM-HomePageControls",
       position: "bottom_bar",
       config: {
-        labels: ["Default", "Home Cal", "Stock Cal", "Ext2 Cal", "Finance", "Notes"]
+        labels: ["Default", "Home Cal", "Stock Cal", "Finance", "Notes"]
       }
     },
     {

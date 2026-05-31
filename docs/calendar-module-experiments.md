@@ -1,6 +1,6 @@
 # Calendar Module Experiments
 
-This project has three realistic calendar display paths. The important distinction is display versus editing: MagicMirror calendar display modules are excellent at showing `.ics` feeds, but they do not natively support the touch editing features we built into `MMM-HomeScheduler`.
+This project now keeps two calendar display paths. The important distinction is display versus editing: MagicMirror calendar display modules are excellent at showing `.ics` feeds, but they do not natively support the touch editing features we built into `MMM-HomeScheduler`.
 
 ## Running The Experiment Config
 
@@ -24,13 +24,12 @@ The launcher copies the experimental config to `~/MagicMirror/config/config.expe
 - Default MagicMirror
 - Home Cal
 - Stock Cal
-- Ext2 Cal
 - Finance
 - Notes
 
 Pages auto-cycle through `MMM-pages` every 20 seconds. A slim bottom control bar shows the current page and gives you previous/next buttons for touchscreen navigation. The old Home Scheduler bubble tabs are disabled in this layout.
 
-Stock Cal and Ext2 Cal use your iCal feeds when available, and fall back to a public US holidays feed so those pages are not blank during testing. Set one or both real feeds to test your own events:
+Stock Cal uses your iCal feeds when available, and falls back to a public US holidays feed so the page is not blank during testing. Set one or both real feeds to test your own events:
 
 ```bash
 bash scripts/set-google-calendar-ical.sh "YOUR_GOOGLE_ICAL_URL"
@@ -96,81 +95,6 @@ What does not port cleanly:
 
 Recommended use: compare it as a read-only agenda page, not as the main interactive family scheduler.
 
-## 3. MMM-CalendarExt2
-
-Best fit for a richer visual calendar display experiment.
-
-`MMM-CalendarExt2` supports multiple views/scenes and is designed for richer month, week, daily, agenda, current, and upcoming views. Its own docs note that scenes can be changed by time, notification, or page triggers, which pairs well with `MMM-pages`.
-
-Suggested experiment module:
-
-```js
-{
-  module: "MMM-CalendarExt2",
-  classes: "page-calendar-ext2",
-  config: {
-    calendars: [
-      {
-        name: "google",
-        url: process.env.GOOGLE_CALENDAR_ICAL_URL,
-        className: "google-calendar"
-      },
-      {
-        name: "apple",
-        url: process.env.APPLE_CALENDAR_ICAL_URL,
-        className: "apple-calendar"
-      }
-    ].filter((calendar) => calendar.url),
-    views: [
-      {
-        name: "family_week",
-        mode: "week",
-        position: "fullscreen_above",
-        calendars: ["google", "apple"],
-        slotCount: 7,
-        fromNow: 0
-      },
-      {
-        name: "today_agenda",
-        mode: "daily",
-        position: "fullscreen_above",
-        calendars: ["google", "apple"],
-        slotCount: 1,
-        fromNow: 0
-      }
-    ],
-    scenes: [
-      {
-        name: "family_calendar",
-        views: ["family_week", "today_agenda"]
-      }
-    ]
-  }
-}
-```
-
-MMM-pages page entry:
-
-```js
-["page-calendar-ext2"]
-```
-
-What ports cleanly:
-
-- Richer read-only calendar layouts.
-- Multiple visual views on the same page.
-- Google/iCloud `.ics` feed display.
-- Scene/page-based experimentation.
-
-What does not port cleanly:
-
-- Touch event creation.
-- Drag/drop between time slots.
-- Resize-to-change event duration.
-- Google Calendar API writes.
-
-Recommended use: run it as a comparison page next to HomeScheduler. If its layout wins, keep it as the display page and use a smaller HomeScheduler editor page or modal for actual event editing.
-
 ## Practical Recommendation
 
 Use `MMM-pages` to compare:
@@ -179,10 +103,9 @@ Use `MMM-pages` to compare:
 modules: [
   ["page-calendar"],
   ["page-calendar-stock"],
-  ["page-calendar-ext2"],
   ["page-finance"],
   ["page-notes"]
 ]
 ```
 
-Keep `MMM-HomeScheduler` as the source of interactive editing while testing third-party calendar modules as visual display layers. If one third-party module clearly wins visually, the next step is to split our event editor into a small standalone module that can sit beside that display module.
+Keep `MMM-HomeScheduler` as the source of interactive editing. Use the stock calendar page only as a simple read-only feed comparison.

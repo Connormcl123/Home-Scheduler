@@ -78,7 +78,7 @@ case "$MODE" in
 esac
 
 echo "Using MM_CONFIG_FILE=$MM_CONFIG_FILE"
-echo "Pages: Home Cal, Stock Cal, Ext2 Cal, Finance, Notes"
+echo "Pages: Home Cal, Stock Cal, Finance, Notes"
 
 cd "$MAGICMIRROR_DIR"
 node --run "$START_SCRIPT"

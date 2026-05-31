@@ -39,20 +39,6 @@ const config = {
       }
     },
     {
-      module: "MMM-CalendarExt3",
-      position: "middle_center",
-      config: {
-        mode: "week",
-        instanceId: "familyWeek",
-        locale: "en-US",
-        firstDayOfWeek: 0,
-        weeksInView: 1,
-        maxEventLines: 5,
-        waitFetch: 5000,
-        calendarSet: ["family"]
-      }
-    },
-    {
       module: "weather",
       position: "top_right",
       disabled: !process.env.OPENWEATHER_API_KEY,

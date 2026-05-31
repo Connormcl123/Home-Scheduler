@@ -32,8 +32,6 @@ PHOTO_DIR="$MAGICMIRROR_DIR/photos"
 SECRETS_DIR="$HOME_SCHEDULER_DIR/secrets"
 THIRD_PARTY_MODULES=(
   "MMM-pages|https://github.com/edward-shen/MMM-pages.git"
-  "MMM-CalendarExt2|https://github.com/MagicMirrorModules/MMM-CalendarExt2.git"
-  "MMM-CalendarExt3|https://github.com/MMRIZE/MMM-CalendarExt3.git"
   "MMM-GooglePhotos|https://github.com/hermanho/MMM-GooglePhotos.git"
   "MMM-Remote-Control|https://github.com/Jopyth/MMM-Remote-Control.git"
   "MMM-Random-local-image|https://github.com/miccl/MMM-Random-local-image.git"

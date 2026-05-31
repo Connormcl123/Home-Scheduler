@@ -11,7 +11,6 @@ $configSource = Join-Path $repoRoot "magicmirror\config\config.js"
 $configTarget = Join-Path $MagicMirrorPath "config\config.js"
 $photoDir = Join-Path $MagicMirrorPath "photos"
 $thirdPartyModules = @(
-  @{ Name = "MMM-CalendarExt3"; Repo = "https://github.com/MMRIZE/MMM-CalendarExt3.git" },
   @{ Name = "MMM-GooglePhotos"; Repo = "https://github.com/hermanho/MMM-GooglePhotos.git" },
   @{ Name = "MMM-Remote-Control"; Repo = "https://github.com/Jopyth/MMM-Remote-Control.git" },
   @{ Name = "MMM-Random-local-image"; Repo = "https://github.com/miccl/MMM-Random-local-image.git" }

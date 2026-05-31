@@ -180,21 +180,6 @@ const config = {
       }
     },
     {
-      module: "MMM-CalendarExt3",
-      position: "fullscreen_below",
-      disabled: true,
-      config: {
-        mode: "week",
-        instanceId: "familyWeek",
-        locale: "en-US",
-        firstDayOfWeek: 0,
-        weeksInView: 1,
-        maxEventLines: 5,
-        waitFetch: 5000,
-        calendarSet: ["family"]
-      }
-    },
-    {
       module: "weather",
       position: "top_right",
       disabled: true,
