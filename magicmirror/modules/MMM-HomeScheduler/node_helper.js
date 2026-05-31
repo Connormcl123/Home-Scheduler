@@ -54,8 +54,10 @@ module.exports = NodeHelper.create({
     await fs.mkdir(path.dirname(tokenPath), { recursive: true });
 
     this.auth = await this.getSavedAuthClient(credentialsPath, tokenPath);
+    await this.auth.getAccessToken();
 
-    this.calendar = google.calendar({ version: "v3", auth: this.auth });
+    google.options({ auth: this.auth });
+    this.calendar = google.calendar({ version: "v3" });
     return this.calendar;
   },
 
