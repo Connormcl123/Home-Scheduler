@@ -153,12 +153,22 @@ If Google says the app is blocked or unverified, add the same Gmail account as a
 googleCalendar: {
   enabled: true,
   calendarId: "primary",
+  calendarIds: ["primary"],
+  writeCalendarId: "primary",
   credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
   tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
   timeZone: "America/New_York",
   syncInterval: 300000
 }
 ```
+
+If auth works but events do not appear, list the Google calendars available to the token:
+
+```bash
+node ~/Home-Scheduler/scripts/list-google-calendars.js
+```
+
+Use the printed `id` values in `calendarIds`. Keep `writeCalendarId` set to the calendar where touchscreen-created events should be saved.
 
 6. Restart MagicMirror:
 

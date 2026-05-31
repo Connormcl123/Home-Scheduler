@@ -110,18 +110,28 @@ module.exports = NodeHelper.create({
     const weekStart = this.parseWeekStart(payload.weekStart);
     const timeMin = weekStart.toISOString();
     const timeMax = new Date(weekStart.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString();
-    const response = await calendar.events.list({
-      auth: this.auth,
-      calendarId: this.config.googleCalendar.calendarId || "primary",
-      timeMin,
-      timeMax,
-      singleEvents: true,
-      orderBy: "startTime",
-      maxResults: 100
-    });
+    const responses = await Promise.all(this.getCalendarIds().map(async (calendarId) => {
+      const response = await calendar.events.list({
+        auth: this.auth,
+        calendarId,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 100
+      });
+
+      return {
+        calendarId,
+        items: response.data.items || []
+      };
+    }));
 
     this.sendSocketNotification("HS_GOOGLE_EVENTS", {
-      events: (response.data.items || []).map((event) => this.fromGoogleEvent(event)).filter(Boolean)
+      events: responses
+        .flatMap((response) => response.items.map((event) => this.fromGoogleEvent(event, response.calendarId)))
+        .filter(Boolean),
+      calendars: responses.map((response) => response.calendarId)
     });
   },
 
@@ -132,7 +142,7 @@ module.exports = NodeHelper.create({
       return;
     }
 
-    const calendarId = this.config.googleCalendar.calendarId || "primary";
+    const calendarId = event.googleCalendarId || this.config.googleCalendar.writeCalendarId || this.config.googleCalendar.calendarId || "primary";
     const requestBody = this.toGoogleEvent(event);
     const request = {
       auth: this.auth,
@@ -166,7 +176,7 @@ module.exports = NodeHelper.create({
 
     await calendar.events.delete({
       auth: this.auth,
-      calendarId: this.config.googleCalendar.calendarId || "primary",
+      calendarId: event.googleCalendarId || this.config.googleCalendar.writeCalendarId || this.config.googleCalendar.calendarId || "primary",
       eventId: event.googleEventId
     });
 
@@ -195,7 +205,7 @@ module.exports = NodeHelper.create({
     };
   },
 
-  fromGoogleEvent(event) {
+  fromGoogleEvent(event, calendarId) {
     const startValue = event.start?.dateTime || event.start?.date;
     const endValue = event.end?.dateTime || event.end?.date;
     const start = new Date(startValue);
@@ -212,6 +222,7 @@ module.exports = NodeHelper.create({
     return {
       id: `google-${event.id}`,
       googleEventId: event.id,
+      googleCalendarId: calendarId,
       title: event.summary || "Google Calendar event",
       date: this.isoDate(start),
       time: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
@@ -219,6 +230,16 @@ module.exports = NodeHelper.create({
       profile: "family",
       source: "google"
     };
+  },
+
+  getCalendarIds() {
+    const configuredIds = this.config.googleCalendar.calendarIds;
+
+    if (Array.isArray(configuredIds) && configuredIds.length) {
+      return configuredIds.filter(Boolean);
+    }
+
+    return [this.config.googleCalendar.calendarId || "primary"];
   },
 
   eventDate(date, time) {

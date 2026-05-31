@@ -8,7 +8,6 @@ const { google } = moduleRequire("googleapis");
 
 const credentialsPath = process.argv[2] || path.join(home, "Home-Scheduler/secrets/google-calendar-credentials.json");
 const tokenPath = process.argv[3] || path.join(home, "Home-Scheduler/secrets/google-calendar-token.json");
-const calendarId = process.argv[4] || "primary";
 
 async function readJson(filePath, label) {
   try {
@@ -18,17 +17,13 @@ async function readJson(filePath, label) {
   }
 }
 
-async function main() {
+async function getAuth() {
   const credentials = await readJson(credentialsPath, "Google credentials");
   const token = await readJson(tokenPath, "Google token");
   const clientConfig = credentials.installed || credentials.web;
 
   if (!clientConfig?.client_id || !clientConfig?.client_secret) {
     throw new Error("Google credentials JSON is missing client_id or client_secret.");
-  }
-
-  if (!token.access_token && !token.refresh_token) {
-    throw new Error("Google token does not contain OAuth access. Delete it and re-run authorize-google-calendar.js.");
   }
 
   const auth = new google.auth.OAuth2(
@@ -38,26 +33,42 @@ async function main() {
   );
   auth.setCredentials(token);
   await auth.getAccessToken();
+  return auth;
+}
 
+async function main() {
+  const auth = await getAuth();
   const calendar = google.calendar({ version: "v3", auth });
-  const response = await calendar.events.list({
+  const calendarList = await calendar.calendarList.list({
     auth,
-    calendarId,
-    timeMin: new Date().toISOString(),
-    maxResults: 5,
-    singleEvents: true,
-    orderBy: "startTime"
+    minAccessRole: "reader"
   });
 
-  console.log(`Google Calendar auth OK for ${calendarId}.`);
-  console.log(`Upcoming events returned: ${(response.data.items || []).length}`);
-  for (const event of response.data.items || []) {
-    const start = event.start?.dateTime || event.start?.date || "no start";
-    console.log(`- ${start} - ${event.summary || "(no title)"}`);
+  const calendars = calendarList.data.items || [];
+  console.log("Available Google calendars:");
+
+  for (const item of calendars) {
+    console.log(`- ${item.summary}`);
+    console.log(`  id: ${item.id}`);
+    console.log(`  access: ${item.accessRole}`);
+
+    const events = await calendar.events.list({
+      auth,
+      calendarId: item.id,
+      timeMin: new Date().toISOString(),
+      maxResults: 3,
+      singleEvents: true,
+      orderBy: "startTime"
+    });
+
+    for (const event of events.data.items || []) {
+      const start = event.start?.dateTime || event.start?.date || "no start";
+      console.log(`  next: ${start} - ${event.summary || "(no title)"}`);
+    }
   }
 }
 
 main().catch((error) => {
-  console.error(`Google Calendar auth check failed: ${error.message}`);
+  console.error(`Could not list Google calendars: ${error.message}`);
   process.exit(1);
 });

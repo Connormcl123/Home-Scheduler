@@ -115,7 +115,8 @@ Module.register("MMM-HomeScheduler", {
 
     if (notification === "HS_GOOGLE_EVENTS") {
       const googleEvents = Array.isArray(payload?.events) ? payload.events : [];
-      this.calendarStatus = `Google Calendar synced ${googleEvents.length} event${googleEvents.length === 1 ? "" : "s"}`;
+      const calendars = Array.isArray(payload?.calendars) ? payload.calendars.join(", ") : "configured calendars";
+      this.calendarStatus = `Google Calendar synced ${googleEvents.length} event${googleEvents.length === 1 ? "" : "s"} from ${calendars}`;
       this.events = this.events
         .filter((event) => event.source !== "google" && event.source !== "sample")
         .concat(googleEvents);

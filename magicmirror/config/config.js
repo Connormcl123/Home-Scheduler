@@ -58,6 +58,8 @@ const config = {
         googleCalendar: {
           enabled: true,
           calendarId: "primary",
+          calendarIds: ["primary"],
+          writeCalendarId: "primary",
           credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
           tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
           timeZone: "America/New_York",
