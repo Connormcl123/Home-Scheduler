@@ -499,15 +499,19 @@ Module.register("MMM-HomeScheduler", {
     const monthTotal = this.sumTransactions(monthTransactions);
     const budgetTotal = this.budgets.reduce((total, budget) => total + Number(budget.limit || 0), 0);
     const remaining = budgetTotal - monthTotal;
+    const progress = budgetTotal > 0 ? Math.min(100, Math.round((monthTotal / budgetTotal) * 100)) : 0;
+    const categories = this.categoryTotals(monthTransactions);
+    const topCategory = categories[0];
 
     return `
       <article class="hs-panel hs-finance">
-        <div class="hs-calendar-top">
-          <div>
-            <p class="hs-eyebrow">Finance</p>
-            <h2>Spending</h2>
+        <div class="hs-finance-top">
+          <div class="hs-finance-title">
+            <p class="hs-eyebrow">Finance Console</p>
+            <h2>Cashflow</h2>
+            <span>${this.escape(this.financeStatus)}</span>
           </div>
-          <div class="hs-actions">
+          <div class="hs-finance-actions">
             <button data-action="finance-summary" type="button">Daily Summary</button>
             <button data-action="connect-finance" type="button">Connect Bank</button>
             <button data-action="sync-finance" type="button">Sync</button>
@@ -517,33 +521,42 @@ Module.register("MMM-HomeScheduler", {
         </div>
         <div class="hs-finance-grid">
           <section class="hs-finance-overview">
-            <div class="hs-money-card">
-              <span>Spent Today</span>
-              <strong>${this.formatMoney(todayTotal)}</strong>
+            <div class="hs-finance-dial" style="--finance-progress: ${progress};">
+              <div>
+                <span>Budget Used</span>
+                <strong>${progress}%</strong>
+                <em>${this.formatMoney(monthTotal)} / ${this.formatMoney(budgetTotal)}</em>
+              </div>
             </div>
-            <div class="hs-money-card">
-              <span>Month Spend</span>
-              <strong>${this.formatMoney(monthTotal)}</strong>
-            </div>
-            <div class="hs-money-card ${remaining < 0 ? "danger" : ""}">
-              <span>Remaining Budget</span>
-              <strong>${this.formatMoney(remaining)}</strong>
+            <div class="hs-finance-kpis">
+              <div class="hs-money-card">
+                <span>Today</span>
+                <strong>${this.formatMoney(todayTotal)}</strong>
+              </div>
+              <div class="hs-money-card ${remaining < 0 ? "danger" : ""}">
+                <span>Remaining</span>
+                <strong>${this.formatMoney(remaining)}</strong>
+              </div>
+              <div class="hs-money-card">
+                <span>Top Category</span>
+                <strong>${this.escape(topCategory?.category || "None")}</strong>
+                <em>${topCategory ? this.formatMoney(topCategory.total) : "$0"}</em>
+              </div>
             </div>
             <div class="hs-finance-note">
-              <p class="hs-eyebrow">Account Linking</p>
-              <p>${this.escape(this.financeStatus)}</p>
+              <p class="hs-eyebrow">Daily Insight</p>
+              <p>${this.escape(this.financeSummary || this.financeInsight(todayTotal, remaining, progress))}</p>
             </div>
           </section>
           <section class="hs-budget-list">
-            <div class="hs-drawer-heading"><span>Budgets</span><span>${this.formatMoney(monthTotal)} / ${this.formatMoney(budgetTotal)}</span></div>
+            <div class="hs-finance-section-head"><span>Budgets</span><b>${this.formatMoney(remaining)} left</b></div>
             ${this.renderBudgetRows(monthTransactions)}
           </section>
           <section class="hs-transaction-list">
-            <div class="hs-drawer-heading"><span>Recent Spending</span><span>${monthTransactions.length} txns</span></div>
+            <div class="hs-finance-section-head"><span>Recent Spending</span><b>${monthTransactions.length} txns</b></div>
             ${this.renderTransactionRows()}
           </section>
         </div>
-        ${this.financeSummary ? `<div class="hs-finance-summary">${this.escape(this.financeSummary)}</div>` : ""}
       </article>
     `;
   },
@@ -557,12 +570,14 @@ Module.register("MMM-HomeScheduler", {
       const spent = this.sumTransactions(transactions.filter((transaction) => transaction.category === budget.category));
       const limit = Number(budget.limit || 0);
       const progress = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+      const state = progress >= 100 ? "danger" : progress >= 80 ? "warning" : "";
       return `
-        <div class="hs-budget-row">
+        <div class="hs-budget-row ${state}">
           <div>
             <strong>${this.escape(budget.category)}</strong>
             <span>${this.formatMoney(spent)} of ${this.formatMoney(limit)}</span>
           </div>
+          <b>${progress}%</b>
           <div class="hs-budget-meter"><i style="width: ${progress}%;"></i></div>
         </div>
       `;
@@ -580,9 +595,10 @@ Module.register("MMM-HomeScheduler", {
 
     return recent.map((transaction) => `
       <div class="hs-transaction">
+        <span class="hs-transaction-mark">${this.escape(String(transaction.category || "?").charAt(0))}</span>
         <div>
           <strong>${this.escape(transaction.merchant)}</strong>
-          <span>${this.escape(transaction.category)} / ${this.formatShortDate(this.parseLocalDate(transaction.date))}</span>
+          <span>${this.escape(transaction.category)} / ${this.formatShortDate(this.parseLocalDate(transaction.date))}${transaction.pending ? " / Pending" : ""}</span>
         </div>
         <b>${this.formatMoney(transaction.amount)}</b>
       </div>
@@ -1306,6 +1322,28 @@ Module.register("MMM-HomeScheduler", {
 
   sumTransactions: function (transactions) {
     return transactions.reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  },
+
+  categoryTotals: function (transactions) {
+    const totals = new Map();
+    transactions.forEach((transaction) => {
+      const category = transaction.category || "Other";
+      totals.set(category, (totals.get(category) || 0) + Number(transaction.amount || 0));
+    });
+    return Array.from(totals, ([category, total]) => ({ category, total }))
+      .sort((a, b) => b.total - a.total);
+  },
+
+  financeInsight: function (todayTotal, remaining, progress) {
+    if (remaining < 0) {
+      return `You are ${this.formatMoney(Math.abs(remaining))} over budget this month.`;
+    }
+
+    if (todayTotal === 0) {
+      return `No spending logged today. Monthly budget progress is ${progress}%.`;
+    }
+
+    return `Today is at ${this.formatMoney(todayTotal)}. Monthly budget progress is ${progress}% with ${this.formatMoney(remaining)} remaining.`;
   },
 
   formatMoney: function (value) {
