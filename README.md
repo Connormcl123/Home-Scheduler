@@ -181,6 +181,12 @@ bash scripts/start-magicmirror-hdmi.sh x11
 
 Touch-created, moved, resized, and deleted local events will then sync to Google Calendar.
 
+## Finance Dashboard
+
+The Finance slide is enabled in `MMM-HomeScheduler` and starts with local/manual budget data so the UI can be tested safely on the Pi before any bank connection is added. It includes monthly budget progress, recent spending, manual transaction entry, manual budget entry, and a **Daily Summary** action.
+
+Rocket Money-style account linking should be added through a secure transaction provider such as Plaid or a similar banking aggregator. Do not store bank usernames, passwords, or card credentials in this repo or on the Pi. The finance UI is structured around imported transaction objects, so a later provider adapter can write transactions into the same local data shape.
+
 Optional: to include read-only Apple/iCloud Calendar events, share the calendar publicly from the iPhone Calendar app or iCloud.com, copy the `webcal://...` URL, change the beginning to `https://`, then save it on the Pi:
 
 ```bash

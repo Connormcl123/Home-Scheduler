@@ -581,6 +581,117 @@
   align-items: center;
 }
 
+.hs-finance {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+}
+
+.hs-finance-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(260px, 1fr) minmax(260px, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+
+.hs-finance-overview,
+.hs-budget-list,
+.hs-transaction-list {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  border: 1px solid var(--hs-line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  overflow: auto;
+}
+
+.hs-money-card,
+.hs-budget-row,
+.hs-transaction,
+.hs-finance-note,
+.hs-finance-summary {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--hs-line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.hs-money-card span,
+.hs-budget-row span,
+.hs-transaction span,
+.hs-finance-note p,
+.hs-finance-summary {
+  color: var(--hs-muted);
+  font-size: 13px;
+}
+
+.hs-money-card strong {
+  color: var(--hs-text);
+  font-size: clamp(26px, 4vw, 48px);
+  font-weight: 360;
+}
+
+.hs-money-card.danger strong {
+  color: var(--hs-danger);
+}
+
+.hs-budget-row strong,
+.hs-transaction strong {
+  color: var(--hs-text);
+  font-size: 18px;
+  font-weight: 520;
+}
+
+.hs-budget-meter {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.hs-budget-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--hs-accent);
+}
+
+.hs-transaction {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.hs-transaction b {
+  color: var(--hs-text);
+  font-size: 20px;
+  font-weight: 520;
+}
+
+.hs-finance-note p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+@media (max-width: 980px) {
+  .hs-finance-grid {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .hs-finance-overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hs-finance-note {
+    grid-column: 1 / -1;
+  }
+}
+
 .hs-forecast {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

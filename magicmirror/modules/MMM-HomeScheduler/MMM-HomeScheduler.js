@@ -3,6 +3,7 @@ Module.register("MMM-HomeScheduler", {
     title: "Home Scheduler",
     displayMode: "auto",
     enableWeather: true,
+    enableFinance: true,
     enablePhotos: true,
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
@@ -39,6 +40,18 @@ Module.register("MMM-HomeScheduler", {
       { day: "Mon", text: "Taco bowls" },
       { day: "Tue", text: "Pasta night" },
       { day: "Fri", text: "Pizza and movie" }
+    ],
+    sampleBudgets: [
+      { category: "Groceries", limit: 650 },
+      { category: "Dining", limit: 250 },
+      { category: "Gas", limit: 220 },
+      { category: "Home", limit: 300 }
+    ],
+    sampleTransactions: [
+      { merchant: "Grocery Market", category: "Groceries", amount: 84.37, dayOffset: 0 },
+      { merchant: "Coffee", category: "Dining", amount: 9.48, dayOffset: 0 },
+      { merchant: "Gas Station", category: "Gas", amount: 46.12, dayOffset: -1 },
+      { merchant: "Hardware Store", category: "Home", amount: 38.9, dayOffset: -2 }
     ]
   },
 
@@ -59,10 +72,13 @@ Module.register("MMM-HomeScheduler", {
     this.idleTimer = null;
     this.photoTimer = null;
     this.googleSyncTimer = null;
+    this.financeSummary = "";
     this.events = this.readItems("events", this.defaultEvents());
     this.notes = this.readItems("notes", this.config.sampleNotes.map((text) => ({ id: this.id(), text })));
     this.chores = this.readItems("chores", this.config.sampleChores.map((chore) => ({ id: this.id(), ...chore })));
     this.meals = this.readItems("meals", this.config.sampleMeals.map((meal) => ({ id: this.id(), ...meal })));
+    this.budgets = this.readItems("budgets", this.defaultBudgets());
+    this.transactions = this.readItems("transactions", this.defaultTransactions());
     this.markActivity();
     if (this.config.enablePhotos) {
       this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
@@ -156,6 +172,10 @@ Module.register("MMM-HomeScheduler", {
 
     if (this.config.enableWeather) {
       slides.push({ label: "Weather", content: this.renderWeather() });
+    }
+
+    if (this.config.enableFinance) {
+      slides.push({ label: "Finance", content: this.renderFinance() });
     }
 
     slides.push({ label: "Notes", content: this.renderNotesSlide() });
@@ -428,6 +448,102 @@ Module.register("MMM-HomeScheduler", {
         ${this.renderNotesList(false)}
       </article>
     `;
+  },
+
+  renderFinance: function () {
+    const today = this.isoDate(new Date());
+    const month = today.slice(0, 7);
+    const monthTransactions = this.transactions.filter((transaction) => transaction.date?.startsWith(month));
+    const todayTotal = this.sumTransactions(this.transactions.filter((transaction) => transaction.date === today));
+    const monthTotal = this.sumTransactions(monthTransactions);
+    const budgetTotal = this.budgets.reduce((total, budget) => total + Number(budget.limit || 0), 0);
+    const remaining = budgetTotal - monthTotal;
+
+    return `
+      <article class="hs-panel hs-finance">
+        <div class="hs-calendar-top">
+          <div>
+            <p class="hs-eyebrow">Finance</p>
+            <h2>Spending</h2>
+          </div>
+          <div class="hs-actions">
+            <button data-action="finance-summary" type="button">Daily Summary</button>
+            <button data-action="add-transaction" type="button">Add Spend</button>
+            <button data-action="add-budget" type="button">Budget</button>
+          </div>
+        </div>
+        <div class="hs-finance-grid">
+          <section class="hs-finance-overview">
+            <div class="hs-money-card">
+              <span>Spent Today</span>
+              <strong>${this.formatMoney(todayTotal)}</strong>
+            </div>
+            <div class="hs-money-card">
+              <span>Month Spend</span>
+              <strong>${this.formatMoney(monthTotal)}</strong>
+            </div>
+            <div class="hs-money-card ${remaining < 0 ? "danger" : ""}">
+              <span>Remaining Budget</span>
+              <strong>${this.formatMoney(remaining)}</strong>
+            </div>
+            <div class="hs-finance-note">
+              <p class="hs-eyebrow">Account Linking</p>
+              <p>Rocket Money-style bank syncing should use a secure provider such as Plaid. This mirror view is ready for imported transactions, while manual entries keep testing local and private.</p>
+            </div>
+          </section>
+          <section class="hs-budget-list">
+            <div class="hs-drawer-heading"><span>Budgets</span><span>${this.formatMoney(monthTotal)} / ${this.formatMoney(budgetTotal)}</span></div>
+            ${this.renderBudgetRows(monthTransactions)}
+          </section>
+          <section class="hs-transaction-list">
+            <div class="hs-drawer-heading"><span>Recent Spending</span><span>${monthTransactions.length} txns</span></div>
+            ${this.renderTransactionRows()}
+          </section>
+        </div>
+        ${this.financeSummary ? `<div class="hs-finance-summary">${this.escape(this.financeSummary)}</div>` : ""}
+      </article>
+    `;
+  },
+
+  renderBudgetRows: function (transactions) {
+    if (!this.budgets.length) {
+      return `<div class="hs-card"><span>No budgets yet</span><strong>Tap Budget to add one</strong></div>`;
+    }
+
+    return this.budgets.map((budget) => {
+      const spent = this.sumTransactions(transactions.filter((transaction) => transaction.category === budget.category));
+      const limit = Number(budget.limit || 0);
+      const progress = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+      return `
+        <div class="hs-budget-row">
+          <div>
+            <strong>${this.escape(budget.category)}</strong>
+            <span>${this.formatMoney(spent)} of ${this.formatMoney(limit)}</span>
+          </div>
+          <div class="hs-budget-meter"><i style="width: ${progress}%;"></i></div>
+        </div>
+      `;
+    }).join("");
+  },
+
+  renderTransactionRows: function () {
+    const recent = [...this.transactions]
+      .sort((a, b) => `${b.date}${b.id}`.localeCompare(`${a.date}${a.id}`))
+      .slice(0, 8);
+
+    if (!recent.length) {
+      return `<div class="hs-card"><span>No spending yet</span><strong>Tap Add Spend</strong></div>`;
+    }
+
+    return recent.map((transaction) => `
+      <div class="hs-transaction">
+        <div>
+          <strong>${this.escape(transaction.merchant)}</strong>
+          <span>${this.escape(transaction.category)} / ${this.formatShortDate(this.parseLocalDate(transaction.date))}</span>
+        </div>
+        <b>${this.formatMoney(transaction.amount)}</b>
+      </div>
+    `).join("");
   },
 
   renderNotesList: function () {
@@ -738,6 +854,9 @@ Module.register("MMM-HomeScheduler", {
     if (action === "add-note") this.addNote();
     if (action === "add-chore") this.addChore();
     if (action === "add-meal") this.addMeal();
+    if (action === "add-budget") this.addBudget();
+    if (action === "add-transaction") this.addTransaction();
+    if (action === "finance-summary") this.createFinanceSummary();
     if (action === "choose-album") this.chooseAlbum();
     if (action === "cancel-editor") this.editor = null;
     this.touch();
@@ -809,6 +928,54 @@ Module.register("MMM-HomeScheduler", {
     this.writeItems("meals", this.meals);
   },
 
+  addBudget: function () {
+    const text = prompt("Add budget as Category: Limit, like Groceries: 650");
+    if (!text) return;
+    const parts = text.split(":");
+    const category = (parts.shift() || "").trim();
+    const limit = Number((parts.join(":") || "").replace(/[^0-9.]/g, ""));
+    if (!category || !limit) return;
+    this.budgets = this.budgets.filter((budget) => budget.category.toLowerCase() !== category.toLowerCase());
+    this.budgets.push({ id: this.id(), category, limit });
+    this.writeItems("budgets", this.budgets);
+  },
+
+  addTransaction: function () {
+    const text = prompt("Add spend as Merchant: Category: Amount, like Target: Home: 42.19");
+    if (!text) return;
+    const parts = text.split(":").map((part) => part.trim());
+    const merchant = parts[0];
+    const category = parts[1];
+    const amount = Number((parts[2] || "").replace(/[^0-9.]/g, ""));
+    if (!merchant || !category || !amount) return;
+    this.transactions.push({
+      id: this.id(),
+      merchant,
+      category,
+      amount,
+      date: this.isoDate(new Date()),
+      source: "manual"
+    });
+    this.writeItems("transactions", this.transactions);
+  },
+
+  createFinanceSummary: function () {
+    const today = this.isoDate(new Date());
+    const month = today.slice(0, 7);
+    const todayTransactions = this.transactions.filter((transaction) => transaction.date === today);
+    const monthTransactions = this.transactions.filter((transaction) => transaction.date?.startsWith(month));
+    const todayTotal = this.sumTransactions(todayTransactions);
+    const monthTotal = this.sumTransactions(monthTransactions);
+    const budgetTotal = this.budgets.reduce((total, budget) => total + Number(budget.limit || 0), 0);
+    const largest = todayTransactions
+      .slice()
+      .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))[0];
+    const progress = budgetTotal ? Math.round((monthTotal / budgetTotal) * 100) : 0;
+    const largestText = largest ? ` Largest charge: ${largest.merchant} at ${this.formatMoney(largest.amount)}.` : "";
+
+    this.financeSummary = `Today you spent ${this.formatMoney(todayTotal)} across ${todayTransactions.length} transaction${todayTransactions.length === 1 ? "" : "s"}.${largestText} Monthly budget progress is ${progress}% with ${this.formatMoney(budgetTotal - monthTotal)} remaining.`;
+  },
+
   chooseAlbum: async function () {
     if (!("showDirectoryPicker" in window)) {
       alert("Album folders require Chromium. This should work in Raspberry Pi Chromium kiosk mode.");
@@ -849,9 +1016,16 @@ Module.register("MMM-HomeScheduler", {
   },
 
   setSlide: function (index) {
-    const maxSlide = (this.config.enableWeather ? 2 : 1) + (this.config.enablePhotos ? 1 : 0);
+    const maxSlide = this.slideCount() - 1;
     this.activeSlide = Math.max(0, Math.min(index, maxSlide));
     this.touch();
+  },
+
+  slideCount: function () {
+    return 2
+      + (this.config.enableWeather ? 1 : 0)
+      + (this.config.enableFinance ? 1 : 0)
+      + (this.config.enablePhotos ? 1 : 0);
   },
 
   touch: function () {
@@ -1012,6 +1186,36 @@ Module.register("MMM-HomeScheduler", {
 
   writeItems: function (name, value) {
     localStorage.setItem(`MMM-HomeScheduler.${name}`, JSON.stringify(value));
+  },
+
+  defaultBudgets: function () {
+    return this.config.sampleBudgets.map((budget) => ({
+      id: this.id(),
+      ...budget
+    }));
+  },
+
+  defaultTransactions: function () {
+    return this.config.sampleTransactions.map((transaction) => ({
+      id: this.id(),
+      merchant: transaction.merchant,
+      category: transaction.category,
+      amount: transaction.amount,
+      date: this.isoDate(this.addDays(new Date(), transaction.dayOffset || 0)),
+      source: "sample"
+    }));
+  },
+
+  sumTransactions: function (transactions) {
+    return transactions.reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  },
+
+  formatMoney: function (value) {
+    return new Intl.NumberFormat([], {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    }).format(Number(value || 0));
   },
 
   eventsForDay: function (day) {

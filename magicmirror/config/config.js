@@ -67,6 +67,7 @@ const config = {
         displayMode: "compact",
         calendarProvider: "calendar",
         enableWeather: false,
+        enableFinance: true,
         photoProvider: "disabled",
         enablePhotos: false,
         useCalendarBroadcasts: true,
