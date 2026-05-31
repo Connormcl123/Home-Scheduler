@@ -28,7 +28,7 @@ The launcher copies the experimental config to `~/MagicMirror/config/config.expe
 - Finance
 - Notes
 
-Pages auto-cycle through `MMM-pages` every 20 seconds. The Home Scheduler bubble tabs are disabled in this layout.
+Pages auto-cycle through `MMM-pages` every 20 seconds. A slim bottom control bar shows the current page and gives you previous/next buttons for touchscreen navigation. The old Home Scheduler bubble tabs are disabled in this layout.
 
 Stock Cal and Ext2 Cal use your iCal feeds when available, and fall back to a public US holidays feed so those pages are not blank during testing. Set one or both real feeds to test your own events:
 

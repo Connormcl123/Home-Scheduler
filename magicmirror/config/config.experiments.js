@@ -215,12 +215,19 @@ const config = {
           ["page-finance"],
           ["page-notes"]
         ],
-        fixed: ["alert", "updatenotification"],
+        fixed: ["MMM-HomePageControls", "alert", "updatenotification"],
         homePage: 0,
         timings: {
           default: 20000
         },
         animationTime: 350
+      }
+    },
+    {
+      module: "MMM-HomePageControls",
+      position: "bottom_bar",
+      config: {
+        labels: ["Default", "Home Cal", "Stock Cal", "Ext2 Cal", "Finance", "Notes"]
       }
     },
     {

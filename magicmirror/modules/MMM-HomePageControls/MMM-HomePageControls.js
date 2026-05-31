@@ -17,21 +17,19 @@ Module.register("MMM-HomePageControls", {
   getDom: function () {
     const wrapper = document.createElement("nav");
     wrapper.className = "hpc-controls";
+    const label = this.config.labels[this.currentPage] || `Page ${this.currentPage + 1}`;
+    const total = Math.max(this.maxPages, this.config.labels.length);
     wrapper.innerHTML = `
-      <button data-page-prev type="button">Prev</button>
-      <div class="hpc-pills">
-        ${this.config.labels.map((label, index) => `
-          <button class="${index === this.currentPage ? "active" : ""}" data-page-select="${index}" type="button">${this.escape(label)}</button>
-        `).join("")}
+      <button class="hpc-arrow" data-page-prev type="button" aria-label="Previous page">‹</button>
+      <div class="hpc-status">
+        <strong>${this.escape(label)}</strong>
+        <span>${this.currentPage + 1} / ${total}</span>
       </div>
-      <button data-page-next type="button">Next</button>
+      <button class="hpc-arrow" data-page-next type="button" aria-label="Next page">›</button>
     `;
 
     wrapper.querySelector("[data-page-prev]").addEventListener("click", () => this.sendNotification("PAGE_DECREMENT"));
     wrapper.querySelector("[data-page-next]").addEventListener("click", () => this.sendNotification("PAGE_INCREMENT"));
-    wrapper.querySelectorAll("[data-page-select]").forEach((button) => {
-      button.addEventListener("click", () => this.sendNotification("PAGE_SELECT", Number(button.dataset.pageSelect)));
-    });
 
     return wrapper;
   },
