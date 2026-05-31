@@ -19,7 +19,7 @@ bash scripts/install-magicmirror-pi.sh --replace-config
 bash scripts/start-magicmirror-experiments.sh x11
 ```
 
-The launcher temporarily replaces `~/MagicMirror/config/config.js`, starts MagicMirror, and restores the previous config when MagicMirror exits. The experimental pages are:
+The launcher copies the experimental config to `~/MagicMirror/config/config.experiments.js` and starts MagicMirror with `MM_CONFIG_FILE=config/config.experiments.js`. Your normal `~/MagicMirror/config/config.js` is not replaced. The experimental pages are:
 
 - Home Cal
 - Stock Cal
