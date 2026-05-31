@@ -2,6 +2,7 @@ Module.register("MMM-HomeScheduler", {
   defaults: {
     title: "Home Scheduler",
     displayMode: "auto",
+    enablePhotos: true,
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
     useCalendarBroadcasts: true,
@@ -62,7 +63,9 @@ Module.register("MMM-HomeScheduler", {
     this.chores = this.readItems("chores", this.config.sampleChores.map((chore) => ({ id: this.id(), ...chore })));
     this.meals = this.readItems("meals", this.config.sampleMeals.map((meal) => ({ id: this.id(), ...meal })));
     this.markActivity();
-    this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    if (this.config.enablePhotos) {
+      this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    }
     this.sendSocketNotification("HS_CONFIG", {
       googleCalendar: this.config.googleCalendar
     });
@@ -139,11 +142,23 @@ Module.register("MMM-HomeScheduler", {
 
   resume: function () {
     this.markActivity();
-    this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    if (this.config.enablePhotos) {
+      this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    }
     this.requestGoogleEvents();
   },
 
   renderShell: function () {
+    const slides = [
+      { label: "Calendar", content: this.renderCalendar() },
+      { label: "Weather", content: this.renderWeather() },
+      { label: "Notes", content: this.renderNotesSlide() }
+    ];
+
+    if (this.config.enablePhotos) {
+      slides.push({ label: "Photos", content: this.renderPhotos() });
+    }
+
     return `
       <section class="hs-topbar">
         <div>
@@ -157,15 +172,12 @@ Module.register("MMM-HomeScheduler", {
       </section>
       <section class="hs-viewport">
         <div class="hs-slides" style="transform: translateX(-${this.activeSlide * 100}%);">
-          ${this.renderCalendar()}
-          ${this.renderWeather()}
-          ${this.renderNotesSlide()}
-          ${this.renderPhotos()}
+          ${slides.map((slide) => slide.content).join("")}
         </div>
       </section>
       <nav class="hs-dock">
-        ${["Calendar", "Weather", "Notes", "Photos"].map((label, index) => `
-          <button class="${index === this.activeSlide ? "active" : ""}" data-slide="${index}" type="button">${label}</button>
+        ${slides.map((slide, index) => `
+          <button class="${index === this.activeSlide ? "active" : ""}" data-slide="${index}" type="button">${slide.label}</button>
         `).join("")}
       </nav>
       ${this.renderEventEditor()}
@@ -832,7 +844,8 @@ Module.register("MMM-HomeScheduler", {
   },
 
   setSlide: function (index) {
-    this.activeSlide = Math.max(0, Math.min(index, 3));
+    const maxSlide = this.config.enablePhotos ? 3 : 2;
+    this.activeSlide = Math.max(0, Math.min(index, maxSlide));
     this.touch();
   },
 
@@ -843,6 +856,10 @@ Module.register("MMM-HomeScheduler", {
 
   markActivity: function () {
     clearTimeout(this.idleTimer);
+    if (!this.config.enablePhotos) {
+      return;
+    }
+
     this.idleTimer = setTimeout(() => {
       this.activeSlide = 3;
       this.updateDom(250);

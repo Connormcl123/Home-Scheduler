@@ -53,7 +53,8 @@ const config = {
         title: "Home Scheduler",
         displayMode: "compact",
         calendarProvider: "calendar",
-        photoProvider: "local",
+        photoProvider: "disabled",
+        enablePhotos: false,
         useCalendarBroadcasts: false,
         googleCalendar: {
           enabled: true,
@@ -116,7 +117,7 @@ const config = {
     {
       module: "MMM-GooglePhotos",
       position: "fullscreen_below",
-      disabled: !process.env.GOOGLE_PHOTOS_ALBUMS,
+      disabled: true,
       config: {
         albums: process.env.GOOGLE_PHOTOS_ALBUMS ? process.env.GOOGLE_PHOTOS_ALBUMS.split(",") : [],
         updateInterval: 1000 * 60 * 10,
