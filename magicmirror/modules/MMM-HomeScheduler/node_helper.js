@@ -69,6 +69,10 @@ module.exports = NodeHelper.create({
         throw new Error("Google credentials JSON is missing client_id or client_secret.");
       }
 
+      if (!token.access_token && !token.refresh_token) {
+        throw new Error("Google token is missing OAuth access. Re-run scripts/authorize-google-calendar.js.");
+      }
+
       const authClient = new google.auth.OAuth2(
         clientConfig.client_id,
         clientConfig.client_secret,
@@ -105,6 +109,7 @@ module.exports = NodeHelper.create({
     const timeMin = weekStart.toISOString();
     const timeMax = new Date(weekStart.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString();
     const response = await calendar.events.list({
+      auth: this.auth,
       calendarId: this.config.googleCalendar.calendarId || "primary",
       timeMin,
       timeMax,
@@ -128,6 +133,7 @@ module.exports = NodeHelper.create({
     const calendarId = this.config.googleCalendar.calendarId || "primary";
     const requestBody = this.toGoogleEvent(event);
     const request = {
+      auth: this.auth,
       calendarId,
       requestBody
     };
@@ -157,6 +163,7 @@ module.exports = NodeHelper.create({
     }
 
     await calendar.events.delete({
+      auth: this.auth,
       calendarId: this.config.googleCalendar.calendarId || "primary",
       eventId: event.googleEventId
     });

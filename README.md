@@ -120,7 +120,7 @@ Google Photos stays off until `GOOGLE_PHOTOS_ALBUMS` is set and the module's OAu
 
 The mirror can display, create, move, resize, and delete Google Calendar events through the `MMM-HomeScheduler` Google Calendar API helper.
 
-1. In Google Cloud, create OAuth credentials with application type `Desktop app`.
+1. In Google Cloud, enable the **Google Calendar API**, then create OAuth credentials with application type `Desktop app`.
 2. Copy the downloaded JSON to the Pi:
 
 ```bash
@@ -144,6 +144,8 @@ node ~/Home-Scheduler/scripts/authorize-google-calendar.js
 ```
 
 Follow the URL shown in the terminal, approve access, and let the script save `~/Home-Scheduler/secrets/google-calendar-token.json`.
+
+If Google says the app is blocked or unverified, add the same Gmail account as a test user in the OAuth consent screen, then run the authorization script again. If the mirror later reports that the token is missing OAuth access, delete `~/Home-Scheduler/secrets/google-calendar-token.json` and run this step again.
 
 5. Enable Google sync in `~/MagicMirror/config/config.js`:
 
