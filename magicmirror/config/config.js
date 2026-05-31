@@ -2,7 +2,8 @@ const config = {
   electronOptions: {
     webPreferences: {
       webviewTag: true
-    }
+    },
+    args: ["--password-store=basic"]
   },
   address: "0.0.0.0",
   port: 8080,
