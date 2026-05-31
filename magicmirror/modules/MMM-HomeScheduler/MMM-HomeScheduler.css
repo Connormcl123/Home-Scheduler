@@ -158,6 +158,11 @@
   font-weight: 700;
 }
 
+.hs-feed-status {
+  color: var(--hs-muted);
+  font-size: 12px;
+}
+
 .hs-profiles .family,
 .hs-block.family {
   background: var(--hs-family);

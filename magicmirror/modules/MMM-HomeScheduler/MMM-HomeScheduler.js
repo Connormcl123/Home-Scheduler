@@ -10,7 +10,8 @@ Module.register("MMM-HomeScheduler", {
       calendarId: "primary",
       credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
       tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
-      timeZone: "America/New_York"
+      timeZone: "America/New_York",
+      syncInterval: 300000
     },
     profiles: [
       { id: "family", label: "Family" },
@@ -48,12 +49,14 @@ Module.register("MMM-HomeScheduler", {
     this.dragState = null;
     this.dragPressTimer = null;
     this.suppressNextEventClick = false;
+    this.calendarStatus = "Waiting for calendar feed...";
     this.selectedDay = this.startOfDay(new Date());
     this.weekStart = this.startOfWeek(new Date());
     this.photoFiles = [];
     this.photoIndex = 0;
     this.idleTimer = null;
     this.photoTimer = null;
+    this.googleSyncTimer = null;
     this.events = this.readItems("events", this.defaultEvents());
     this.notes = this.readItems("notes", this.config.sampleNotes.map((text) => ({ id: this.id(), text })));
     this.chores = this.readItems("chores", this.config.sampleChores.map((chore) => ({ id: this.id(), ...chore })));
@@ -63,6 +66,7 @@ Module.register("MMM-HomeScheduler", {
     this.sendSocketNotification("HS_CONFIG", {
       googleCalendar: this.config.googleCalendar
     });
+    this.requestGoogleEvents();
   },
 
   getStyles: function () {
@@ -86,7 +90,10 @@ Module.register("MMM-HomeScheduler", {
       .map((event) => this.normalizeCalendarEvent(event))
       .filter(Boolean);
 
+    this.calendarStatus = `Calendar feed received ${calendarEvents.length} event${calendarEvents.length === 1 ? "" : "s"}`;
+
     if (!calendarEvents.length) {
+      this.updateDom(250);
       return;
     }
 
@@ -101,23 +108,38 @@ Module.register("MMM-HomeScheduler", {
       const event = this.events.find((item) => item.id === payload.localId);
       if (event) {
         event.googleEventId = payload.googleEventId;
+        event.source = "google";
         this.writeItems("events", this.events);
       }
     }
 
+    if (notification === "HS_GOOGLE_EVENTS") {
+      const googleEvents = Array.isArray(payload?.events) ? payload.events : [];
+      this.calendarStatus = `Google Calendar synced ${googleEvents.length} event${googleEvents.length === 1 ? "" : "s"}`;
+      this.events = this.events
+        .filter((event) => event.source !== "google" && event.source !== "sample")
+        .concat(googleEvents);
+      this.writeItems("events", this.events.filter((event) => event.source !== "google"));
+      this.updateDom(250);
+    }
+
     if (notification === "HS_GOOGLE_ERROR") {
+      this.calendarStatus = `Google Calendar error: ${payload.message}`;
       console.error(`MMM-HomeScheduler Google Calendar error: ${payload.message}`);
+      this.updateDom(250);
     }
   },
 
   suspend: function () {
     clearTimeout(this.idleTimer);
     clearInterval(this.photoTimer);
+    clearInterval(this.googleSyncTimer);
   },
 
   resume: function () {
     this.markActivity();
     this.photoTimer = setInterval(() => this.showNextPhoto(), this.config.photoRotationDelay);
+    this.requestGoogleEvents();
   },
 
   renderShell: function () {
@@ -169,6 +191,7 @@ Module.register("MMM-HomeScheduler", {
         <div class="hs-profiles">
           ${this.config.profiles.map((profile) => `<span class="${profile.id}">${this.escape(profile.label)}</span>`).join("")}
         </div>
+        <div class="hs-feed-status">${this.escape(this.calendarStatus)}</div>
         <div class="hs-calendar-workspace">
           <section class="hs-week-board">${this.renderWeekGrid()}</section>
           <aside class="hs-drawer">
@@ -840,6 +863,23 @@ Module.register("MMM-HomeScheduler", {
     this.sendSocketNotification("HS_UPSERT_GOOGLE_EVENT", event);
   },
 
+  requestGoogleEvents: function () {
+    if (!this.config.googleCalendar?.enabled) {
+      return;
+    }
+
+    this.sendSocketNotification("HS_FETCH_GOOGLE_EVENTS", {
+      weekStart: this.isoDate(this.weekStart)
+    });
+
+    clearInterval(this.googleSyncTimer);
+    this.googleSyncTimer = setInterval(() => {
+      this.sendSocketNotification("HS_FETCH_GOOGLE_EVENTS", {
+        weekStart: this.isoDate(this.weekStart)
+      });
+    }, this.config.googleCalendar.syncInterval || 300000);
+  },
+
   defaultEvents: function () {
     return this.config.sampleEvents.map((event) => ({
       id: this.id(),
@@ -853,7 +893,7 @@ Module.register("MMM-HomeScheduler", {
   },
 
   normalizeCalendarEvent: function (event) {
-    const start = new Date(event.startDate || event.start || event.date);
+    const start = this.parseCalendarDate(event.startDate || event.start || event.date);
 
     if (Number.isNaN(start.getTime())) {
       return null;
@@ -869,6 +909,22 @@ Module.register("MMM-HomeScheduler", {
       profile: event.calendarName === "family" ? "family" : "home",
       source: "calendar"
     };
+  },
+
+  parseCalendarDate: function (value) {
+    if (value instanceof Date) {
+      return value;
+    }
+
+    if (typeof value === "number") {
+      return new Date(value);
+    }
+
+    if (typeof value === "string" && /^\d+$/.test(value)) {
+      return new Date(Number(value));
+    }
+
+    return new Date(value);
   },
 
   startResize: function (event, handle) {
@@ -996,7 +1052,7 @@ Module.register("MMM-HomeScheduler", {
   calendarEventDuration: function (event, start) {
     const endValue = event.endDate || event.end;
     if (!endValue) return 60;
-    const end = new Date(endValue);
+    const end = this.parseCalendarDate(endValue);
     if (Number.isNaN(end.getTime())) return 60;
     return Math.max(15, Math.round((end.getTime() - start.getTime()) / 60000));
   },

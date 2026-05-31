@@ -33,6 +33,7 @@ const config = {
         coloredText: true,
         maximumEntries: 30,
         maximumNumberOfDays: 45,
+        broadcastEvents: true,
         broadcastPastEvents: true,
         calendars: [
           {
@@ -52,13 +53,14 @@ const config = {
         displayMode: "compact",
         calendarProvider: "calendar",
         photoProvider: "local",
-        useCalendarBroadcasts: true,
+        useCalendarBroadcasts: false,
         googleCalendar: {
           enabled: true,
           calendarId: "primary",
           credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
           tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
-          timeZone: "America/New_York"
+          timeZone: "America/New_York",
+          syncInterval: 300000
         }
       }
     },

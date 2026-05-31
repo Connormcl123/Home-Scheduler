@@ -15,6 +15,11 @@ if [ -n "$PI_MODEL" ]; then
   echo "Detected hardware: $PI_MODEL"
 fi
 
+if [ -f "$HOME/Home-Scheduler/secrets/google-calendar.env" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/Home-Scheduler/secrets/google-calendar.env"
+fi
+
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 case "$MODE" in
