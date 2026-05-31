@@ -114,7 +114,9 @@ Module.register("MMM-HomeScheduler", {
   getDom: function () {
     const wrapper = document.createElement("div");
     wrapper.className = `hs-shell hs-mode-${this.config.displayMode}`;
-    wrapper.innerHTML = this.renderShell();
+    wrapper.innerHTML = this.config.displayMode === "default-agenda"
+      ? this.renderDefaultAgenda()
+      : this.renderShell();
     this.bindDom(wrapper);
     return wrapper;
   },
@@ -255,6 +257,29 @@ Module.register("MMM-HomeScheduler", {
         `).join("")}
       </nav>` : ""}
       ${this.renderEventEditor()}
+    `;
+  },
+
+  renderDefaultAgenda: function () {
+    const events = this.upcomingEvents(6);
+    return `
+      <article class="hs-default-agenda">
+        <div class="hs-default-heading">
+          <p class="hs-eyebrow">Family Calendar</p>
+          <strong>${this.escape(this.calendarStatus)}</strong>
+        </div>
+        ${events.length ? events.map((event) => `
+          <div class="hs-default-event ${event.profile || "family"}">
+            <span>${this.formatDefaultEventDate(event)} · ${this.formatEventTime(event.time)}</span>
+            <strong>${this.escape(event.title)}</strong>
+          </div>
+        `).join("") : `
+          <div class="hs-default-empty">
+            <span>No upcoming events</span>
+            <strong>Open Calendar to add one</strong>
+          </div>
+        `}
+      </article>
     `;
   },
 
@@ -1368,6 +1393,17 @@ Module.register("MMM-HomeScheduler", {
     return this.events.filter((event) => event.date === this.isoDate(day));
   },
 
+  upcomingEvents: function (limit) {
+    const now = new Date();
+    const today = this.isoDate(now);
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    return this.events
+      .filter((event) => event.date > today || (event.date === today && this.timeToMinutes(event.time) >= currentMinutes))
+      .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+      .slice(0, limit);
+  },
+
   startOfDay: function (date) {
     const next = new Date(date);
     next.setHours(0, 0, 0, 0);
@@ -1462,6 +1498,15 @@ Module.register("MMM-HomeScheduler", {
 
   formatShortDate: function (date) {
     return new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(date);
+  },
+
+  formatDefaultEventDate: function (event) {
+    const date = this.parseLocalDate(event.date);
+    return new Intl.DateTimeFormat([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    }).format(date);
   },
 
   profileLabel: function (id) {

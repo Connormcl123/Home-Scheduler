@@ -34,6 +34,16 @@
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
+.hs-mode-default-agenda {
+  width: min(360px, 34vw);
+  height: auto;
+  min-width: 280px;
+  padding: 0;
+  color: var(--hs-text);
+  background: transparent;
+  overflow: visible;
+}
+
 .hs-shell * {
   box-sizing: border-box;
 }
@@ -117,6 +127,60 @@
   font-size: clamp(28px, 5vw, 64px);
   font-weight: 320;
   line-height: 1;
+}
+
+.hs-default-agenda {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--hs-line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(7, 8, 7, 0.72);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.32);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.hs-default-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.hs-default-heading strong,
+.hs-default-empty span,
+.hs-default-event span {
+  color: var(--hs-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hs-default-event,
+.hs-default-empty {
+  display: grid;
+  gap: 3px;
+  border-left: 4px solid var(--hs-family);
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.hs-default-event.home {
+  border-left-color: var(--hs-home);
+}
+
+.hs-default-event.kids {
+  border-left-color: var(--hs-kids);
+}
+
+.hs-default-event.meal {
+  border-left-color: var(--hs-meal);
+}
+
+.hs-default-event strong,
+.hs-default-empty strong {
+  color: var(--hs-text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .hs-calendar {

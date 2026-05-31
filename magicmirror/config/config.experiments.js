@@ -17,15 +17,6 @@ const calendarFeeds = [
     : null
 ].filter(Boolean);
 
-const displayCalendarFeeds = calendarFeeds.length ? calendarFeeds : [
-  {
-    name: "sample-holidays",
-    color: "#6fb4ff",
-    symbol: "calendar",
-    url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
-  }
-];
-
 const config = {
   electronOptions: {
     webPreferences: {
@@ -63,16 +54,32 @@ const config = {
       position: "lower_third"
     },
     {
-      module: "calendar",
-      header: "Calendar",
+      module: "MMM-HomeScheduler",
       classes: "page-default",
       position: "top_right",
       config: {
-        colored: true,
-        coloredText: true,
-        maximumEntries: 8,
-        maximumNumberOfDays: 14,
-        calendars: displayCalendarFeeds
+        title: "Home Scheduler",
+        displayMode: "default-agenda",
+        calendarProvider: "calendar",
+        enableCalendar: true,
+        enableWeather: false,
+        enableFinance: false,
+        enableNotes: false,
+        photoProvider: "disabled",
+        enablePhotos: false,
+        useCalendarBroadcasts: true,
+        googleCalendar: {
+          enabled: true,
+          calendarId: "primary",
+          calendarIds: ["primary"],
+          writeCalendarId: "primary",
+          credentialsPath: "Home-Scheduler/secrets/google-calendar-credentials.json",
+          tokenPath: "Home-Scheduler/secrets/google-calendar-token.json",
+          timeZone: "America/New_York",
+          syncInterval: 300000,
+          fetchDaysBefore: 7,
+          fetchDaysAfter: 60
+        }
       }
     },
     {
@@ -121,20 +128,6 @@ const config = {
       }
     },
     {
-      module: "calendar",
-      header: "Stock Calendar",
-      classes: "page-calendar-stock",
-      position: "fullscreen_above",
-      config: {
-        colored: true,
-        coloredText: true,
-        maximumEntries: 20,
-        maximumNumberOfDays: 30,
-        broadcastEvents: false,
-        calendars: displayCalendarFeeds
-      }
-    },
-    {
       module: "MMM-HomeFinance",
       classes: "page-finance",
       position: "fullscreen_above",
@@ -175,7 +168,6 @@ const config = {
         modules: [
           ["page-default"],
           ["page-calendar"],
-          ["page-calendar-stock"],
           ["page-finance"],
           ["page-notes"]
         ],
@@ -191,7 +183,7 @@ const config = {
       module: "MMM-HomePageControls",
       position: "bottom_bar",
       config: {
-        labels: ["Default", "Home Cal", "Stock Cal", "Finance", "Notes"]
+        labels: ["Default", "Calendar", "Finance", "Notes"]
       }
     },
     {
