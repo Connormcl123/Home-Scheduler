@@ -1,6 +1,6 @@
 # Calendar Layout Notes
 
-This project now centers calendar display and editing in `MMM-HomeScheduler`. The default MagicMirror page shows a lightweight agenda from the same Home Scheduler event pipeline, while the full Calendar page keeps the touchscreen week view and event editor.
+This project now centers calendar display and editing in `MMM-HomeScheduler`. The default MagicMirror page shows a lightweight agenda and shared todo list from the same Home Scheduler data pipeline, while the full Calendar page keeps the touchscreen week view, event editor, and matching todo drawer tab.
 
 ## Running The Experiment Config
 
@@ -46,7 +46,7 @@ Best fit when the touchscreen is the priority.
 - Writes created/moved/resized events to Google Calendar through the Google Calendar API.
 - Reads Google Calendar through API and Apple/iCloud through the hidden stock `calendar` feed.
 
-The default page uses `displayMode: "default-agenda"` to render only upcoming events in a compact card. The full Calendar page uses `displayMode: "compact"` for the interactive week board.
+The default page uses `displayMode: "default-agenda"` to render upcoming events and todos in a compact card. The full Calendar page uses `displayMode: "compact"` for the interactive week board and drawer tabs.
 
 ## Practical Recommendation
 
@@ -61,4 +61,4 @@ modules: [
 ]
 ```
 
-Keep `MMM-HomeScheduler` as the source of interactive editing and shared event display. The hidden stock `calendar` module remains only as an Apple/iCloud iCal bridge for broadcast events.
+Keep `MMM-HomeScheduler` as the source of interactive editing, shared event display, and shared todos. The hidden stock `calendar` module remains only as an Apple/iCloud iCal bridge for broadcast events.

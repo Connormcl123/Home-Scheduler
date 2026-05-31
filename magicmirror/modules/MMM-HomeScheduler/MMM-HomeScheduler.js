@@ -39,6 +39,11 @@ Module.register("MMM-HomeScheduler", {
       "Plan groceries for the week",
       "Pick a local photo album folder for idle mode"
     ],
+    sampleTodos: [
+      { text: "Confirm this week's calendar", done: false },
+      { text: "Review grocery list", done: false },
+      { text: "Charge touchscreen stylus", done: true }
+    ],
     sampleChores: [
       { text: "Unload dishwasher", done: false },
       { text: "Take out trash", done: false },
@@ -85,6 +90,7 @@ Module.register("MMM-HomeScheduler", {
     this.financeStatus = "Manual finance mode";
     this.events = this.readItems("events", this.defaultEvents());
     this.notes = this.readItems("notes", this.config.sampleNotes.map((text) => ({ id: this.id(), text })));
+    this.todos = this.readItems("todos", this.defaultTodos());
     this.chores = this.readItems("chores", this.config.sampleChores.map((chore) => ({ id: this.id(), ...chore })));
     this.meals = this.readItems("meals", this.config.sampleMeals.map((meal) => ({ id: this.id(), ...meal })));
     this.budgets = this.readItems("budgets", this.defaultBudgets());
@@ -115,13 +121,20 @@ Module.register("MMM-HomeScheduler", {
     const wrapper = document.createElement("div");
     wrapper.className = `hs-shell hs-mode-${this.config.displayMode}`;
     wrapper.innerHTML = this.config.displayMode === "default-agenda"
-      ? this.renderDefaultAgenda()
+      ? this.renderDefaultPanel()
       : this.renderShell();
     this.bindDom(wrapper);
     return wrapper;
   },
 
   notificationReceived: function (notification, payload) {
+    if (notification === "HS_TODOS_UPDATED" && Array.isArray(payload)) {
+      this.todos = payload;
+      this.writeItems("todos", this.todos);
+      this.updateDom(250);
+      return;
+    }
+
     if (notification !== "CALENDAR_EVENTS" || !this.config.useCalendarBroadcasts || !Array.isArray(payload)) {
       return;
     }
@@ -260,23 +273,34 @@ Module.register("MMM-HomeScheduler", {
     `;
   },
 
-  renderDefaultAgenda: function () {
+  renderDefaultPanel: function () {
     const events = this.upcomingEvents(6);
+    const todos = this.visibleTodos(5);
     return `
-      <article class="hs-default-agenda">
+      <article class="hs-default-panel">
         <div class="hs-default-heading">
           <p class="hs-eyebrow">Family Calendar</p>
           <strong>${this.escape(this.calendarStatus)}</strong>
         </div>
         ${events.length ? events.map((event) => `
           <div class="hs-default-event ${event.profile || "family"}">
-            <span>${this.formatDefaultEventDate(event)} · ${this.formatEventTime(event.time)}</span>
+            <span>${this.formatDefaultEventDate(event)} - ${this.formatEventTime(event.time)}</span>
             <strong>${this.escape(event.title)}</strong>
           </div>
         `).join("") : `
           <div class="hs-default-empty">
             <span>No upcoming events</span>
             <strong>Open Calendar to add one</strong>
+          </div>
+        `}
+        <div class="hs-default-heading hs-default-todo-heading">
+          <p class="hs-eyebrow">To Do</p>
+          <button data-action="add-todo" type="button">+</button>
+        </div>
+        ${todos.length ? todos.map((todo) => this.renderTodoItem(todo, "default")).join("") : `
+          <div class="hs-default-empty">
+            <span>No open todos</span>
+            <strong>Tap + to add one</strong>
           </div>
         `}
       </article>
@@ -308,7 +332,7 @@ Module.register("MMM-HomeScheduler", {
           <section class="hs-week-board">${this.renderWeekGrid()}</section>
           <aside class="hs-drawer">
             <div class="hs-tabs">
-              ${["agenda", "notes", "chores", "meals"].map((tab) => `
+              ${["agenda", "todo", "notes", "chores", "meals"].map((tab) => `
                 <button class="${this.drawerTab === tab ? "active" : ""}" data-tab="${tab}" type="button">${this.label(tab)}</button>
               `).join("")}
             </div>
@@ -437,6 +461,14 @@ Module.register("MMM-HomeScheduler", {
   },
 
   renderDrawerPanel: function () {
+    if (this.drawerTab === "todo") {
+      return `
+        <div class="hs-drawer-panel">
+          <div class="hs-drawer-heading"><span>To do list</span><button data-action="add-todo" type="button">Add</button></div>
+          ${this.renderTodoList()}
+        </div>
+      `;
+    }
     if (this.drawerTab === "notes") {
       return `
         <div class="hs-drawer-panel">
@@ -651,6 +683,26 @@ Module.register("MMM-HomeScheduler", {
     `).join("")}</div>`;
   },
 
+  renderTodoList: function () {
+    const todos = this.visibleTodos();
+    if (!todos.length) {
+      return `<div class="hs-card"><span>No open todos</span><strong>Tap Add to create one</strong></div>`;
+    }
+
+    return `<div class="hs-list hs-todo-list">${todos.map((todo) => this.renderTodoItem(todo, "drawer")).join("")}</div>`;
+  },
+
+  renderTodoItem: function (todo, context) {
+    const className = context === "default" ? "hs-default-todo" : "hs-card hs-todo-item";
+    return `
+      <div class="${className} ${todo.done ? "done" : ""}">
+        <button data-toggle-todo="${todo.id}" type="button">${todo.done ? "OK" : ""}</button>
+        <strong>${this.escape(todo.text)}</strong>
+        ${context === "drawer" ? `<button data-remove-todo="${todo.id}" type="button">x</button>` : ""}
+      </div>
+    `;
+  },
+
   renderPhotos: function () {
     return `
       <article class="hs-panel hs-photo">
@@ -753,6 +805,17 @@ Module.register("MMM-HomeScheduler", {
     });
     wrapper.querySelectorAll("[data-remove-note]").forEach((button) => {
       button.addEventListener("click", () => this.removeItem("notes", button.dataset.removeNote));
+    });
+    wrapper.querySelectorAll("[data-remove-todo]").forEach((button) => {
+      button.addEventListener("click", () => this.removeItem("todos", button.dataset.removeTodo));
+    });
+    wrapper.querySelectorAll("[data-toggle-todo]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const todo = this.todos.find((item) => item.id === button.dataset.toggleTodo);
+        if (todo) todo.done = !todo.done;
+        this.saveTodos();
+        this.touch();
+      });
     });
     wrapper.querySelectorAll("[data-remove-chore]").forEach((button) => {
       button.addEventListener("click", () => this.removeItem("chores", button.dataset.removeChore));
@@ -944,6 +1007,7 @@ Module.register("MMM-HomeScheduler", {
       time: "09:00"
     });
     if (action === "add-note") this.addNote();
+    if (action === "add-todo") this.addTodo();
     if (action === "add-chore") this.addChore();
     if (action === "add-meal") this.addMeal();
     if (action === "add-budget") this.addBudget();
@@ -1001,6 +1065,14 @@ Module.register("MMM-HomeScheduler", {
     if (!text) return;
     this.notes.push({ id: this.id(), text: text.trim() });
     this.writeItems("notes", this.notes);
+  },
+
+  addTodo: function () {
+    const text = prompt("Add a to do item");
+    if (!text) return;
+    this.todos.push({ id: this.id(), text: text.trim(), done: false });
+    this.saveTodos();
+    this.touch();
   },
 
   addChore: function () {
@@ -1198,6 +1270,9 @@ Module.register("MMM-HomeScheduler", {
     const removed = this[collection].find((item) => item.id === id);
     this[collection] = this[collection].filter((item) => item.id !== id);
     this.writeItems(collection, this[collection]);
+    if (collection === "todos") {
+      this.sendNotification("HS_TODOS_UPDATED", this.todos);
+    }
     if (collection === "events" && removed?.googleEventId) {
       this.sendSocketNotification("HS_DELETE_GOOGLE_EVENT", removed);
     }
@@ -1344,6 +1419,18 @@ Module.register("MMM-HomeScheduler", {
     }));
   },
 
+  defaultTodos: function () {
+    return this.config.sampleTodos.map((todo) => ({
+      id: this.id(),
+      ...todo
+    }));
+  },
+
+  saveTodos: function () {
+    this.writeItems("todos", this.todos);
+    this.sendNotification("HS_TODOS_UPDATED", this.todos);
+  },
+
   defaultTransactions: function () {
     return this.config.sampleTransactions.map((transaction) => ({
       id: this.id(),
@@ -1391,6 +1478,11 @@ Module.register("MMM-HomeScheduler", {
 
   eventsForDay: function (day) {
     return this.events.filter((event) => event.date === this.isoDate(day));
+  },
+
+  visibleTodos: function (limit) {
+    const sorted = [...this.todos].sort((a, b) => Number(a.done) - Number(b.done));
+    return Number.isFinite(limit) ? sorted.slice(0, limit) : sorted;
   },
 
   upcomingEvents: function (limit) {

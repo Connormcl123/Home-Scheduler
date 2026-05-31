@@ -129,7 +129,7 @@
   line-height: 1;
 }
 
-.hs-default-agenda {
+.hs-default-panel {
   display: grid;
   gap: 10px;
   border: 1px solid var(--hs-line);
@@ -147,20 +147,61 @@
 
 .hs-default-heading strong,
 .hs-default-empty span,
-.hs-default-event span {
+.hs-default-event span,
+.hs-default-todo strong {
   color: var(--hs-muted);
   font-size: 12px;
   font-weight: 500;
 }
 
+.hs-default-todo-heading {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.hs-default-todo-heading button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 22px;
+}
+
 .hs-default-event,
-.hs-default-empty {
+.hs-default-empty,
+.hs-default-todo {
   display: grid;
   gap: 3px;
   border-left: 4px solid var(--hs-family);
   border-radius: 6px;
   padding: 9px 10px;
   background: rgba(255, 255, 255, 0.07);
+}
+
+.hs-default-todo {
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  border-left-color: var(--hs-accent);
+}
+
+.hs-default-todo.done {
+  opacity: 0.58;
+}
+
+.hs-default-todo button,
+.hs-todo-item button:first-child {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 10px;
 }
 
 .hs-default-event.home {
@@ -176,11 +217,18 @@
 }
 
 .hs-default-event strong,
-.hs-default-empty strong {
+.hs-default-empty strong,
+.hs-default-todo strong {
   color: var(--hs-text);
   font-size: 15px;
   font-weight: 650;
   line-height: 1.2;
+}
+
+.hs-default-todo.done strong,
+.hs-todo-item.done strong {
+  color: var(--hs-muted);
+  text-decoration: line-through;
 }
 
 .hs-calendar {
@@ -571,6 +619,7 @@
 
 .hs-card,
 .hs-task,
+.hs-todo-item,
 .hs-meal,
 .hs-forecast > div,
 .hs-news {
@@ -589,6 +638,7 @@
 
 .hs-card span,
 .hs-task span,
+.hs-todo-item span,
 .hs-meal span {
   color: var(--hs-muted);
   font-size: 13px;
@@ -596,6 +646,7 @@
 
 .hs-card strong,
 .hs-task strong,
+.hs-todo-item strong,
 .hs-meal strong {
   color: var(--hs-text);
   font-size: clamp(18px, 2.4vw, 28px);
@@ -604,6 +655,7 @@
 
 .hs-card button,
 .hs-task button:last-child,
+.hs-todo-item button:last-child,
 .hs-meal button {
   position: absolute;
   top: 8px;
@@ -616,12 +668,14 @@
   font-size: 24px;
 }
 
-.hs-task {
+.hs-task,
+.hs-todo-item {
   grid-template-columns: auto 1fr;
   align-items: center;
 }
 
-.hs-task button:first-child {
+.hs-task button:first-child,
+.hs-todo-item button:first-child {
   position: static;
   display: grid;
   width: 26px;
@@ -635,7 +689,8 @@
   font-weight: 800;
 }
 
-.hs-task.done strong {
+.hs-task.done strong,
+.hs-todo-item.done strong {
   color: var(--hs-muted);
   text-decoration: line-through;
 }
@@ -1140,6 +1195,7 @@
 
   .hs-card,
   .hs-task,
+  .hs-todo-item,
   .hs-meal,
   .hs-forecast > div,
   .hs-news {
@@ -1150,18 +1206,21 @@
 
   .hs-card span,
   .hs-task span,
+  .hs-todo-item span,
   .hs-meal span {
     font-size: 10px;
   }
 
   .hs-card strong,
   .hs-task strong,
+  .hs-todo-item strong,
   .hs-meal strong {
     font-size: 14px;
   }
 
   .hs-card button,
   .hs-task button:last-child,
+  .hs-todo-item button:last-child,
   .hs-meal button {
     top: 4px;
     right: 7px;
@@ -1310,6 +1369,7 @@
 
 .hs-shell.hs-mode-compact .hs-card,
 .hs-shell.hs-mode-compact .hs-task,
+.hs-shell.hs-mode-compact .hs-todo-item,
 .hs-shell.hs-mode-compact .hs-meal,
 .hs-shell.hs-mode-compact .hs-forecast > div,
 .hs-shell.hs-mode-compact .hs-news {
@@ -1320,12 +1380,14 @@
 
 .hs-shell.hs-mode-compact .hs-card span,
 .hs-shell.hs-mode-compact .hs-task span,
+.hs-shell.hs-mode-compact .hs-todo-item span,
 .hs-shell.hs-mode-compact .hs-meal span {
   font-size: 10px;
 }
 
 .hs-shell.hs-mode-compact .hs-card strong,
 .hs-shell.hs-mode-compact .hs-task strong,
+.hs-shell.hs-mode-compact .hs-todo-item strong,
 .hs-shell.hs-mode-compact .hs-meal strong {
   font-size: 14px;
 }
