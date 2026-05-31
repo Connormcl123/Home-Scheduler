@@ -1,3 +1,22 @@
+const calendarFeeds = [
+  process.env.GOOGLE_CALENDAR_ICAL_URL
+    ? {
+        name: "google-ical",
+        color: "#6fb4ff",
+        symbol: "calendar",
+        url: process.env.GOOGLE_CALENDAR_ICAL_URL
+      }
+    : null,
+  process.env.APPLE_CALENDAR_ICAL_URL
+    ? {
+        name: "apple",
+        color: "#ff9f7a",
+        symbol: "calendar-check",
+        url: process.env.APPLE_CALENDAR_ICAL_URL
+      }
+    : null
+].filter(Boolean);
+
 const config = {
   electronOptions: {
     webPreferences: {
@@ -29,6 +48,7 @@ const config = {
       header: "Family Calendar Feed",
       position: "top_left",
       hiddenOnStartup: true,
+      disabled: calendarFeeds.length === 0,
       config: {
         colored: true,
         coloredText: true,
@@ -36,14 +56,7 @@ const config = {
         maximumNumberOfDays: 45,
         broadcastEvents: true,
         broadcastPastEvents: true,
-        calendars: [
-          {
-            name: "family",
-            color: "#6fb4ff",
-            symbol: "calendar",
-            url: process.env.GOOGLE_CALENDAR_ICAL_URL || "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
-          }
-        ]
+        calendars: calendarFeeds
       }
     },
     {
@@ -55,7 +68,7 @@ const config = {
         calendarProvider: "calendar",
         photoProvider: "disabled",
         enablePhotos: false,
-        useCalendarBroadcasts: false,
+        useCalendarBroadcasts: true,
         googleCalendar: {
           enabled: true,
           calendarId: "primary",

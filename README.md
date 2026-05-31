@@ -181,7 +181,16 @@ bash scripts/start-magicmirror-hdmi.sh x11
 
 Touch-created, moved, resized, and deleted local events will then sync to Google Calendar.
 
-Optional: if you want the hidden default MagicMirror `calendar` module to broadcast an iCal feed instead of using API reads, save your private Google Calendar iCal URL and set `useCalendarBroadcasts: true` in the `MMM-HomeScheduler` config:
+Optional: to include read-only Apple/iCloud Calendar events, share the calendar publicly from the iPhone Calendar app or iCloud.com, copy the `webcal://...` URL, change the beginning to `https://`, then save it on the Pi:
+
+```bash
+cd ~/Home-Scheduler
+bash scripts/set-apple-calendar-ical.sh "YOUR_APPLE_HTTPS_ICAL_URL"
+```
+
+The default config now reads Apple/iCloud iCal feeds through MagicMirror's hidden `calendar` module and broadcasts those events into Home Scheduler. Apple events are imported for display only. Touchscreen-created events still write to the configured Google Calendar.
+
+Optional: if you also want a Google iCal feed in addition to Google API reads, save your private Google Calendar iCal URL:
 
 ```bash
 cd ~/Home-Scheduler
