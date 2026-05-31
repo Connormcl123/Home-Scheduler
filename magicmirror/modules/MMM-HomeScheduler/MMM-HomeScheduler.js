@@ -2,6 +2,7 @@ Module.register("MMM-HomeScheduler", {
   defaults: {
     title: "Home Scheduler",
     displayMode: "auto",
+    enableWeather: true,
     enablePhotos: true,
     idlePhotoDelay: 45000,
     photoRotationDelay: 15000,
@@ -150,10 +151,14 @@ Module.register("MMM-HomeScheduler", {
 
   renderShell: function () {
     const slides = [
-      { label: "Calendar", content: this.renderCalendar() },
-      { label: "Weather", content: this.renderWeather() },
-      { label: "Notes", content: this.renderNotesSlide() }
+      { label: "Calendar", content: this.renderCalendar() }
     ];
+
+    if (this.config.enableWeather) {
+      slides.push({ label: "Weather", content: this.renderWeather() });
+    }
+
+    slides.push({ label: "Notes", content: this.renderNotesSlide() });
 
     if (this.config.enablePhotos) {
       slides.push({ label: "Photos", content: this.renderPhotos() });
@@ -844,7 +849,7 @@ Module.register("MMM-HomeScheduler", {
   },
 
   setSlide: function (index) {
-    const maxSlide = this.config.enablePhotos ? 3 : 2;
+    const maxSlide = (this.config.enableWeather ? 2 : 1) + (this.config.enablePhotos ? 1 : 0);
     this.activeSlide = Math.max(0, Math.min(index, maxSlide));
     this.touch();
   },

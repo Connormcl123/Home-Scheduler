@@ -66,6 +66,7 @@ const config = {
         title: "Home Scheduler",
         displayMode: "compact",
         calendarProvider: "calendar",
+        enableWeather: false,
         photoProvider: "disabled",
         enablePhotos: false,
         useCalendarBroadcasts: true,
@@ -101,7 +102,7 @@ const config = {
     {
       module: "weather",
       position: "top_right",
-      disabled: !process.env.OPENWEATHER_API_KEY,
+      disabled: true,
       config: {
         weatherProvider: "openweathermap",
         type: "current",
