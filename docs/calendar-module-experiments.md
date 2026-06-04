@@ -26,7 +26,7 @@ The launcher copies the experimental config to `~/MagicMirror/config/config.expe
 - Finance
 - Notes
 
-Pages auto-cycle through `MMM-pages` every 20 seconds. A slim bottom control bar shows the current page and gives you previous/next buttons for touchscreen navigation. The old Home Scheduler bubble tabs are disabled in this layout.
+Pages stay on the selected screen until you manually change them. A slim bottom control bar shows the current page and gives you Previous/Next buttons for touchscreen navigation. The old Home Scheduler bubble tabs and swipe-based page switching are disabled in this layout.
 
 The default page agenda and full Calendar page both use `MMM-HomeScheduler`. Google events come from the Google Calendar API configuration, while Apple/iCloud events can still flow through the hidden stock `calendar` broadcaster when an iCal feed is configured:
 

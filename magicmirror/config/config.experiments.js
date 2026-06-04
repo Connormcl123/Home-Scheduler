@@ -178,9 +178,6 @@ const config = {
         ],
         fixed: ["MMM-HomePageControls", "alert", "updatenotification"],
         homePage: 0,
-        timings: {
-          default: 20000
-        },
         animationTime: 350
       }
     },
