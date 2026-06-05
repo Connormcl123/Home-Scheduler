@@ -24,3 +24,13 @@ a,
 textarea {
   touch-action: manipulation;
 }
+
+@layer components {
+  .touch-input {
+    @apply h-16 rounded-2xl border border-mirror-line bg-white/80 px-5 text-2xl font-semibold text-slate-800 outline-none focus:ring-4 focus:ring-sky-200;
+  }
+
+  .touch-button {
+    @apply flex h-16 items-center justify-center rounded-2xl text-xl font-bold transition active:scale-95 disabled:opacity-50;
+  }
+}

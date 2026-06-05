@@ -1,7 +1,25 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, NewsArticle, Task } from "@mirror-dashboard/shared";
-import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, type LucideIcon, Newspaper, Settings, StickyNote, SunMedium } from "lucide-react";
-import { fetchDashboard } from "./api";
+import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, type LucideIcon, Newspaper, Plus, Save, Settings, StickyNote, SunMedium, Trash2 } from "lucide-react";
+import {
+  createRssFeed,
+  createTask,
+  createWatchlistItem,
+  deleteNote,
+  deleteRssFeed,
+  deleteTask,
+  deleteWatchlistItem,
+  fetchDashboard,
+  fetchNote,
+  fetchNotes,
+  fetchRssFeeds,
+  fetchTasks,
+  fetchWatchlist,
+  saveNote,
+  updateRssFeed,
+  updateTask,
+  updateWatchlistItem
+} from "./api";
 
 type View = "home" | "calendar" | "tasks" | "notes" | "finance" | "settings";
 
@@ -54,12 +72,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
+  const refreshDashboard = () => {
     fetchDashboard()
       .then((data) => {
         setDashboard(data);
@@ -68,14 +81,23 @@ export default function App() {
       .catch((err: Error) => {
         setError(err.message);
       });
+  };
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    refreshDashboard();
   }, []);
 
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
-    if (view === "tasks") return <TaskPanel tasks={dashboard.tasks} />;
-    if (view === "notes") return <NotesPanel note={dashboard.todayNote?.body || "No note for today yet."} />;
+    if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
+    if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} />;
-    if (view === "settings") return <SettingsPanel />;
+    if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return <HomePanel dashboard={dashboard} now={now} />;
   }, [dashboard, now, view]);
 
@@ -196,20 +218,116 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-function TaskPanel({ tasks }: { tasks: Task[] }) {
+function TaskPanel({ initialTasks, onChanged }: { initialTasks: Task[]; onChanged: () => void }) {
+  const [tasks, setTasks] = useState(initialTasks);
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState(today());
+  const [priority, setPriority] = useState<Priority>("normal");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetchTasks().then(setTasks).catch(() => setTasks(initialTasks));
+  }, [initialTasks]);
+
+  async function reload() {
+    const next = await fetchTasks();
+    setTasks(next);
+    onChanged();
+  }
+
+  async function addTask() {
+    if (!title.trim()) return;
+    setBusy(true);
+    try {
+      await createTask({ title: title.trim(), dueDate, priority });
+      setTitle("");
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Card className="flex-1">
       <SectionTitle icon={CheckCircle2} title="Tasks" />
-      <TaskList tasks={tasks} large />
+      <div className="mt-6 grid grid-cols-[1fr_220px_180px_120px] gap-3">
+        <input value={title} onChange={(event) => setTitle(event.target.value)} className="touch-input" placeholder="New task" />
+        <input value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="touch-input" type="date" />
+        <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)} className="touch-input">
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+        </select>
+        <button onClick={addTask} disabled={busy} className="touch-button bg-sky-600 text-white"><Plus className="h-6 w-6" /></button>
+      </div>
+      <div className="mt-6 space-y-3">
+        {tasks.map((task) => (
+          <div key={task.id} className="grid grid-cols-[72px_1fr_170px_90px] items-center gap-3 rounded-2xl bg-white/75 p-4">
+            <button onClick={() => updateTask(task.id, { completed: !task.completed }).then(reload)} className={`h-14 rounded-2xl ${task.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>
+              <CheckCircle2 className="mx-auto h-7 w-7" />
+            </button>
+            <div>
+              <p className={`text-3xl font-semibold ${task.completed ? "line-through opacity-60" : ""}`}>{task.title}</p>
+              <p className="text-slate-500">{task.dueDate || "No due date"} - {task.priority} priority</p>
+            </div>
+            <select value={task.priority} onChange={(event) => updateTask(task.id, { priority: event.target.value as Priority }).then(reload)} className="touch-input text-xl">
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+            </select>
+            <button onClick={() => deleteTask(task.id).then(reload)} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
 
-function NotesPanel({ note }: { note: string }) {
+function NotesPanel({ onChanged }: { onChanged: () => void }) {
+  const [date, setDate] = useState(today());
+  const [body, setBody] = useState("");
+  const [notes, setNotes] = useState<Note[]>([]);
+
+  async function load(selectedDate = date) {
+    const [note, allNotes] = await Promise.all([fetchNote(selectedDate), fetchNotes()]);
+    setBody(note?.body || "");
+    setNotes(allNotes);
+  }
+
+  useEffect(() => {
+    load().catch(() => undefined);
+  }, []);
+
+  async function save() {
+    await saveNote(date, body);
+    await load(date);
+    onChanged();
+  }
+
+  async function remove() {
+    await deleteNote(date);
+    setBody("");
+    await load(date);
+    onChanged();
+  }
+
   return (
     <Card className="flex-1">
       <SectionTitle icon={StickyNote} title="Notes" />
-      <textarea className="mt-6 h-[60vh] w-full resize-none rounded-2xl border border-mirror-line bg-white/70 p-6 text-3xl leading-relaxed outline-none focus:ring-4 focus:ring-sky-200" defaultValue={note} />
+      <div className="mt-6 grid grid-cols-[260px_120px_120px] gap-3">
+        <input value={date} onChange={(event) => { setDate(event.target.value); load(event.target.value).catch(() => undefined); }} className="touch-input" type="date" />
+        <button onClick={save} className="touch-button bg-sky-600 text-white"><Save className="h-6 w-6" /></button>
+        <button onClick={remove} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
+      </div>
+      <textarea className="mt-6 h-[44vh] w-full resize-none rounded-2xl border border-mirror-line bg-white/70 p-6 text-3xl leading-relaxed outline-none focus:ring-4 focus:ring-sky-200" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write today's note..." />
+      <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+        {notes.map((note) => (
+          <button key={note.id} onClick={() => { setDate(note.date); setBody(note.body); }} className="min-w-48 rounded-2xl bg-white/75 p-4 text-left">
+            <p className="font-bold">{note.date}</p>
+            <p className="truncate text-slate-500">{note.body || "Empty note"}</p>
+          </button>
+        ))}
+      </div>
     </Card>
   );
 }
@@ -234,13 +352,85 @@ function FinancePanel({ quotes }: { quotes: FinanceQuote[] }) {
   );
 }
 
-function SettingsPanel() {
+function SettingsPanel({ onChanged }: { onChanged: () => void }) {
+  const [feeds, setFeeds] = useState<RssFeed[]>([]);
+  const [watchlist, setWatchlist] = useState<FinanceWatchlistItem[]>([]);
+  const [feedUrl, setFeedUrl] = useState("");
+  const [feedTitle, setFeedTitle] = useState("");
+  const [symbol, setSymbol] = useState("");
+
+  async function load() {
+    const [nextFeeds, nextWatchlist] = await Promise.all([fetchRssFeeds(), fetchWatchlist()]);
+    setFeeds(nextFeeds);
+    setWatchlist(nextWatchlist);
+  }
+
+  async function reloadAndRefresh() {
+    await load();
+    onChanged();
+  }
+
+  useEffect(() => {
+    load().catch(() => undefined);
+  }, []);
+
+  async function addFeed() {
+    if (!feedUrl.trim()) return;
+    await createRssFeed({ title: feedTitle || undefined, url: feedUrl.trim() });
+    setFeedTitle("");
+    setFeedUrl("");
+    await load();
+    onChanged();
+  }
+
+  async function addSymbol() {
+    if (!symbol.trim()) return;
+    await createWatchlistItem({ symbol: symbol.trim() });
+    setSymbol("");
+    await load();
+    onChanged();
+  }
+
   return (
     <Card className="flex-1">
       <SectionTitle icon={Settings} title="Settings" />
-      <div className="mt-6 grid grid-cols-2 gap-5 text-2xl text-slate-700">
-        <p className="rounded-2xl bg-white/70 p-5">Calendar feed, weather location, RSS feeds, and watchlist are editable through the API in v1.</p>
-        <p className="rounded-2xl bg-white/70 p-5">Next pass can add touchscreen forms and an on-screen keyboard for kiosk edits.</p>
+      <div className="mt-6 grid grid-cols-2 gap-5">
+        <div className="rounded-3xl bg-white/70 p-5">
+          <h3 className="text-2xl font-bold">RSS Feeds</h3>
+          <div className="mt-4 grid grid-cols-[1fr_1fr_90px] gap-3">
+            <input value={feedTitle} onChange={(event) => setFeedTitle(event.target.value)} className="touch-input text-xl" placeholder="Title" />
+            <input value={feedUrl} onChange={(event) => setFeedUrl(event.target.value)} className="touch-input text-xl" placeholder="Feed URL" />
+            <button onClick={addFeed} className="touch-button bg-sky-600 text-white"><Plus className="h-6 w-6" /></button>
+          </div>
+          <div className="mt-4 space-y-3">
+            {feeds.map((feed) => (
+              <div key={feed.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-white/75 p-3">
+                <div>
+                  <p className="text-xl font-bold">{feed.title}</p>
+                  <p className="truncate text-slate-500">{feed.url}</p>
+                </div>
+                <button onClick={() => updateRssFeed(feed.id, { enabled: !feed.enabled }).then(reloadAndRefresh)} className={`touch-button ${feed.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{feed.enabled ? "On" : "Off"}</button>
+                <button onClick={() => deleteRssFeed(feed.id).then(reloadAndRefresh)} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-3xl bg-white/70 p-5">
+          <h3 className="text-2xl font-bold">Finance Watchlist</h3>
+          <div className="mt-4 grid grid-cols-[1fr_90px] gap-3">
+            <input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} className="touch-input text-xl" placeholder="Symbol" />
+            <button onClick={addSymbol} className="touch-button bg-sky-600 text-white"><Plus className="h-6 w-6" /></button>
+          </div>
+          <div className="mt-4 space-y-3">
+            {watchlist.map((item) => (
+              <div key={item.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-white/75 p-3">
+                <p className="text-3xl font-bold">{item.symbol}</p>
+                <button onClick={() => updateWatchlistItem(item.id, { enabled: !item.enabled }).then(reloadAndRefresh)} className={`touch-button ${item.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{item.enabled ? "On" : "Off"}</button>
+                <button onClick={() => deleteWatchlistItem(item.id).then(reloadAndRefresh)} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </Card>
   );

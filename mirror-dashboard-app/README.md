@@ -2,7 +2,7 @@
 
 Standalone touchscreen family command-center dashboard inspired by the existing MagicMirror prototype. MagicMirror remains untouched; this app is a new React, Express, and SQLite runtime intended for Raspberry Pi OS and Chromium kiosk mode.
 
-This branch is Phase 1 only. Calendar, weather, news, and finance use mock placeholder adapters so the app structure and dashboard UI can be tested before real integrations are added.
+This branch is Phase 2. Calendar, weather, news, and finance still use mock placeholder adapters, while tasks, daily notes, RSS feed list storage, and finance watchlist storage are editable through the local touchscreen UI and SQLite API.
 
 ## Structure
 
@@ -49,7 +49,7 @@ Phase 1 settings are placeholders:
 - `FINANCE_WATCHLIST`: used by the mock finance provider to shape placeholder cards.
 - `FINANCE_PROVIDER`: keep as `mock` in Phase 1.
 
-The app intentionally uses mock data in Phase 1.
+External provider data intentionally remains mocked in Phase 2.
 
 ## API
 
@@ -116,6 +116,14 @@ curl -X POST http://localhost:4174/api/finance/watchlist \
   -d '{"symbol":"SPY"}'
 ```
 
+## Phase 2 Touchscreen Features
+
+- Create, complete, reprioritize, and delete local tasks.
+- Create, edit, browse, and delete daily notes by date.
+- Add, enable/disable, and delete RSS feed records.
+- Add, enable/disable, and delete finance watchlist symbols.
+- Refresh the home dashboard after local storage changes.
+
 ## Production Build
 
 ```bash
@@ -170,7 +178,6 @@ sudo systemctl status mirror-dashboard
 
 ## Next Implementation Passes
 
-- Add touchscreen create/edit forms for tasks and notes.
 - Add weekly calendar view matching the MagicMirror family calendar reference.
 - Add iCal feeds for Google Calendar and iPhone/iCloud calendars.
 - Add Open-Meteo weather adapter.
