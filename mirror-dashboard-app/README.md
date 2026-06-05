@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The Vite client proxies API calls to the Express server on `http://localhost:4174`.
+Open `http://localhost:5174`. The Vite client proxies API calls to the Express server on `http://localhost:4174`.
 
 Useful checks:
 
