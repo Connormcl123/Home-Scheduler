@@ -309,16 +309,15 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     const end = new Date(`${newEventDate}T${newEventEnd}:00`);
     if (end.getTime() <= start.getTime()) end.setTime(start.getTime() + 60 * 60 * 1000);
 
-    setWeekEvents((current) => [
-      ...current,
-      {
-        id: `local-${Date.now()}`,
-        title: newEventTitle.trim(),
-        start: start.toISOString(),
-        end: end.toISOString(),
-        source: "demo"
-      }
-    ].sort((a, b) => a.start.localeCompare(b.start)));
+    const localEvent: CalendarEvent = {
+      id: `local-${Date.now()}`,
+      title: newEventTitle.trim(),
+      start: start.toISOString(),
+      end: end.toISOString(),
+      source: "demo"
+    };
+
+    setWeekEvents((current) => [...current, localEvent].sort((a, b) => a.start.localeCompare(b.start)));
     setNewEventTitle("");
     setIsEventModalOpen(false);
   }
