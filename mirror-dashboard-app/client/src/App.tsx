@@ -1,6 +1,6 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
-import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, type LucideIcon, Newspaper, Plus, Save, Settings, StickyNote, SunMedium, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, Moon, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, StickyNote, SunMedium, Trash2, WifiOff } from "lucide-react";
 import {
   createRssFeed,
   createTask,
@@ -66,20 +66,45 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "settings", label: "Settings", icon: Settings }
 ];
 
+const burnInOffsets = [
+  { x: 0, y: 0 },
+  { x: 4, y: 0 },
+  { x: 4, y: 4 },
+  { x: 0, y: 4 },
+  { x: -4, y: 4 },
+  { x: -4, y: 0 },
+  { x: -4, y: -4 },
+  { x: 0, y: -4 }
+];
+
 export default function App() {
   const [dashboard, setDashboard] = useState<DashboardSummary>(demoDashboard);
   const [view, setView] = useState<View>("home");
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-theme") === "dark");
+  const [burnInStep, setBurnInStep] = useState(0);
 
   const refreshDashboard = () => {
     fetchDashboard()
       .then((data) => {
         setDashboard(data);
         setError(null);
+        setLastRefresh(new Date());
+        safeStorageSet("mirror-dashboard-last-dashboard", JSON.stringify(data));
       })
       .catch((err: Error) => {
         setError(err.message);
+        const cached = safeStorageGet("mirror-dashboard-last-dashboard");
+        if (cached) {
+          try {
+            setDashboard(JSON.parse(cached));
+          } catch {
+            setDashboard(demoDashboard);
+          }
+        }
       });
   };
 
@@ -90,6 +115,28 @@ export default function App() {
 
   useEffect(() => {
     refreshDashboard();
+    const refreshTimer = window.setInterval(refreshDashboard, 5 * 60 * 1000);
+    return () => window.clearInterval(refreshTimer);
+  }, []);
+
+  useEffect(() => {
+    const online = () => setIsOnline(true);
+    const offline = () => setIsOnline(false);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+    };
+  }, []);
+
+  useEffect(() => {
+    safeStorageSet("mirror-dashboard-theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setBurnInStep((step) => (step + 1) % 8), 10 * 60 * 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const content = useMemo(() => {
@@ -101,11 +148,23 @@ export default function App() {
     return <HomePanel dashboard={dashboard} now={now} />;
   }, [dashboard, now, view]);
 
+  const shift = burnInOffsets[burnInStep];
+
   return (
-    <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,#e7f3ff_0,#f9fbfe_36%,#eef5ef_100%)] text-mirror-ink">
-      <div className="mx-auto flex min-h-screen max-w-[1920px] gap-5 px-6 py-5">
-        <aside className="flex w-28 flex-col items-center gap-3 rounded-[24px] border border-white/70 bg-white/65 p-3 shadow-panel backdrop-blur">
-          <SunMedium className="mt-2 h-9 w-9 text-amber-500" />
+    <main className={`min-h-screen overflow-hidden transition-colors duration-700 ${darkMode ? "dark bg-slate-950 text-slate-100" : "bg-[radial-gradient(circle_at_top_left,#e7f3ff_0,#f9fbfe_36%,#eef5ef_100%)] text-mirror-ink"}`}>
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center">
+        {(!isOnline || error) && (
+          <div className="mt-3 flex items-center gap-3 rounded-full bg-amber-100 px-5 py-3 text-lg font-bold text-amber-900 shadow-lg">
+            <WifiOff className="h-5 w-5" />
+            {!isOnline ? "Offline - showing last saved dashboard" : "Provider issue - fallback data is active"}
+          </div>
+        )}
+      </div>
+      <div className="mx-auto flex min-h-screen max-w-[1920px] gap-5 px-6 py-5 transition-transform duration-700" style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
+        <aside className="flex w-32 flex-col items-center gap-3 rounded-[24px] border border-white/70 bg-white/65 p-3 shadow-panel backdrop-blur dark:border-white/10 dark:bg-slate-900/78">
+          <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full bg-amber-100 text-amber-700 dark:bg-slate-800 dark:text-sky-200" aria-label="Toggle dark mode">
+            {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
+          </button>
           <div className="h-px w-14 bg-mirror-line" />
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -114,27 +173,30 @@ export default function App() {
               <button
                 key={item.view}
                 onClick={() => setView(item.view)}
-                className={`flex h-20 w-full flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold transition active:scale-95 ${
-                  active ? "bg-sky-600 text-white shadow-lg shadow-sky-300/40" : "text-slate-600 hover:bg-white"
+                className={`flex h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold transition active:scale-95 ${
+                  active ? "bg-sky-600 text-white shadow-lg shadow-sky-300/40" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
                 }`}
                 aria-label={item.label}
               >
-                <Icon className="h-6 w-6" />
+                <Icon className="h-8 w-8" />
                 <span>{item.label}</span>
               </button>
             );
           })}
         </aside>
         <section className="flex min-w-0 flex-1 flex-col gap-5">
-          <header className="flex items-center justify-between rounded-[24px] border border-white/70 bg-white/65 px-7 py-4 shadow-panel backdrop-blur">
+          <header className="flex items-center justify-between rounded-[24px] border border-white/70 bg-white/65 px-7 py-4 shadow-panel backdrop-blur dark:border-white/10 dark:bg-slate-900/78">
             <div>
-              <p className="text-lg font-semibold text-slate-500">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
+              <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
               <h1 className="text-5xl font-bold tracking-normal">{now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</h1>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold uppercase text-slate-500">Family Command Center</p>
-              <p className="text-lg text-slate-600">{dashboard.weather.locationName} - {dashboard.weather.current.description}</p>
-              {error && <p className="text-sm text-amber-700">Using demo fallback: {error}</p>}
+            <div className="flex items-center gap-4 text-right">
+              <button onClick={refreshDashboard} className="touch-button w-20 bg-white/80 text-slate-600 dark:bg-slate-800 dark:text-slate-200" aria-label="Refresh dashboard"><RefreshCw className="h-7 w-7" /></button>
+              <div>
+                <p className="text-sm font-semibold uppercase text-slate-500 dark:text-slate-400">Family Command Center</p>
+                <p className="text-lg text-slate-600 dark:text-slate-300">{dashboard.weather.locationName} - {dashboard.weather.current.description}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-500">Refresh {lastRefresh ? lastRefresh.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "pending"}</p>
+              </div>
             </div>
           </header>
           {content}
@@ -650,7 +712,7 @@ function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-[24px] border border-white/75 bg-mirror-card p-6 shadow-panel backdrop-blur ${className}`}>{children}</section>;
+  return <section className={`rounded-[24px] border border-white/75 bg-mirror-card p-6 shadow-panel backdrop-blur dark:border-white/10 dark:bg-slate-900/78 ${className}`}>{children}</section>;
 }
 
 function formatEventTime(value: string) {
@@ -724,4 +786,20 @@ function isSameClientDate(left: Date, right: Date) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function safeStorageGet(key: string) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Local storage can be unavailable in some kiosk/privacy modes.
+  }
 }

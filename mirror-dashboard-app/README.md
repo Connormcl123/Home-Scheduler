@@ -136,6 +136,23 @@ Calendar drag/resize is currently UI-only against mock events. The next calendar
 
 Provider data is read-only in this phase. Calendar edits in the weekly board are still local UI behavior until Google Calendar write support is added.
 
+## Phase 4 Kiosk Hardening
+
+- Navigation, forms, and controls use larger tap targets for touchscreens.
+- Header has a manual refresh button and the dashboard auto-refreshes every 5 minutes.
+- The app shows an offline/provider fallback banner when network calls fail.
+- Dark mode can be toggled from the left rail and is saved in browser local storage.
+- The dashboard shifts a few pixels every 10 minutes to reduce static image burn-in.
+- `scripts/start-kiosk.sh` disables screen blanking through `xset` and launches Chromium in kiosk/app mode.
+
+Run kiosk mode on the Pi:
+
+```bash
+cd ~/Home-Scheduler/mirror-dashboard-app
+chmod +x scripts/start-kiosk.sh
+./scripts/start-kiosk.sh
+```
+
 ## Production Build
 
 ```bash
