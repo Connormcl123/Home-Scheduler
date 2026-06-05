@@ -77,6 +77,14 @@ const burnInOffsets = [
   { x: 0, y: -4 }
 ];
 
+const profilePalette = [
+  { name: "Family", color: "#3b82f6", soft: "#dbeafe", text: "#1d4ed8" },
+  { name: "Home", color: "#f59e0b", soft: "#fef3c7", text: "#b45309" },
+  { name: "School", color: "#10b981", soft: "#d1fae5", text: "#047857" },
+  { name: "Personal", color: "#ec4899", soft: "#fce7f3", text: "#be185d" },
+  { name: "Work", color: "#8b5cf6", soft: "#ede9fe", text: "#6d28d9" }
+];
+
 export default function App() {
   const [dashboard, setDashboard] = useState<DashboardSummary>(demoDashboard);
   const [view, setView] = useState<View>("home");
@@ -368,77 +376,135 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   }
 
   return (
-    <Card className="flex-1 overflow-hidden">
-      <div className="flex items-center justify-between">
-        <SectionTitle icon={CalendarDays} title="Weekly Calendar" />
-        <p className="rounded-full bg-white/80 px-5 py-3 text-lg font-semibold text-slate-600">Drag to move - pull bottom edge to resize</p>
-      </div>
-      <div className="mt-5 grid grid-cols-[90px_1fr]">
-        <div />
-        <div className="grid grid-cols-7 overflow-hidden rounded-t-2xl border border-mirror-line bg-white/75">
-          {days.map((day) => (
-            <div key={day.toISOString()} className="border-r border-mirror-line px-3 py-3 last:border-r-0">
-              <p className="text-lg font-bold text-slate-500">{day.toLocaleDateString([], { weekday: "short" })}</p>
-              <p className="text-3xl font-bold">{day.getDate()}</p>
-            </div>
+    <section className="flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[#f7f8f4] p-5 shadow-sm dark:border-white/10 dark:bg-slate-950">
+      <div className="flex items-center justify-between gap-5">
+        <div>
+          <p className="text-lg font-bold uppercase tracking-normal text-slate-500 dark:text-slate-400">Family Calendar</p>
+          <h2 className="text-5xl font-bold text-slate-900 dark:text-white">This Week</h2>
+        </div>
+        <div className="flex rounded-2xl bg-white p-2 shadow-sm dark:bg-slate-900">
+          {["Day", "Week", "Month", "Schedule"].map((label) => (
+            <button key={label} className={`h-16 rounded-xl px-6 text-xl font-bold ${label === "Week" ? "bg-slate-900 text-white dark:bg-sky-500" : "text-slate-500 dark:text-slate-300"}`}>
+              {label}
+            </button>
           ))}
         </div>
+        <button className="touch-button bg-[#ffcf5a] px-7 text-slate-900"><Plus className="mr-2 h-7 w-7" /> Event</button>
       </div>
-      <div className="grid h-[63vh] grid-cols-[90px_1fr] overflow-y-auto rounded-b-2xl border-x border-b border-mirror-line bg-white/55">
-        <div className="relative" style={{ height: (endHour - startHour) * hourHeight }}>
-          {Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index).map((hour) => (
-            <div key={hour} className="absolute left-0 right-2 -translate-y-3 text-right text-lg font-bold text-slate-500" style={{ top: (hour - startHour) * hourHeight }}>
-              {formatHour(hour)}
-            </div>
-          ))}
-        </div>
-        <div data-week-grid className="relative touch-none" style={{ height: (endHour - startHour) * hourHeight }}>
-          <div className="absolute inset-0 grid grid-cols-7">
-            {days.map((day) => (
-              <div key={day.toISOString()} className="border-r border-mirror-line last:border-r-0" />
-            ))}
-          </div>
-          <div className="absolute inset-0">
-            {Array.from({ length: endHour - startHour + 1 }, (_, index) => (
-              <div key={index} className="absolute left-0 right-0 border-t border-mirror-line" style={{ top: index * hourHeight }} />
-            ))}
-          </div>
-          {weekEvents.map((calendarEvent) => {
-            const start = new Date(calendarEvent.start);
-            const end = new Date(calendarEvent.end || calendarEvent.start);
-            const dayIndex = days.findIndex((day) => isSameClientDate(day, start));
-            if (dayIndex < 0) return null;
-            const top = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * hourHeight;
-            const height = Math.max(42, (end.getTime() - start.getTime()) / (60 * 60 * 1000) * hourHeight);
-            if (top < 0 || top > (endHour - startHour) * hourHeight) return null;
 
-            return (
-              <div
-                key={calendarEvent.id}
-                onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
-                className="absolute cursor-grab select-none rounded-2xl border border-sky-300 bg-sky-100 px-4 py-3 shadow-sm active:cursor-grabbing"
-                style={{
-                  left: `calc(${dayIndex * dayWidthPercent}% + 8px)`,
-                  top,
-                  width: `calc(${dayWidthPercent}% - 16px)`,
-                  height
-                }}
-              >
-                <p className="text-sm font-bold text-sky-800">{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
-                <p className="mt-1 truncate text-xl font-bold text-slate-800">{calendarEvent.title}</p>
-                <div
-                  onPointerDown={(pointerEvent) => beginResize(pointerEvent, calendarEvent)}
-                  className="absolute bottom-1 left-1/2 h-5 w-16 -translate-x-1/2 rounded-full bg-sky-300"
-                />
+      <div className="mt-5 grid min-h-0 flex-1 grid-cols-[300px_1fr] gap-5">
+        <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] bg-white p-5 shadow-sm dark:bg-slate-900">
+          <div className="rounded-3xl bg-[#eef5ff] p-5 dark:bg-slate-800">
+            <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString([], { weekday: "long" })}</p>
+            <p className="text-6xl font-bold text-slate-900 dark:text-white">{new Date().getDate()}</p>
+            <p className="mt-2 text-xl font-semibold text-slate-600 dark:text-slate-300">{new Date().toLocaleDateString([], { month: "long", year: "numeric" })}</p>
+          </div>
+          <div className="rounded-3xl bg-[#fff7df] p-5 dark:bg-slate-800">
+            <p className="text-xl font-bold text-slate-900 dark:text-white">Calendars</p>
+            <div className="mt-4 space-y-3">
+              {profilePalette.map((profile) => (
+                <div key={profile.name} className="flex items-center gap-3">
+                  <span className="h-5 w-5 rounded-full" style={{ background: profile.color }} />
+                  <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{profile.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 rounded-3xl bg-white p-4 shadow-inner dark:bg-slate-800">
+            <p className="mb-3 text-xl font-bold text-slate-900 dark:text-white">Today</p>
+            <div className="space-y-3 overflow-y-auto pr-1">
+              {weekEvents.filter((item) => isSameClientDate(new Date(item.start), new Date())).slice(0, 5).map((item) => {
+                const colors = eventColor(item);
+                return (
+                  <div key={item.id} className="rounded-2xl p-3" style={{ background: colors.soft }}>
+                    <p className="text-sm font-bold" style={{ color: colors.text }}>{formatTimeOnly(item.start)}</p>
+                    <p className="truncate text-lg font-bold text-slate-800">{item.title}</p>
+                  </div>
+                );
+              })}
+              {!weekEvents.some((item) => isSameClientDate(new Date(item.start), new Date())) && (
+                <p className="rounded-2xl bg-slate-50 p-4 text-lg font-semibold text-slate-500">No events today.</p>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        <div className="min-h-0 overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900">
+          <div className="grid grid-cols-[86px_1fr] border-b border-mirror-line">
+            <div className="flex items-center justify-center text-sm font-bold text-slate-400">Time</div>
+            <div className="grid grid-cols-7">
+              {days.map((day) => {
+                const active = isSameClientDate(day, new Date());
+                return (
+                  <div key={day.toISOString()} className={`border-r border-mirror-line px-3 py-4 last:border-r-0 ${active ? "bg-[#fff3c4]" : ""}`}>
+                    <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{day.toLocaleDateString([], { weekday: "short" })}</p>
+                    <p className="text-4xl font-bold text-slate-900 dark:text-white">{day.getDate()}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid h-[64vh] grid-cols-[86px_1fr] overflow-y-auto">
+            <div className="relative bg-[#fbfbf7] dark:bg-slate-950" style={{ height: (endHour - startHour) * hourHeight }}>
+              {Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index).map((hour) => (
+                <div key={hour} className="absolute left-0 right-3 -translate-y-3 text-right text-base font-bold text-slate-400" style={{ top: (hour - startHour) * hourHeight }}>
+                  {formatHour(hour)}
+                </div>
+              ))}
+            </div>
+            <div data-week-grid className="relative touch-none bg-[#fbfbf7] dark:bg-slate-950" style={{ height: (endHour - startHour) * hourHeight }}>
+              <div className="absolute inset-0 grid grid-cols-7">
+                {days.map((day) => (
+                  <div key={day.toISOString()} className="border-r border-mirror-line last:border-r-0" />
+                ))}
               </div>
-            );
-          })}
-          {!weekEvents.length && (
-            <div className="absolute inset-x-0 top-10 text-center text-2xl font-semibold text-slate-500">No events this week.</div>
-          )}
+              <div className="absolute inset-0">
+                {Array.from({ length: endHour - startHour + 1 }, (_, index) => (
+                  <div key={index} className="absolute left-0 right-0 border-t border-mirror-line" style={{ top: index * hourHeight }} />
+                ))}
+              </div>
+              {weekEvents.map((calendarEvent) => {
+                const start = new Date(calendarEvent.start);
+                const end = new Date(calendarEvent.end || calendarEvent.start);
+                const dayIndex = days.findIndex((day) => isSameClientDate(day, start));
+                if (dayIndex < 0) return null;
+                const top = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * hourHeight;
+                const height = Math.max(50, (end.getTime() - start.getTime()) / (60 * 60 * 1000) * hourHeight);
+                if (top < 0 || top > (endHour - startHour) * hourHeight) return null;
+                const colors = eventColor(calendarEvent);
+
+                return (
+                  <div
+                    key={calendarEvent.id}
+                    onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
+                    className="absolute cursor-grab select-none rounded-2xl border-l-[10px] px-4 py-3 shadow-sm active:cursor-grabbing"
+                    style={{
+                      left: `calc(${dayIndex * dayWidthPercent}% + 8px)`,
+                      top,
+                      width: `calc(${dayWidthPercent}% - 16px)`,
+                      height,
+                      background: colors.soft,
+                      borderColor: colors.color
+                    }}
+                  >
+                    <p className="text-sm font-bold" style={{ color: colors.text }}>{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
+                    <p className="mt-1 truncate text-xl font-bold text-slate-900">{calendarEvent.title}</p>
+                    <div
+                      onPointerDown={(pointerEvent) => beginResize(pointerEvent, calendarEvent)}
+                      className="absolute bottom-1 left-1/2 h-4 w-16 -translate-x-1/2 rounded-full opacity-70"
+                      style={{ background: colors.color }}
+                    />
+                  </div>
+                );
+              })}
+              {!weekEvents.length && (
+                <div className="absolute inset-x-0 top-10 text-center text-2xl font-semibold text-slate-500">No events this week.</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </Card>
+    </section>
   );
 }
 
@@ -788,6 +854,12 @@ function normalizeEventEnd(event: CalendarEvent): CalendarEvent {
   const end = new Date(event.start);
   end.setMinutes(end.getMinutes() + 45);
   return { ...event, end: end.toISOString() };
+}
+
+function eventColor(event: CalendarEvent) {
+  const source = `${event.title}-${event.id}`;
+  const index = Array.from(source).reduce((total, char) => total + char.charCodeAt(0), 0) % profilePalette.length;
+  return profilePalette[index];
 }
 
 function startOfWeek(date: Date) {
