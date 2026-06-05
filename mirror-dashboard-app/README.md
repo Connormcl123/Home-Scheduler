@@ -63,13 +63,58 @@ Implemented endpoints:
 - `PATCH /api/tasks/:id`
 - `DELETE /api/tasks/:id`
 - `GET /api/notes/today`
+- `GET /api/notes`
 - `GET /api/notes/:date`
 - `POST /api/notes`
+- `PATCH /api/notes/:date`
+- `DELETE /api/notes/:date`
 - `GET /api/weather`
 - `GET /api/news`
 - `GET /api/finance/summary`
 - `GET /api/settings`
 - `PATCH /api/settings`
+- `GET /api/rss-feeds`
+- `POST /api/rss-feeds`
+- `PATCH /api/rss-feeds/:id`
+- `DELETE /api/rss-feeds/:id`
+- `GET /api/finance/watchlist`
+- `POST /api/finance/watchlist`
+- `PATCH /api/finance/watchlist/:id`
+- `DELETE /api/finance/watchlist/:id`
+
+## Local Storage Examples
+
+Create a task:
+
+```bash
+curl -X POST http://localhost:4174/api/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Take trash out","dueDate":"2026-06-05","priority":"normal"}'
+```
+
+Create or update a daily note:
+
+```bash
+curl -X POST http://localhost:4174/api/notes \
+  -H "Content-Type: application/json" \
+  -d '{"date":"2026-06-05","body":"Dinner at 6 and budget review after."}'
+```
+
+Add an RSS feed to local storage:
+
+```bash
+curl -X POST http://localhost:4174/api/rss-feeds \
+  -H "Content-Type: application/json" \
+  -d '{"title":"NPR","url":"https://feeds.npr.org/1001/rss.xml"}'
+```
+
+Add a finance watchlist symbol to local storage:
+
+```bash
+curl -X POST http://localhost:4174/api/finance/watchlist \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"SPY"}'
+```
 
 ## Production Build
 

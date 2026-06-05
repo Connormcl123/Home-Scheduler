@@ -18,6 +18,12 @@ export async function getNoteByDate(date: string) {
   return row ? rowToNote(row) : null;
 }
 
+export async function listNotes(limit = 30) {
+  const db = await getDb();
+  const rows = await db.all("SELECT * FROM notes ORDER BY date DESC LIMIT ?", limit);
+  return rows.map(rowToNote);
+}
+
 export async function getTodayNote() {
   return getNoteByDate(todayIso());
 }
@@ -31,4 +37,9 @@ export async function upsertNote(date: string, body: string) {
     body
   );
   return getNoteByDate(date);
+}
+
+export async function deleteNoteByDate(date: string) {
+  const db = await getDb();
+  await db.run("DELETE FROM notes WHERE date = ?", date);
 }

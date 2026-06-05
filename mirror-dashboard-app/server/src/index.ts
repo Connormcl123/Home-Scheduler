@@ -7,8 +7,10 @@ import { getDb } from "./db.js";
 import { getDashboard } from "./services/dashboard.js";
 import { getCalendarEvents } from "./services/calendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
+import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
 import { getNews } from "./services/news.js";
-import { getNoteByDate, getTodayNote, upsertNote } from "./services/notes.js";
+import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
+import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.js";
 import { todayIso } from "./utils/dates.js";
@@ -91,6 +93,15 @@ app.get("/api/notes/today", async (_req, res, next) => {
   }
 });
 
+app.get("/api/notes", async (req, res, next) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 30;
+    res.json(await listNotes(limit));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/notes/:date", async (req, res, next) => {
   try {
     res.json(await getNoteByDate(req.params.date));
@@ -103,6 +114,23 @@ app.post("/api/notes", async (req, res, next) => {
   try {
     if (!req.body?.date) return res.status(400).json({ error: "Note date is required." });
     res.json(await upsertNote(req.body.date, req.body.body || ""));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/notes/:date", async (req, res, next) => {
+  try {
+    res.json(await upsertNote(req.params.date, req.body?.body || ""));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/notes/:date", async (req, res, next) => {
+  try {
+    await deleteNoteByDate(req.params.date);
+    res.status(204).end();
   } catch (error) {
     next(error);
   }
@@ -143,6 +171,78 @@ app.get("/api/settings", async (_req, res, next) => {
 app.patch("/api/settings", async (req, res, next) => {
   try {
     res.json(await patchSettings(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/rss-feeds", async (_req, res, next) => {
+  try {
+    res.json(await listRssFeeds());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/rss-feeds", async (req, res, next) => {
+  try {
+    if (!req.body?.url) return res.status(400).json({ error: "RSS feed URL is required." });
+    res.status(201).json(await createRssFeed(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/rss-feeds/:id", async (req, res, next) => {
+  try {
+    const feed = await updateRssFeed(Number(req.params.id), req.body);
+    if (!feed) return res.status(404).json({ error: "RSS feed not found." });
+    res.json(feed);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/rss-feeds/:id", async (req, res, next) => {
+  try {
+    await deleteRssFeed(Number(req.params.id));
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/finance/watchlist", async (_req, res, next) => {
+  try {
+    res.json(await listFinanceWatchlist());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/finance/watchlist", async (req, res, next) => {
+  try {
+    if (!req.body?.symbol?.trim()) return res.status(400).json({ error: "Watchlist symbol is required." });
+    res.status(201).json(await createFinanceWatchlistItem(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/finance/watchlist/:id", async (req, res, next) => {
+  try {
+    const item = await updateFinanceWatchlistItem(Number(req.params.id), req.body);
+    if (!item) return res.status(404).json({ error: "Watchlist item not found." });
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/finance/watchlist/:id", async (req, res, next) => {
+  try {
+    await deleteFinanceWatchlistItem(Number(req.params.id));
+    res.status(204).end();
   } catch (error) {
     next(error);
   }

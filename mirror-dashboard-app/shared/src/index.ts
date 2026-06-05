@@ -62,6 +62,19 @@ export interface FinanceQuote {
   changePercent: number | null;
 }
 
+export interface RssFeed {
+  id: number;
+  title: string;
+  url: string;
+  enabled: boolean;
+}
+
+export interface FinanceWatchlistItem {
+  id: number;
+  symbol: string;
+  enabled: boolean;
+}
+
 export interface DashboardSummary {
   generatedAt: string;
   calendar: CalendarEvent[];
