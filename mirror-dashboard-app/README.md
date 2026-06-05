@@ -2,6 +2,8 @@
 
 Standalone touchscreen family command-center dashboard inspired by the existing MagicMirror prototype. MagicMirror remains untouched; this app is a new React, Express, and SQLite runtime intended for Raspberry Pi OS and Chromium kiosk mode.
 
+This branch is Phase 1 only. Calendar, weather, news, and finance use mock placeholder adapters so the app structure and dashboard UI can be tested before real integrations are added.
+
 ## Structure
 
 ```text
@@ -39,15 +41,15 @@ Copy `.env.example` to `.env` and adjust values:
 cp .env.example .env
 ```
 
-Important settings:
+Phase 1 settings are placeholders:
 
-- `ICAL_FEED_URL`: private iCal URL for the first calendar integration.
-- `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_TIMEZONE`: Open-Meteo location.
-- `DEFAULT_RSS_FEEDS`: comma-separated RSS feed URLs.
-- `FINANCE_WATCHLIST`: comma-separated ticker symbols.
-- `FINANCE_PROVIDER`: currently `yahoo` for testing through the isolated provider interface.
+- `ICAL_FEED_URL`: reserved for a future iCal calendar adapter.
+- `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_TIMEZONE`: reserved for a future weather adapter.
+- `DEFAULT_RSS_FEEDS`: reserved for a future RSS adapter.
+- `FINANCE_WATCHLIST`: used by the mock finance provider to shape placeholder cards.
+- `FINANCE_PROVIDER`: keep as `mock` in Phase 1.
 
-When values are missing or providers fail, the app uses demo data so the UI is still testable.
+The app intentionally uses mock data in Phase 1.
 
 ## API
 
@@ -104,7 +106,7 @@ npm run start
 Then open Chromium on the Pi:
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:4174
+chromium --kiosk --noerrdialogs --disable-infobars http://localhost:4174
 ```
 
 The helper script at `scripts/start-kiosk.sh` also disables screen blanking for kiosk use.
@@ -124,7 +126,8 @@ sudo systemctl status mirror-dashboard
 ## Next Implementation Passes
 
 - Add touchscreen create/edit forms for tasks and notes.
-- Add calendar detail pages and event creation.
-- Add Google Calendar API write support behind the calendar service layer.
+- Add weekly calendar view matching the MagicMirror family calendar reference.
+- Add iCal feeds for Google Calendar and iPhone/iCloud calendars.
+- Add Open-Meteo weather adapter.
+- Add RSS news adapter and reader panel behavior.
 - Add finance settings and a reliable paid finance provider behind `server/src/services/finance/FinanceProvider.ts`.
-- Add reader panel behavior for news links.

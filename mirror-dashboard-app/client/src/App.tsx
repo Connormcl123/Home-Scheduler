@@ -111,7 +111,7 @@ export default function App() {
             </div>
             <div className="text-right">
               <p className="text-sm font-semibold uppercase text-slate-500">Family Command Center</p>
-              <p className="text-lg text-slate-600">{dashboard.weather.locationName} · {dashboard.weather.current.description}</p>
+              <p className="text-lg text-slate-600">{dashboard.weather.locationName} - {dashboard.weather.current.description}</p>
               {error && <p className="text-sm text-amber-700">Using demo fallback: {error}</p>}
             </div>
           </header>
@@ -163,8 +163,8 @@ function WeatherCard({ dashboard }: { dashboard: DashboardSummary }) {
       <SectionTitle icon={CloudSun} title="Weather" />
       <div className="mt-5 flex items-end justify-between">
         <div>
-          <p className="text-8xl font-bold">{dashboard.weather.current.temperature}°</p>
-          <p className="text-2xl text-slate-600">Feels like {dashboard.weather.current.apparentTemperature}°</p>
+          <p className="text-8xl font-bold">{dashboard.weather.current.temperature} deg</p>
+          <p className="text-2xl text-slate-600">Feels like {dashboard.weather.current.apparentTemperature} deg</p>
         </div>
         <p className="mb-3 rounded-full bg-sky-100 px-5 py-3 text-lg font-semibold text-sky-800">{dashboard.weather.current.description}</p>
       </div>
@@ -172,7 +172,7 @@ function WeatherCard({ dashboard }: { dashboard: DashboardSummary }) {
         {dashboard.weather.daily.slice(0, 4).map((day) => (
           <div key={day.date} className="rounded-2xl bg-white/70 p-4">
             <p className="font-bold">{formatShortDate(day.date)}</p>
-            <p className="text-slate-600">{day.high}° / {day.low}°</p>
+            <p className="text-slate-600">{day.high} deg / {day.low} deg</p>
           </div>
         ))}
       </div>
@@ -225,7 +225,7 @@ function FinancePanel({ quotes }: { quotes: FinanceQuote[] }) {
             <p className="mt-2 truncate text-2xl font-semibold">{quote.name}</p>
             <p className="mt-6 text-5xl font-bold">{money(quote.price)}</p>
             <p className={`mt-2 text-2xl font-bold ${quote.changePercent && quote.changePercent < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-              {signed(quote.change)} · {signed(quote.changePercent)}%
+              {signed(quote.change)} - {signed(quote.changePercent)}%
             </p>
           </div>
         ))}

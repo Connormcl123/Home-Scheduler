@@ -23,7 +23,7 @@ export const config = {
   },
   rssFeeds: (process.env.DEFAULT_RSS_FEEDS || "https://feeds.npr.org/1001/rss.xml").split(",").map((feed) => feed.trim()).filter(Boolean),
   finance: {
-    provider: process.env.FINANCE_PROVIDER || "yahoo",
+    provider: process.env.FINANCE_PROVIDER || "mock",
     watchlist: (process.env.FINANCE_WATCHLIST || "AAPL,MSFT,SPY,QQQ").split(",").map((symbol) => symbol.trim()).filter(Boolean)
   }
 };
