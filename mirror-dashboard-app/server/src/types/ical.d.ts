@@ -1,3 +1,6 @@
 declare module "ical" {
-  export function parseICS(input: string): Record<string, unknown>;
+  const ical: {
+    parseICS(input: string): Record<string, unknown>;
+  };
+  export default ical;
 }

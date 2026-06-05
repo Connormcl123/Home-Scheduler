@@ -1,4 +1,4 @@
-import { parseICS } from "ical";
+import ical from "ical";
 import type { CalendarEvent } from "@mirror-dashboard/shared";
 import { addDays } from "../utils/dates.js";
 import { getSettings } from "./settings.js";
@@ -12,7 +12,7 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
     if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
 
     const text = await response.text();
-    const parsed = parseICS(text);
+    const parsed = ical.parseICS(text);
     const now = new Date();
     const horizon = addDays(now, 45);
 
