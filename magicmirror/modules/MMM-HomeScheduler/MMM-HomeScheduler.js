@@ -79,9 +79,13 @@ Module.register("MMM-HomeScheduler", {
     this.editor = null;
     this.keyboardTarget = null;
     this.resizeState = null;
+    this.drawerResizeState = null;
+    this.drawerSize = Number(this.readSetting("drawerSize", 0.34));
+    this.weekPanState = null;
     this.dragState = null;
     this.dragPressTimer = null;
     this.suppressNextEventClick = false;
+    this.suppressNextSlotClick = false;
     this.calendarStatus = "Waiting for calendar feed...";
     this.selectedDay = this.startOfDay(new Date());
     this.weekStart = this.startOfWeek(new Date());
@@ -365,8 +369,9 @@ Module.register("MMM-HomeScheduler", {
           ${this.config.profiles.map((profile) => `<span class="${profile.id}">${this.escape(profile.label)}</span>`).join("")}
         </div>
         <div class="hs-feed-status">${this.escape(this.calendarStatus)}</div>
-        <div class="hs-calendar-workspace">
+        <div class="hs-calendar-workspace" style="--hs-drawer-size: ${Math.round(this.drawerSize * 100)}%;">
           <section class="hs-week-board">${this.renderWeekGrid()}</section>
+          <button class="hs-drawer-resizer" data-drawer-resizer type="button" aria-label="Resize details panel"></button>
           <aside class="hs-drawer">
             <div class="hs-tabs">
               ${["agenda", "todo", "notes", "chores", "meals"].map((tab) => `
@@ -382,7 +387,7 @@ Module.register("MMM-HomeScheduler", {
 
   renderWeekGrid: function () {
     const days = Array.from({ length: 7 }, (_, index) => this.addDays(this.weekStart, index));
-    const hours = [6, 9, 12, 15, 18, 21];
+    const hours = Array.from({ length: 10 }, (_, index) => 5 + (index * 2));
     const timeColumn = `
       <div class="hs-time-column">
         <div></div>
@@ -407,14 +412,12 @@ Module.register("MMM-HomeScheduler", {
   renderTimeSlot: function (day, dayEvents, hour) {
     const blocks = dayEvents.filter((event) => {
       const eventHour = Number(event.time.split(":")[0]);
-      return eventHour >= hour && eventHour < hour + 3;
+      return eventHour >= hour && eventHour < hour + 2;
     }).map((event) => `
       <div class="hs-block ${event.profile || "family"}" data-event-id="${event.id}" style="min-height: ${this.eventBlockHeight(event)}px;">
-        <button class="hs-resize hs-resize-top" data-resize-event="${event.id}" data-resize-edge="top" type="button" aria-label="Move event start earlier or later"></button>
         <span>${this.formatEventTime(event.time)} / ${this.profileLabel(event.profile)}</span>
         <strong>${this.escape(event.title)}</strong>
         <em>${this.eventTimeRange(event)}</em>
-        <button class="hs-resize hs-resize-bottom" data-resize-event="${event.id}" data-resize-edge="bottom" type="button" aria-label="Extend or shrink event"></button>
       </div>
     `).join("");
     const slotLabel = `${new Intl.DateTimeFormat([], { weekday: "short" }).format(day)} ${this.formatHour(hour)}`;
@@ -773,14 +776,30 @@ Module.register("MMM-HomeScheduler", {
         this.touch();
       });
     });
+    const weekBoard = wrapper.querySelector(".hs-week-board");
+    if (weekBoard) {
+      weekBoard.addEventListener("pointerdown", (event) => this.startWeekPan(event, weekBoard));
+    }
+    const drawerResizer = wrapper.querySelector("[data-drawer-resizer]");
+    if (drawerResizer) {
+      drawerResizer.addEventListener("pointerdown", (event) => this.startDrawerResize(event, wrapper));
+    }
     wrapper.addEventListener("pointerdown", (event) => {
+      if (event.target.closest(".hs-week-board, [data-drawer-resizer]")) {
+        this.swipeStart = null;
+        return;
+      }
       this.swipeStart = { x: event.clientX, y: event.clientY };
       this.markActivity();
     });
     wrapper.addEventListener("pointerup", (event) => this.handleSwipe(event));
     wrapper.querySelectorAll("[data-add-slot]").forEach((slot) => {
       slot.addEventListener("click", (event) => {
-        if (event.target.closest("[data-resize-event]") || event.target.closest("[data-event-id]")) {
+        if (this.suppressNextSlotClick) {
+          this.suppressNextSlotClick = false;
+          return;
+        }
+        if (event.target.closest("[data-event-id]")) {
           return;
         }
         this.openEventEditor({
@@ -870,7 +889,6 @@ Module.register("MMM-HomeScheduler", {
     });
     wrapper.querySelectorAll("[data-event-id]").forEach((block) => {
       block.addEventListener("click", (event) => {
-        if (event.target.closest("[data-resize-event]")) return;
         if (this.suppressNextEventClick) {
           this.suppressNextEventClick = false;
           return;
@@ -880,16 +898,9 @@ Module.register("MMM-HomeScheduler", {
       });
       block.addEventListener("pointerdown", (event) => this.queueEventDrag(event, block));
     });
-    wrapper.querySelectorAll("[data-resize-event]").forEach((handle) => {
-      handle.addEventListener("pointerdown", (event) => this.startResize(event, handle));
-    });
   },
 
   queueEventDrag: function (event, block) {
-    if (event.target.closest("[data-resize-event]")) {
-      return;
-    }
-
     event.stopPropagation();
     this.clearDragPress();
 
@@ -908,6 +919,83 @@ Module.register("MMM-HomeScheduler", {
       }
     });
     document.addEventListener("pointerup", this.boundPendingDragEnd = () => this.clearDragPress());
+  },
+
+  startWeekPan: function (event, weekBoard) {
+    if (event.target.closest("button, [data-event-id]")) {
+      return;
+    }
+
+    this.weekPanState = {
+      board: weekBoard,
+      x: event.clientX,
+      y: event.clientY,
+      left: weekBoard.scrollLeft,
+      top: weekBoard.scrollTop
+    };
+
+    weekBoard.classList.add("is-panning");
+    event.preventDefault();
+
+    document.addEventListener("pointermove", this.boundWeekPanMove = (moveEvent) => this.moveWeekPan(moveEvent));
+    document.addEventListener("pointerup", this.boundWeekPanEnd = () => this.endWeekPan());
+  },
+
+  moveWeekPan: function (event) {
+    if (!this.weekPanState) return;
+    const deltaX = event.clientX - this.weekPanState.x;
+    const deltaY = event.clientY - this.weekPanState.y;
+    if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+      this.suppressNextSlotClick = true;
+    }
+    this.weekPanState.board.scrollLeft = this.weekPanState.left - deltaX;
+    this.weekPanState.board.scrollTop = this.weekPanState.top + deltaY;
+  },
+
+  endWeekPan: function () {
+    if (!this.weekPanState) return;
+    this.weekPanState.board.classList.remove("is-panning");
+    document.removeEventListener("pointermove", this.boundWeekPanMove);
+    document.removeEventListener("pointerup", this.boundWeekPanEnd);
+    this.weekPanState = null;
+  },
+
+  startDrawerResize: function (event, wrapper) {
+    const workspace = wrapper.querySelector(".hs-calendar-workspace");
+    if (!workspace) return;
+
+    const bounds = workspace.getBoundingClientRect();
+    this.drawerResizeState = {
+      workspace,
+      bounds
+    };
+
+    event.preventDefault();
+    event.stopPropagation();
+    workspace.classList.add("is-resizing");
+
+    document.addEventListener("pointermove", this.boundDrawerResizeMove = (moveEvent) => this.moveDrawerResize(moveEvent));
+    document.addEventListener("pointerup", this.boundDrawerResizeEnd = () => this.endDrawerResize());
+  },
+
+  moveDrawerResize: function (event) {
+    if (!this.drawerResizeState) return;
+    const { workspace, bounds } = this.drawerResizeState;
+    const vertical = window.matchMedia("(max-width: 980px)").matches || workspace.clientWidth < 720;
+    const rawSize = vertical
+      ? (bounds.bottom - event.clientY) / bounds.height
+      : (bounds.right - event.clientX) / bounds.width;
+    this.drawerSize = Math.max(0.22, Math.min(0.68, rawSize));
+    workspace.style.setProperty("--hs-drawer-size", `${Math.round(this.drawerSize * 100)}%`);
+  },
+
+  endDrawerResize: function () {
+    if (!this.drawerResizeState) return;
+    this.drawerResizeState.workspace.classList.remove("is-resizing");
+    this.writeSetting("drawerSize", this.drawerSize);
+    document.removeEventListener("pointermove", this.boundDrawerResizeMove);
+    document.removeEventListener("pointerup", this.boundDrawerResizeEnd);
+    this.drawerResizeState = null;
   },
 
   clearDragPress: function () {
@@ -1449,8 +1537,21 @@ Module.register("MMM-HomeScheduler", {
     }
   },
 
+  readSetting: function (name, fallback) {
+    try {
+      const value = JSON.parse(localStorage.getItem(`MMM-HomeScheduler.setting.${name}`));
+      return value ?? fallback;
+    } catch (error) {
+      return fallback;
+    }
+  },
+
   writeItems: function (name, value) {
     localStorage.setItem(`MMM-HomeScheduler.${name}`, JSON.stringify(value));
+  },
+
+  writeSetting: function (name, value) {
+    localStorage.setItem(`MMM-HomeScheduler.setting.${name}`, JSON.stringify(value));
   },
 
   defaultBudgets: function () {

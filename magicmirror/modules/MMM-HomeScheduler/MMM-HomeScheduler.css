@@ -328,8 +328,8 @@
 
 .hs-calendar-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.32fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 12px minmax(260px, var(--hs-drawer-size, 34%));
+  gap: 8px;
   min-height: 0;
 }
 
@@ -344,19 +344,46 @@
 
 .hs-week-board {
   overflow: auto;
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.hs-week-board.is-panning {
+  cursor: grabbing;
+}
+
+.hs-drawer-resizer {
+  align-self: stretch;
+  min-width: 12px;
+  min-height: 0;
+  border: 1px solid var(--hs-line);
+  border-radius: 999px;
+  padding: 0;
+  background:
+    linear-gradient(180deg, transparent, rgba(88, 169, 154, 0.22), transparent),
+    rgba(255, 255, 255, 0.48);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.hs-calendar-workspace.is-resizing .hs-drawer-resizer {
+  background:
+    linear-gradient(180deg, transparent, rgba(88, 169, 154, 0.42), transparent),
+    rgba(255, 255, 255, 0.72);
 }
 
 .hs-week-grid {
   display: grid;
   grid-template-columns: 58px repeat(7, minmax(118px, 1fr));
-  height: 100%;
+  min-height: 970px;
   min-width: 900px;
 }
 
 .hs-time-column,
 .hs-day-column {
   display: grid;
-  grid-template-rows: 74px repeat(6, minmax(72px, 1fr));
+  grid-template-rows: 74px repeat(10, minmax(88px, 1fr));
   border-right: 1px solid var(--hs-line);
 }
 
@@ -483,30 +510,6 @@
   opacity: 0.96;
   pointer-events: none;
   transform: translate(-9999px, -9999px);
-}
-
-.hs-drag-ghost .hs-resize {
-  display: none;
-}
-
-.hs-resize {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  min-height: 10px;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.44);
-  cursor: ns-resize;
-}
-
-.hs-resize-top {
-  top: 0;
-}
-
-.hs-resize-bottom {
-  bottom: 0;
 }
 
 .hs-editor-backdrop {
@@ -1154,18 +1157,29 @@
 
   .hs-calendar-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(126px, 0.34fr);
+    grid-template-rows: minmax(0, 1fr) 16px minmax(126px, var(--hs-drawer-size, 34%));
     gap: 8px;
+  }
+
+  .hs-drawer-resizer {
+    width: 100%;
+    min-height: 16px;
+    border-radius: 999px;
+    background:
+      linear-gradient(90deg, transparent, rgba(88, 169, 154, 0.28), transparent),
+      rgba(255, 255, 255, 0.58);
+    cursor: ns-resize;
   }
 
   .hs-week-grid {
     grid-template-columns: 40px repeat(7, minmax(0, 1fr));
+    min-height: 750px;
     min-width: 0;
   }
 
   .hs-time-column,
   .hs-day-column {
-    grid-template-rows: 46px repeat(6, minmax(44px, 1fr));
+    grid-template-rows: 46px repeat(10, minmax(68px, 1fr));
   }
 
   .hs-time-column {
@@ -1334,18 +1348,29 @@
 
 .hs-shell.hs-mode-compact .hs-calendar-workspace {
   grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, 1fr) minmax(126px, 0.34fr);
+  grid-template-rows: minmax(0, 1fr) 16px minmax(126px, var(--hs-drawer-size, 34%));
   gap: 8px;
+}
+
+.hs-shell.hs-mode-compact .hs-drawer-resizer {
+  width: 100%;
+  min-height: 16px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, transparent, rgba(88, 169, 154, 0.28), transparent),
+    rgba(255, 255, 255, 0.58);
+  cursor: ns-resize;
 }
 
 .hs-shell.hs-mode-compact .hs-week-grid {
   grid-template-columns: 40px repeat(7, minmax(0, 1fr));
+  min-height: 750px;
   min-width: 0;
 }
 
 .hs-shell.hs-mode-compact .hs-time-column,
 .hs-shell.hs-mode-compact .hs-day-column {
-  grid-template-rows: 46px repeat(6, minmax(44px, 1fr));
+  grid-template-rows: 46px repeat(10, minmax(68px, 1fr));
 }
 
 .hs-shell.hs-mode-compact .hs-time-column {
