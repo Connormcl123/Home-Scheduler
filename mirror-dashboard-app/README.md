@@ -144,12 +144,21 @@ Provider data is read-only in this phase. Calendar edits in the weekly board are
 - Dark mode can be toggled from the left rail and is saved in browser local storage.
 - The dashboard shifts a few pixels every 10 minutes to reduce static image burn-in.
 - `scripts/start-kiosk.sh` disables screen blanking through `xset` and launches Chromium in kiosk/app mode.
+- Performance mode reduces expensive blur/shadow effects and throttles drag/resize updates for smoother touch response on Raspberry Pi.
 
 Run kiosk mode on the Pi:
 
 ```bash
 cd ~/Home-Scheduler/mirror-dashboard-app
 chmod +x scripts/start-kiosk.sh
+./scripts/start-kiosk.sh
+```
+
+If touch still feels laggy, run the built production app instead of Vite dev mode:
+
+```bash
+npm run build
+npm run start
 ./scripts/start-kiosk.sh
 ```
 

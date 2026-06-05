@@ -161,7 +161,7 @@ export default function App() {
         )}
       </div>
       <div className="mx-auto flex min-h-screen max-w-[1920px] gap-5 px-6 py-5 transition-transform duration-700" style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
-        <aside className="flex w-32 flex-col items-center gap-3 rounded-[24px] border border-white/70 bg-white/65 p-3 shadow-panel backdrop-blur dark:border-white/10 dark:bg-slate-900/78">
+        <aside className="flex w-32 flex-col items-center gap-3 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
           <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full bg-amber-100 text-amber-700 dark:bg-slate-800 dark:text-sky-200" aria-label="Toggle dark mode">
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
           </button>
@@ -185,7 +185,7 @@ export default function App() {
           })}
         </aside>
         <section className="flex min-w-0 flex-1 flex-col gap-5">
-          <header className="flex items-center justify-between rounded-[24px] border border-white/70 bg-white/65 px-7 py-4 shadow-panel backdrop-blur dark:border-white/10 dark:bg-slate-900/78">
+          <header className="flex items-center justify-between rounded-[24px] border border-white/70 bg-white/80 px-7 py-4 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
             <div>
               <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
               <h1 className="text-5xl font-bold tracking-normal">{now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</h1>
@@ -297,8 +297,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     const end = new Date(calendarEvent.end || calendarEvent.start);
     const duration = end.getTime() - start.getTime();
     const offsetY = event.clientY - target.getBoundingClientRect().top;
+    let frame = 0;
+    let latestPointer: PointerEvent | null = null;
 
-    function move(pointerEvent: PointerEvent) {
+    function applyMove(pointerEvent: PointerEvent) {
       const rect = grid.getBoundingClientRect();
       const dayIndex = clamp(Math.floor(((pointerEvent.clientX - rect.left) / rect.width) * 7), 0, 6);
       const minutesFromStart = clamp(Math.round(((pointerEvent.clientY - rect.top - offsetY) / hourHeight) * 60 / 15) * 15, 0, (endHour - startHour) * 60 - 15);
@@ -308,12 +310,22 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       updateEventTime(calendarEvent.id, { start: nextStart, end: nextEnd });
     }
 
+    function move(pointerEvent: PointerEvent) {
+      latestPointer = pointerEvent;
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        if (latestPointer) applyMove(latestPointer);
+      });
+    }
+
     function up() {
+      if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     }
 
-    window.addEventListener("pointermove", move);
+    window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerup", up);
   }
 
@@ -324,8 +336,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     const grid = target.closest("[data-week-grid]") as HTMLElement | null;
     if (!grid) return;
     const start = new Date(calendarEvent.start);
+    let frame = 0;
+    let latestPointer: PointerEvent | null = null;
 
-    function move(pointerEvent: PointerEvent) {
+    function applyMove(pointerEvent: PointerEvent) {
       const rect = grid.getBoundingClientRect();
       const minutesFromStart = clamp(Math.round(((pointerEvent.clientY - rect.top) / hourHeight) * 60 / 15) * 15, 15, (endHour - startHour) * 60);
       const nextEnd = new Date(start);
@@ -334,12 +348,22 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       updateEventTime(calendarEvent.id, { end: nextEnd });
     }
 
+    function move(pointerEvent: PointerEvent) {
+      latestPointer = pointerEvent;
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        if (latestPointer) applyMove(latestPointer);
+      });
+    }
+
     function up() {
+      if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     }
 
-    window.addEventListener("pointermove", move);
+    window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerup", up);
   }
 
@@ -392,7 +416,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
               <div
                 key={calendarEvent.id}
                 onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
-                className="absolute cursor-grab select-none rounded-2xl border border-sky-300 bg-sky-100 px-4 py-3 shadow-lg shadow-sky-200/60 active:cursor-grabbing"
+                className="absolute cursor-grab select-none rounded-2xl border border-sky-300 bg-sky-100 px-4 py-3 shadow-sm active:cursor-grabbing"
                 style={{
                   left: `calc(${dayIndex * dayWidthPercent}% + 8px)`,
                   top,
@@ -712,7 +736,7 @@ function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-[24px] border border-white/75 bg-mirror-card p-6 shadow-panel backdrop-blur dark:border-white/10 dark:bg-slate-900/78 ${className}`}>{children}</section>;
+  return <section className={`rounded-[24px] border border-white/75 bg-mirror-card p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${className}`}>{children}</section>;
 }
 
 function formatEventTime(value: string) {

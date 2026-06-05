@@ -17,6 +17,10 @@ CHROMIUM_BIN="${CHROMIUM_BIN:-chromium}"
   --disable-infobars \
   --disable-features=TranslateUI \
   --disable-session-crashed-bubble \
+  --disable-renderer-backgrounding \
+  --disable-background-timer-throttling \
+  --enable-gpu-rasterization \
+  --ignore-gpu-blocklist \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
   http://localhost:4174
