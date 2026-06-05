@@ -4,6 +4,7 @@ import { getDb } from "../db.js";
 
 const keys = {
   calendarFeedUrl: "calendar.feedUrl",
+  calendarFeedUrls: "calendar.feedUrls",
   weatherLatitude: "weather.latitude",
   weatherLongitude: "weather.longitude",
   weatherTimezone: "weather.timezone"
@@ -24,9 +25,15 @@ export async function getSettings(): Promise<AppSettings> {
   const db = await getDb();
   const rssRows = await db.all("SELECT url FROM rss_feeds WHERE enabled = 1 ORDER BY id") as Array<{ url: string }>;
   const watchRows = await db.all("SELECT symbol FROM finance_watchlist WHERE enabled = 1 ORDER BY id") as Array<{ symbol: string }>;
+  const storedCalendarFeedUrls = await getSetting(keys.calendarFeedUrls, "");
+  const calendarFeedUrls = storedCalendarFeedUrls
+    ? splitList(storedCalendarFeedUrls)
+    : config.calendar.icalFeedUrls;
+  const calendarFeedUrl = await getSetting(keys.calendarFeedUrl, config.calendar.icalFeedUrl || calendarFeedUrls[0] || "");
 
   return {
-    calendarFeedUrl: await getSetting(keys.calendarFeedUrl, config.calendar.icalFeedUrl),
+    calendarFeedUrl,
+    calendarFeedUrls: calendarFeedUrls.length ? calendarFeedUrls : calendarFeedUrl ? [calendarFeedUrl] : [],
     weatherLatitude: await getSetting(keys.weatherLatitude, config.weather.latitude),
     weatherLongitude: await getSetting(keys.weatherLongitude, config.weather.longitude),
     weatherTimezone: await getSetting(keys.weatherTimezone, config.weather.timezone),
@@ -38,6 +45,7 @@ export async function getSettings(): Promise<AppSettings> {
 export async function patchSettings(input: Partial<AppSettings>) {
   const db = await getDb();
   if (input.calendarFeedUrl !== undefined) await setSetting(keys.calendarFeedUrl, input.calendarFeedUrl);
+  if (input.calendarFeedUrls !== undefined) await setSetting(keys.calendarFeedUrls, input.calendarFeedUrls.join(","));
   if (input.weatherLatitude !== undefined) await setSetting(keys.weatherLatitude, input.weatherLatitude);
   if (input.weatherLongitude !== undefined) await setSetting(keys.weatherLongitude, input.weatherLongitude);
   if (input.weatherTimezone !== undefined) await setSetting(keys.weatherTimezone, input.weatherTimezone);
@@ -57,4 +65,8 @@ export async function patchSettings(input: Partial<AppSettings>) {
   }
 
   return getSettings();
+}
+
+function splitList(value: string) {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
 }

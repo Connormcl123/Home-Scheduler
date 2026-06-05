@@ -8,6 +8,10 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, "..");
 const appRoot = path.resolve(serverRoot, "..");
+const calendarFeedUrls = [
+  ...(process.env.ICAL_FEED_URLS || "").split(","),
+  process.env.ICAL_FEED_URL || ""
+].map((feed) => feed.trim()).filter(Boolean);
 
 export const config = {
   port: Number(process.env.PORT || 4174),
@@ -19,7 +23,8 @@ export const config = {
     timezone: process.env.WEATHER_TIMEZONE || "America/New_York"
   },
   calendar: {
-    icalFeedUrl: process.env.ICAL_FEED_URL || ""
+    icalFeedUrl: process.env.ICAL_FEED_URL || "",
+    icalFeedUrls: calendarFeedUrls
   },
   rssFeeds: (process.env.DEFAULT_RSS_FEEDS || "https://feeds.npr.org/1001/rss.xml").split(",").map((feed) => feed.trim()).filter(Boolean),
   finance: {

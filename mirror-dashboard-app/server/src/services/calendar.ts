@@ -5,21 +5,28 @@ import { getSettings } from "./settings.js";
 
 export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const settings = await getSettings();
-  if (!settings.calendarFeedUrl) return mockCalendarEvents();
+  const feedUrls = settings.calendarFeedUrls.length ? settings.calendarFeedUrls : settings.calendarFeedUrl ? [settings.calendarFeedUrl] : [];
+  if (!feedUrls.length) return mockCalendarEvents();
 
+  const now = new Date();
+  const horizon = addDays(now, 45);
+  const eventGroups = await Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index, now, horizon)));
+  const events = eventGroups.flat().sort((a, b) => a.start.localeCompare(b.start));
+
+  return events.length ? events : mockCalendarEvents();
+}
+
+async function fetchCalendarFeed(feedUrl: string, feedIndex: number, now: Date, horizon: Date): Promise<CalendarEvent[]> {
   try {
-    const response = await fetch(settings.calendarFeedUrl);
+    const response = await fetch(feedUrl);
     if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
 
     const text = await response.text();
     const parsed = ical.parseICS(text);
-    const now = new Date();
-    const horizon = addDays(now, 45);
-
-    const events = Object.values(parsed)
+    return Object.values(parsed)
       .filter((item: any) => item.type === "VEVENT" && item.start)
       .map((item: any): CalendarEvent => ({
-        id: item.uid || `${item.summary}-${item.start}`,
+        id: `${feedIndex}-${item.uid || `${item.summary}-${item.start}`}`,
         title: item.summary || "Calendar event",
         start: toIsoDateTime(item.start),
         end: item.end ? toIsoDateTime(item.end) : undefined,
@@ -29,22 +36,20 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
       .filter((event) => {
         const start = new Date(event.start);
         return start >= addDays(now, -1) && start <= horizon;
-      })
-      .sort((a, b) => a.start.localeCompare(b.start));
-
-    return events.length ? events : mockCalendarEvents();
+      });
   } catch (error) {
-    console.warn("Calendar feed unavailable, using mock events:", error);
-    return mockCalendarEvents();
+    console.warn(`Calendar feed unavailable (${feedIndex + 1}), skipping:`, error);
+    return [];
   }
 }
 
 export async function getCalendarProviderStatus() {
   const settings = await getSettings();
+  const feedCount = settings.calendarFeedUrls.length || (settings.calendarFeedUrl ? 1 : 0);
   return {
-    provider: settings.calendarFeedUrl ? "ical" : "mock",
-    configured: Boolean(settings.calendarFeedUrl),
-    message: settings.calendarFeedUrl ? "iCal feed configured." : "No iCal feed configured; using mock calendar data."
+    provider: feedCount ? "ical" : "mock",
+    configured: feedCount > 0,
+    message: feedCount ? `${feedCount} iCal feed${feedCount === 1 ? "" : "s"} configured.` : "No iCal feed configured; using mock calendar data."
   };
 }
 

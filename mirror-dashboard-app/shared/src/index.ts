@@ -90,6 +90,7 @@ export interface DashboardSummary {
 
 export interface AppSettings {
   calendarFeedUrl: string;
+  calendarFeedUrls: string[];
   weatherLatitude: string;
   weatherLongitude: string;
   weatherTimezone: string;

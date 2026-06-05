@@ -43,7 +43,8 @@ cp .env.example .env
 
 Important settings:
 
-- `ICAL_FEED_URL`: private iCal URL for Google Calendar secret iCal links or iCloud published calendars.
+- `ICAL_FEED_URL`: one private iCal URL for Google Calendar secret iCal links or iCloud published calendars.
+- `ICAL_FEED_URLS`: multiple private iCal URLs separated by commas. Use this for several iCloud calendars.
 - `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_TIMEZONE`: Open-Meteo location.
 - `DEFAULT_RSS_FEEDS`: comma-separated RSS feed URLs.
 - `FINANCE_WATCHLIST`: used by the mock finance provider to shape placeholder cards.
@@ -131,12 +132,20 @@ Calendar drag/resize is currently UI-only against mock events. The next calendar
 
 ## Phase 3 Providers
 
-- Calendar reads from `ICAL_FEED_URL` when configured. Use a Google Calendar secret iCal address or an iCloud published calendar URL.
+- Calendar reads from `ICAL_FEED_URLS` when configured, or `ICAL_FEED_URL` for one feed. Use Google Calendar secret iCal addresses or iCloud published calendar URLs.
 - Weather reads from Open-Meteo using the configured latitude, longitude, and timezone.
 - News reads RSS feeds from the local feed storage table, falling back to `DEFAULT_RSS_FEEDS`.
 - Finance reads the local watchlist symbols and uses `FINANCE_PROVIDER=yahoo` for the unofficial test provider.
 
 Provider data is read-only in this phase. Calendar edits in the weekly board are still local UI behavior until Google Calendar write support is added.
+
+Multiple iCloud calendars:
+
+```bash
+ICAL_FEED_URLS=https://p1-caldav.icloud.com/published/2/calendar-one,https://p2-caldav.icloud.com/published/2/calendar-two,https://p3-caldav.icloud.com/published/2/calendar-three,https://p4-caldav.icloud.com/published/2/calendar-four
+```
+
+If Apple gives you `webcal://...`, change it to `https://...` before adding it.
 
 ## Phase 4 Kiosk Hardening
 
