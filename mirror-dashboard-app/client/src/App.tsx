@@ -22,6 +22,7 @@ import {
 } from "./api";
 
 type View = "home" | "calendar" | "tasks" | "notes" | "finance" | "settings";
+type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
 
 const demoDashboard: DashboardSummary = {
   generatedAt: new Date().toISOString(),
@@ -274,6 +275,12 @@ function WeatherCard({ dashboard }: { dashboard: DashboardSummary }) {
 
 function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   const [weekEvents, setWeekEvents] = useState(events.map(normalizeEventEnd));
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>("Week");
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDate, setNewEventDate] = useState(today());
+  const [newEventStart, setNewEventStart] = useState("09:00");
+  const [newEventEnd, setNewEventEnd] = useState("10:00");
   const weekStart = startOfWeek(new Date());
   const days = Array.from({ length: 7 }, (_, index) => addClientDays(weekStart, index));
   const startHour = 6;
@@ -294,6 +301,26 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
         return { ...event, start: nextStart.toISOString(), end: nextEnd.toISOString() };
       })
     );
+  }
+
+  function addLocalEvent() {
+    if (!newEventTitle.trim()) return;
+    const start = new Date(`${newEventDate}T${newEventStart}:00`);
+    const end = new Date(`${newEventDate}T${newEventEnd}:00`);
+    if (end.getTime() <= start.getTime()) end.setTime(start.getTime() + 60 * 60 * 1000);
+
+    setWeekEvents((current) => [
+      ...current,
+      {
+        id: `local-${Date.now()}`,
+        title: newEventTitle.trim(),
+        start: start.toISOString(),
+        end: end.toISOString(),
+        source: "demo"
+      }
+    ].sort((a, b) => a.start.localeCompare(b.start)));
+    setNewEventTitle("");
+    setIsEventModalOpen(false);
   }
 
   function beginDrag(event: ReactPointerEvent<HTMLDivElement>, calendarEvent: CalendarEvent) {
@@ -378,20 +405,24 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   }
 
   return (
-    <section className="flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[#f7f8f4] p-5 shadow-sm dark:border-white/10 dark:bg-slate-950">
+    <section className="relative flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[#f7f8f4] p-5 shadow-sm dark:border-white/10 dark:bg-slate-950">
       <div className="flex items-center justify-between gap-5">
         <div>
           <p className="text-lg font-bold uppercase tracking-normal text-slate-500 dark:text-slate-400">Family Calendar</p>
           <h2 className="text-5xl font-bold text-slate-900 dark:text-white">This Week</h2>
         </div>
         <div className="flex rounded-2xl bg-white p-2 shadow-sm dark:bg-slate-900">
-          {["Day", "Week", "Month", "Schedule"].map((label) => (
-            <button key={label} className={`h-16 rounded-xl px-6 text-xl font-bold ${label === "Week" ? "bg-slate-900 text-white dark:bg-sky-500" : "text-slate-500 dark:text-slate-300"}`}>
+          {(["Day", "Week", "Month", "Schedule"] as CalendarMode[]).map((label) => (
+            <button
+              key={label}
+              onClick={() => setCalendarMode(label)}
+              className={`h-16 rounded-xl px-6 text-xl font-bold ${label === calendarMode ? "bg-slate-900 text-white dark:bg-sky-500" : "text-slate-500 dark:text-slate-300"}`}
+            >
               {label}
             </button>
           ))}
         </div>
-        <button className="touch-button bg-[#ffcf5a] px-7 text-slate-900"><Plus className="mr-2 h-7 w-7" /> Event</button>
+        <button onClick={() => setIsEventModalOpen(true)} className="touch-button bg-[#ffcf5a] px-7 text-slate-900"><Plus className="mr-2 h-7 w-7" /> Event</button>
       </div>
 
       <div className="mt-5 grid min-h-0 flex-1 grid-cols-[300px_1fr] gap-5">
@@ -431,7 +462,14 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           </div>
         </aside>
 
-        <div className="min-h-0 overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900">
+        <div className="relative min-h-0 overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900">
+          {calendarMode !== "Week" && (
+            <div className="absolute inset-0 z-20 bg-white p-5 dark:bg-slate-900">
+              {calendarMode === "Day" && <CalendarDayView events={weekEvents} day={new Date()} />}
+              {calendarMode === "Month" && <CalendarMonthView events={weekEvents} monthDate={new Date()} />}
+              {calendarMode === "Schedule" && <CalendarScheduleView events={weekEvents} />}
+            </div>
+          )}
           <div className="grid grid-cols-[86px_1fr] border-b border-mirror-line">
             <div className="flex items-center justify-center text-sm font-bold text-slate-400">Time</div>
             <div className="grid grid-cols-7">
@@ -506,7 +544,111 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           </div>
         </div>
       </div>
+      {isEventModalOpen && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-8">
+          <div className="w-full max-w-3xl rounded-[28px] bg-white p-7 shadow-xl dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <h3 className="text-4xl font-bold text-slate-900 dark:text-white">Add Event</h3>
+              <button onClick={() => setIsEventModalOpen(false)} className="touch-button bg-slate-100 px-6 text-slate-700 dark:bg-slate-800 dark:text-slate-100">Close</button>
+            </div>
+            <div className="mt-6 grid gap-4">
+              <input value={newEventTitle} onChange={(event) => setNewEventTitle(event.target.value)} className="touch-input" placeholder="Event title" autoFocus />
+              <div className="grid grid-cols-3 gap-4">
+                <input value={newEventDate} onChange={(event) => setNewEventDate(event.target.value)} className="touch-input" type="date" />
+                <input value={newEventStart} onChange={(event) => setNewEventStart(event.target.value)} className="touch-input" type="time" />
+                <input value={newEventEnd} onChange={(event) => setNewEventEnd(event.target.value)} className="touch-input" type="time" />
+              </div>
+              <button onClick={addLocalEvent} className="touch-button bg-[#ffcf5a] text-slate-900"><Plus className="mr-2 h-7 w-7" /> Add to Calendar</button>
+              <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">This adds a local display event for now. Google/iCloud write-back comes in the calendar persistence phase.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function CalendarDayView({ events, day }: { events: CalendarEvent[]; day: Date }) {
+  const dayEvents = events.filter((event) => isSameClientDate(new Date(event.start), day)).sort((a, b) => a.start.localeCompare(b.start));
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-end justify-between border-b border-mirror-line pb-4">
+        <div>
+          <p className="text-lg font-bold uppercase text-slate-500">Day View</p>
+          <h3 className="text-5xl font-bold text-slate-900 dark:text-white">{day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</h3>
+        </div>
+        <p className="rounded-full bg-[#fff3c4] px-5 py-3 text-xl font-bold text-slate-700">{dayEvents.length} events</p>
+      </div>
+      <div className="mt-5 space-y-4 overflow-y-auto pr-2">
+        {dayEvents.map((event) => {
+          const colors = eventColor(event);
+          return (
+            <div key={event.id} className="rounded-3xl border-l-[12px] p-5" style={{ background: colors.soft, borderColor: colors.color }}>
+              <p className="text-lg font-bold" style={{ color: colors.text }}>{formatTimeOnly(event.start)} - {formatTimeOnly(event.end || event.start)}</p>
+              <p className="text-3xl font-bold text-slate-900">{event.title}</p>
+            </div>
+          );
+        })}
+        {!dayEvents.length && <p className="rounded-3xl bg-slate-50 p-8 text-2xl font-bold text-slate-500">No events today.</p>}
+      </div>
+    </div>
+  );
+}
+
+function CalendarMonthView({ events, monthDate }: { events: CalendarEvent[]; monthDate: Date }) {
+  const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const gridStart = startOfWeek(first);
+  const monthDays = Array.from({ length: 35 }, (_, index) => addClientDays(gridStart, index));
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-mirror-line pb-4">
+        <p className="text-lg font-bold uppercase text-slate-500">Month View</p>
+        <h3 className="text-5xl font-bold text-slate-900 dark:text-white">{monthDate.toLocaleDateString([], { month: "long", year: "numeric" })}</h3>
+      </div>
+      <div className="mt-5 grid flex-1 grid-cols-7 gap-3">
+        {monthDays.map((day) => {
+          const dayEvents = events.filter((event) => isSameClientDate(new Date(event.start), day));
+          const muted = day.getMonth() !== monthDate.getMonth();
+          return (
+            <div key={day.toISOString()} className={`min-h-28 rounded-2xl bg-[#fbfbf7] p-3 dark:bg-slate-800 ${muted ? "opacity-45" : ""}`}>
+              <p className="text-xl font-bold text-slate-700 dark:text-slate-200">{day.getDate()}</p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {dayEvents.slice(0, 4).map((event) => <span key={event.id} className="h-3 w-3 rounded-full" style={{ background: eventColor(event).color }} />)}
+              </div>
+              {dayEvents[0] && <p className="mt-2 truncate text-sm font-bold text-slate-500">{dayEvents[0].title}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarScheduleView({ events }: { events: CalendarEvent[] }) {
+  const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start));
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-mirror-line pb-4">
+        <p className="text-lg font-bold uppercase text-slate-500">Schedule View</p>
+        <h3 className="text-5xl font-bold text-slate-900 dark:text-white">Upcoming Events</h3>
+      </div>
+      <div className="mt-5 space-y-3 overflow-y-auto pr-2">
+        {sorted.map((event) => {
+          const colors = eventColor(event);
+          return (
+            <div key={event.id} className="grid grid-cols-[180px_1fr] items-center gap-4 rounded-3xl bg-[#fbfbf7] p-4 dark:bg-slate-800">
+              <div>
+                <p className="text-lg font-bold text-slate-500">{new Date(event.start).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</p>
+                <p className="text-xl font-bold" style={{ color: colors.text }}>{formatTimeOnly(event.start)}</p>
+              </div>
+              <div className="rounded-2xl border-l-[10px] p-4" style={{ background: colors.soft, borderColor: colors.color }}>
+                <p className="text-2xl font-bold text-slate-900">{event.title}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
