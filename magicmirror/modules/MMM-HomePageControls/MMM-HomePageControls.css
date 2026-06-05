@@ -16,11 +16,11 @@
   height: 44px;
   min-height: 44px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(38, 55, 49, 0.14);
   border-radius: 999px;
   padding: 0 14px;
-  background: rgba(0, 0, 0, 0.42);
-  color: #f5f1e9;
+  background: rgba(255, 255, 255, 0.78);
+  color: #22302c;
   font: inherit;
   font-size: 14px;
   font-weight: 650;
@@ -32,11 +32,11 @@
   min-width: 170px;
   justify-items: center;
   gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(38, 55, 49, 0.14);
   border-radius: 999px;
   padding: 8px 18px;
-  background: rgba(0, 0, 0, 0.38);
-  color: #f5f1e9;
+  background: rgba(255, 255, 255, 0.74);
+  color: #22302c;
 }
 
 .hpc-status strong {
@@ -45,6 +45,6 @@
 }
 
 .hpc-status span {
-  color: #b7b2aa;
+  color: #65736f;
   font-size: 11px;
 }

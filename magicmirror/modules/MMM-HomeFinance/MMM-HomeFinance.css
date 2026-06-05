@@ -8,12 +8,12 @@
   padding: clamp(18px, 3vw, 44px);
   box-sizing: border-box;
   overflow: hidden;
-  color: #ecfff9;
+  color: #22302c;
   background:
-    linear-gradient(90deg, rgba(94, 241, 212, 0.08) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    radial-gradient(circle at top right, rgba(94, 241, 212, 0.14), transparent 34%),
-    #040706;
+    linear-gradient(90deg, rgba(88, 169, 154, 0.12) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.6) 1px, transparent 1px),
+    radial-gradient(circle at top right, rgba(88, 169, 154, 0.14), transparent 34%),
+    #eef5f2;
   background-size: 44px 44px, 44px 44px, auto, auto;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
@@ -24,11 +24,11 @@
 
 .hf-shell button {
   min-height: 38px;
-  border: 1px solid rgba(94, 241, 212, 0.28);
+  border: 1px solid rgba(88, 169, 154, 0.24);
   border-radius: 6px;
   padding: 0 14px;
-  background: rgba(94, 241, 212, 0.08);
-  color: #d9fff8;
+  background: rgba(88, 169, 154, 0.12);
+  color: #22302c;
   cursor: pointer;
   font: inherit;
 }
@@ -43,7 +43,7 @@
 
 .hf-eyebrow {
   margin: 0 0 6px;
-  color: #5ef1d4;
+  color: #58a99a;
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
 .hf-title span {
   display: block;
   margin-top: 8px;
-  color: #8cebdc;
+  color: #5f7a74;
   font-size: 13px;
 }
 
@@ -85,11 +85,11 @@
   align-content: start;
   gap: 12px;
   min-height: 0;
-  border: 1px solid rgba(94, 241, 212, 0.18);
+  border: 1px solid rgba(88, 169, 154, 0.18);
   border-radius: 8px;
   padding: 14px;
-  background: rgba(0, 0, 0, 0.38);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(34, 48, 44, 0.04);
   overflow: auto;
 }
 
@@ -101,9 +101,9 @@
   place-items: center;
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, #06100f 0 58%, transparent 59%),
-    conic-gradient(#5ef1d4 calc(var(--finance-progress) * 1%), rgba(255, 255, 255, 0.1) 0);
-  box-shadow: 0 0 36px rgba(94, 241, 212, 0.14);
+    radial-gradient(circle at center, #f7fbf8 0 58%, transparent 59%),
+    conic-gradient(#58a99a calc(var(--finance-progress) * 1%), rgba(34, 48, 44, 0.1) 0);
+  box-shadow: 0 0 36px rgba(88, 169, 154, 0.14);
 }
 
 .hf-dial div {
@@ -119,7 +119,7 @@
 .hf-budget span,
 .hf-transaction span,
 .hf-note {
-  color: #8aa6a0;
+  color: #65736f;
   font-size: 13px;
 }
 
@@ -129,7 +129,7 @@
 }
 
 .hf-dial strong {
-  color: #ecfff9;
+  color: #22302c;
   font-size: clamp(42px, 6vw, 70px);
   font-weight: 260;
 }
@@ -146,24 +146,24 @@
 .hf-note {
   display: grid;
   gap: 7px;
-  border: 1px solid rgba(94, 241, 212, 0.14);
+  border: 1px solid rgba(88, 169, 154, 0.14);
   border-radius: 8px;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .hf-card strong {
-  color: #ecfff9;
+  color: #22302c;
   font-size: clamp(20px, 3vw, 34px);
   font-weight: 360;
 }
 
 .hf-card.danger strong {
-  color: #f28b82;
+  color: #dc746d;
 }
 
 .hf-card em {
-  color: #5ef1d4;
+  color: #58a99a;
   font-size: 12px;
   font-style: normal;
 }
@@ -172,12 +172,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #ecfff9;
+  color: #22302c;
   font-size: 18px;
 }
 
 .hf-section-head b {
-  color: #8cebdc;
+  color: #5f7a74;
   font-size: 13px;
 }
 
@@ -188,13 +188,13 @@
 
 .hf-budget strong,
 .hf-transaction strong {
-  color: #ecfff9;
+  color: #22302c;
   font-size: 18px;
   font-weight: 520;
 }
 
 .hf-budget b {
-  color: #8cebdc;
+  color: #5f7a74;
   font-size: 13px;
 }
 
@@ -202,7 +202,7 @@
   grid-column: 1 / -1;
   height: 10px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(34, 48, 44, 0.08);
   overflow: hidden;
 }
 
@@ -210,7 +210,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #5ef1d4;
+  background: #58a99a;
 }
 
 .hf-budget.warning .hf-meter i {
@@ -218,7 +218,7 @@
 }
 
 .hf-budget.danger .hf-meter i {
-  background: #f28b82;
+  background: #dc746d;
 }
 
 .hf-transaction {
@@ -231,15 +231,15 @@
   width: 34px;
   height: 34px;
   place-items: center;
-  border: 1px solid rgba(94, 241, 212, 0.28);
+  border: 1px solid rgba(88, 169, 154, 0.24);
   border-radius: 6px;
-  background: rgba(94, 241, 212, 0.08);
-  color: #5ef1d4 !important;
+  background: rgba(88, 169, 154, 0.12);
+  color: #58a99a !important;
   font-weight: 800;
 }
 
 .hf-transaction b {
-  color: #ecfff9;
+  color: #22302c;
   font-size: 20px;
   font-weight: 520;
 }
