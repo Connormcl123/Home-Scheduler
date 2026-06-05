@@ -13,10 +13,10 @@
   padding: 12px;
   box-sizing: border-box;
   transform: translateY(-50%);
-  border: 1px solid rgba(38, 55, 49, 0.13);
+  border: 1px solid var(--hs-line, rgba(38, 55, 49, 0.16));
   border-radius: 26px;
-  background: rgba(247, 251, 255, 0.82);
-  box-shadow: 0 20px 55px rgba(25, 44, 65, 0.16);
+  background: linear-gradient(135deg, rgba(238, 245, 242, 0.74) 0%, rgba(247, 248, 239, 0.74) 48%, rgba(231, 241, 248, 0.74) 100%);
+  box-shadow: 0 20px 55px rgba(25, 44, 65, 0.12);
   backdrop-filter: blur(18px);
   font-family: "Segoe UI", system-ui, sans-serif;
   pointer-events: auto;
@@ -33,11 +33,11 @@
   place-items: center;
   justify-content: center;
   align-items: center;
-  border: 1px solid rgba(83, 105, 125, 0.16);
+  border: 1px solid var(--hs-line, rgba(83, 105, 125, 0.16));
   border-radius: 18px;
   padding: 8px 6px;
-  background: rgba(255, 255, 255, 0.74);
-  color: #22302c;
+  background: var(--hs-panel, rgba(255, 255, 255, 0.74));
+  color: var(--hs-text, #22302c);
   font: inherit;
   font-size: 11px;
   font-weight: 650;
@@ -66,10 +66,10 @@
 }
 
 .hpc-page.active {
-  border-color: rgba(76, 139, 216, 0.42);
-  background: linear-gradient(180deg, #5fafff 0%, #3f8ee6 100%);
-  color: #ffffff;
-  box-shadow: 0 12px 24px rgba(63, 142, 230, 0.28);
+  border-color: rgba(88, 169, 154, 0.54);
+  background: linear-gradient(180deg, var(--hs-accent, #58a99a) 0%, #408d82 100%);
+  color: white;
+  box-shadow: 0 12px 24px rgba(88, 169, 154, 0.24);
 }
 
 .hpc-page span {
@@ -86,11 +86,11 @@
   min-width: 80px;
   justify-items: center;
   gap: 2px;
-  border: 1px solid rgba(83, 105, 125, 0.14);
+  border: 1px solid var(--hs-line, rgba(83, 105, 125, 0.14));
   border-radius: 18px;
   padding: 9px 6px;
-  background: rgba(255, 255, 255, 0.64);
-  color: #22302c;
+  background: rgba(255, 255, 255, 0.54);
+  color: var(--hs-text, #22302c);
 }
 
 .hpc-status strong {
@@ -103,7 +103,7 @@
 }
 
 .hpc-status span {
-  color: #65736f;
+  color: var(--hs-muted, #65736f);
   font-size: 11px;
 }
 
