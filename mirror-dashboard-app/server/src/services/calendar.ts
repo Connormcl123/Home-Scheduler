@@ -1,15 +1,50 @@
+import { parseICS } from "ical";
 import type { CalendarEvent } from "@mirror-dashboard/shared";
 import { addDays } from "../utils/dates.js";
+import { getSettings } from "./settings.js";
 
 export async function getCalendarEvents(): Promise<CalendarEvent[]> {
-  return mockCalendarEvents();
+  const settings = await getSettings();
+  if (!settings.calendarFeedUrl) return mockCalendarEvents();
+
+  try {
+    const response = await fetch(settings.calendarFeedUrl);
+    if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
+
+    const text = await response.text();
+    const parsed = parseICS(text);
+    const now = new Date();
+    const horizon = addDays(now, 45);
+
+    const events = Object.values(parsed)
+      .filter((item: any) => item.type === "VEVENT" && item.start)
+      .map((item: any): CalendarEvent => ({
+        id: item.uid || `${item.summary}-${item.start}`,
+        title: item.summary || "Calendar event",
+        start: toIsoDateTime(item.start),
+        end: item.end ? toIsoDateTime(item.end) : undefined,
+        location: item.location,
+        source: "ical"
+      }))
+      .filter((event) => {
+        const start = new Date(event.start);
+        return start >= addDays(now, -1) && start <= horizon;
+      })
+      .sort((a, b) => a.start.localeCompare(b.start));
+
+    return events.length ? events : mockCalendarEvents();
+  } catch (error) {
+    console.warn("Calendar feed unavailable, using mock events:", error);
+    return mockCalendarEvents();
+  }
 }
 
 export async function getCalendarProviderStatus() {
+  const settings = await getSettings();
   return {
-    provider: "mock",
-    configured: false,
-    message: "Phase 1 uses mock calendar data. iCal and Google Calendar adapters will be added later."
+    provider: settings.calendarFeedUrl ? "ical" : "mock",
+    configured: Boolean(settings.calendarFeedUrl),
+    message: settings.calendarFeedUrl ? "iCal feed configured." : "No iCal feed configured; using mock calendar data."
   };
 }
 
@@ -28,4 +63,9 @@ function setTime(date: Date, hours: number, minutes: number) {
   const next = new Date(date);
   next.setHours(hours, minutes, 0, 0);
   return next.toISOString();
+}
+
+function toIsoDateTime(value: Date | string | number | undefined) {
+  if (!value) return new Date().toISOString();
+  return new Date(value).toISOString();
 }

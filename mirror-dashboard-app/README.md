@@ -2,7 +2,7 @@
 
 Standalone touchscreen family command-center dashboard inspired by the existing MagicMirror prototype. MagicMirror remains untouched; this app is a new React, Express, and SQLite runtime intended for Raspberry Pi OS and Chromium kiosk mode.
 
-This branch is Phase 2. Calendar, weather, news, and finance still use mock placeholder adapters, while tasks, daily notes, RSS feed list storage, and finance watchlist storage are editable through the local touchscreen UI and SQLite API.
+This branch is Phase 3. Calendar, weather, news, and finance now have first-pass read providers with mock fallbacks, while tasks, daily notes, RSS feed list storage, and finance watchlist storage are editable through the local touchscreen UI and SQLite API.
 
 ## Structure
 
@@ -41,15 +41,15 @@ Copy `.env.example` to `.env` and adjust values:
 cp .env.example .env
 ```
 
-Phase 1 settings are placeholders:
+Important settings:
 
-- `ICAL_FEED_URL`: reserved for a future iCal calendar adapter.
-- `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_TIMEZONE`: reserved for a future weather adapter.
-- `DEFAULT_RSS_FEEDS`: reserved for a future RSS adapter.
+- `ICAL_FEED_URL`: private iCal URL for Google Calendar secret iCal links or iCloud published calendars.
+- `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_TIMEZONE`: Open-Meteo location.
+- `DEFAULT_RSS_FEEDS`: comma-separated RSS feed URLs.
 - `FINANCE_WATCHLIST`: used by the mock finance provider to shape placeholder cards.
-- `FINANCE_PROVIDER`: keep as `mock` in Phase 1.
+- `FINANCE_PROVIDER`: `yahoo` for the unofficial test provider, or `mock` for local-only testing.
 
-External provider data intentionally remains mocked in Phase 2.
+All Phase 3 providers fall back to mock data when a feed, network call, or quote lookup fails.
 
 ## API
 
@@ -127,6 +127,15 @@ curl -X POST http://localhost:4174/api/finance/watchlist \
 
 Calendar drag/resize is currently UI-only against mock events. The next calendar phase should persist event changes through iCal/Google-compatible calendar services.
 
+## Phase 3 Providers
+
+- Calendar reads from `ICAL_FEED_URL` when configured. Use a Google Calendar secret iCal address or an iCloud published calendar URL.
+- Weather reads from Open-Meteo using the configured latitude, longitude, and timezone.
+- News reads RSS feeds from the local feed storage table, falling back to `DEFAULT_RSS_FEEDS`.
+- Finance reads the local watchlist symbols and uses `FINANCE_PROVIDER=yahoo` for the unofficial test provider.
+
+Provider data is read-only in this phase. Calendar edits in the weekly board are still local UI behavior until Google Calendar write support is added.
+
 ## Production Build
 
 ```bash
@@ -181,8 +190,7 @@ sudo systemctl status mirror-dashboard
 
 ## Next Implementation Passes
 
-- Add weekly calendar view matching the MagicMirror family calendar reference.
-- Add iCal feeds for Google Calendar and iPhone/iCloud calendars.
-- Add Open-Meteo weather adapter.
-- Add RSS news adapter and reader panel behavior.
+- Persist weekly calendar drag/resize changes through a writable Google Calendar service.
+- Add support for multiple calendar feeds with colors and labels.
+- Add reader panel behavior for news links.
 - Add finance settings and a reliable paid finance provider behind `server/src/services/finance/FinanceProvider.ts`.

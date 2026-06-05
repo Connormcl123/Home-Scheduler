@@ -3,8 +3,10 @@ import { config } from "../../config.js";
 import { getSettings } from "../settings.js";
 import type { FinanceProvider } from "./FinanceProvider.js";
 import { MockFinanceProvider } from "./MockFinanceProvider.js";
+import { YahooFinanceProvider } from "./YahooFinanceProvider.js";
 
 function getProvider(): FinanceProvider {
+  if (config.finance.provider === "yahoo") return new YahooFinanceProvider();
   return new MockFinanceProvider();
 }
 
