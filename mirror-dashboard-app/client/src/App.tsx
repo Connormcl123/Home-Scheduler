@@ -301,6 +301,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     const target = event.currentTarget;
     const grid = target.closest("[data-week-grid]") as HTMLElement | null;
     if (!grid) return;
+    const weekGrid = grid;
     const start = new Date(calendarEvent.start);
     const end = new Date(calendarEvent.end || calendarEvent.start);
     const duration = end.getTime() - start.getTime();
@@ -309,7 +310,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     let latestPointer: PointerEvent | null = null;
 
     function applyMove(pointerEvent: PointerEvent) {
-      const rect = grid.getBoundingClientRect();
+      const rect = weekGrid.getBoundingClientRect();
       const dayIndex = clamp(Math.floor(((pointerEvent.clientX - rect.left) / rect.width) * 7), 0, 6);
       const minutesFromStart = clamp(Math.round(((pointerEvent.clientY - rect.top - offsetY) / hourHeight) * 60 / 15) * 15, 0, (endHour - startHour) * 60 - 15);
       const nextStart = new Date(days[dayIndex]);
@@ -343,12 +344,13 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     const target = event.currentTarget;
     const grid = target.closest("[data-week-grid]") as HTMLElement | null;
     if (!grid) return;
+    const weekGrid = grid;
     const start = new Date(calendarEvent.start);
     let frame = 0;
     let latestPointer: PointerEvent | null = null;
 
     function applyMove(pointerEvent: PointerEvent) {
-      const rect = grid.getBoundingClientRect();
+      const rect = weekGrid.getBoundingClientRect();
       const minutesFromStart = clamp(Math.round(((pointerEvent.clientY - rect.top) / hourHeight) * 60 / 15) * 15, 15, (endHour - startHour) * 60);
       const nextEnd = new Date(start);
       nextEnd.setHours(startHour, minutesFromStart, 0, 0);
