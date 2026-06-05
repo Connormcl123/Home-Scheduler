@@ -1,26 +1,11 @@
 /*
- * Keep the persistent left module selector from covering the active page.
- * The rail itself is rendered by MMM-HomePageControls and stays fixed across MMM-pages.
+ * Home Scheduler page controls are an overlay, not a layout offset.
+ * Keep MagicMirror's modules full-width so fullscreen backgrounds and cards do not clip.
  */
-body {
-  --home-page-rail-width: 132px;
-}
-
 .region.fullscreen,
 .region.fullscreen.above,
 .region.fullscreen.below {
-  left: var(--home-page-rail-width);
-  width: calc(100% - var(--home-page-rail-width));
-}
-
-.region.top.left,
-.region.middle.left,
-.region.bottom.left {
-  left: var(--home-page-rail-width);
-}
-
-@media (max-width: 900px), (max-height: 650px) {
-  body {
-    --home-page-rail-width: 92px;
-  }
+  left: 0;
+  right: 0;
+  width: 100%;
 }
