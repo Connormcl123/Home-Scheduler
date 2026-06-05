@@ -1,0 +1,17 @@
+[Unit]
+Description=Mirror Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/Home-Scheduler/mirror-dashboard-app
+Environment=NODE_ENV=production
+Environment=PORT=4174
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=10
+User=pi
+
+[Install]
+WantedBy=multi-user.target
