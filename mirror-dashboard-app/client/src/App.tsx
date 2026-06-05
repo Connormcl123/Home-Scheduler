@@ -1,4 +1,4 @@
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, Moon, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, StickyNote, SunMedium, Trash2, WifiOff } from "lucide-react";
 import {
@@ -95,6 +95,8 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-theme") === "dark");
   const [burnInStep, setBurnInStep] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const keyboardTargetRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
   const refreshDashboard = () => {
     fetchDashboard()
@@ -148,6 +150,18 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    function onFocus(event: FocusEvent) {
+      const target = event.target;
+      if (!isKeyboardField(target)) return;
+      keyboardTargetRef.current = target;
+      setKeyboardVisible(true);
+    }
+
+    document.addEventListener("focusin", onFocus);
+    return () => document.removeEventListener("focusin", onFocus);
+  }, []);
+
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
@@ -169,7 +183,7 @@ export default function App() {
           </div>
         )}
       </div>
-      <div className="mx-auto flex min-h-screen max-w-[1920px] gap-5 px-6 py-5 transition-transform duration-700" style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
+      <div className={`mx-auto flex min-h-screen max-w-[1920px] gap-5 px-6 py-5 transition-transform duration-700 ${keyboardVisible ? "pb-80" : ""}`} style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
         <aside className="flex w-32 flex-col items-center gap-3 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
           <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full bg-amber-100 text-amber-700 dark:bg-slate-800 dark:text-sky-200" aria-label="Toggle dark mode">
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
@@ -211,6 +225,11 @@ export default function App() {
           {content}
         </section>
       </div>
+      <OnScreenKeyboard
+        visible={keyboardVisible}
+        getTarget={() => keyboardTargetRef.current}
+        onClose={() => setKeyboardVisible(false)}
+      />
     </main>
   );
 }
@@ -933,6 +952,69 @@ function FinanceList({ quotes }: { quotes: FinanceQuote[] }) {
   );
 }
 
+function OnScreenKeyboard({ visible, getTarget, onClose }: { visible: boolean; getTarget: () => HTMLInputElement | HTMLTextAreaElement | null; onClose: () => void }) {
+  const rows = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  if (!visible) return null;
+
+  function press(value: string) {
+    const target = getTarget();
+    if (!target) return;
+    target.focus();
+    insertIntoField(target, value);
+  }
+
+  function backspace() {
+    const target = getTarget();
+    if (!target) return;
+    target.focus();
+    deleteFromField(target);
+  }
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-slate-200 bg-white/95 p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-950/96">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xl font-bold text-slate-600 dark:text-slate-300">Touch Keyboard</p>
+          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onClose} className="h-14 rounded-2xl bg-slate-100 px-6 text-xl font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-100">Done</button>
+        </div>
+        <div className="space-y-2">
+          {rows.map((row, rowIndex) => (
+            <div key={row} className="flex justify-center gap-2">
+              {rowIndex === 3 && <KeyboardKey label="Shift" wide onPress={() => undefined} />}
+              {row.split("").map((key) => (
+                <KeyboardKey key={key} label={key.toUpperCase()} onPress={() => press(key)} />
+              ))}
+              {rowIndex === 3 && <KeyboardKey label="Del" wide onPress={backspace} />}
+            </div>
+          ))}
+          <div className="flex justify-center gap-2">
+            <KeyboardKey label="@" onPress={() => press("@")} />
+            <KeyboardKey label="." onPress={() => press(".")} />
+            <KeyboardKey label="/" onPress={() => press("/")} />
+            <KeyboardKey label="Space" extraWide onPress={() => press(" ")} />
+            <KeyboardKey label="-" onPress={() => press("-")} />
+            <KeyboardKey label="_" onPress={() => press("_")} />
+            <KeyboardKey label="Clear" wide onPress={() => clearField(getTarget())} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KeyboardKey({ label, onPress, wide = false, extraWide = false }: { label: string; onPress: () => void; wide?: boolean; extraWide?: boolean }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onPress}
+      className={`h-16 rounded-2xl bg-slate-100 text-xl font-bold text-slate-800 active:scale-95 dark:bg-slate-800 dark:text-slate-100 ${extraWide ? "w-80" : wide ? "w-28" : "w-16"}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -1025,6 +1107,39 @@ function isSameClientDate(left: Date, right: Date) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function isKeyboardField(target: EventTarget | null): target is HTMLInputElement | HTMLTextAreaElement {
+  if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return false;
+  if (target.readOnly || target.disabled) return false;
+  if (target instanceof HTMLTextAreaElement) return true;
+  const type = target.type || "text";
+  return ["text", "search", "url", "email", "tel", "password"].includes(type);
+}
+
+function insertIntoField(field: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const start = field.selectionStart ?? field.value.length;
+  const end = field.selectionEnd ?? field.value.length;
+  field.setRangeText(value, start, end, "end");
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function deleteFromField(field: HTMLInputElement | HTMLTextAreaElement) {
+  const start = field.selectionStart ?? field.value.length;
+  const end = field.selectionEnd ?? field.value.length;
+  if (start !== end) {
+    field.setRangeText("", start, end, "end");
+  } else if (start > 0) {
+    field.setRangeText("", start - 1, start, "end");
+  }
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function clearField(field: HTMLInputElement | HTMLTextAreaElement | null) {
+  if (!field) return;
+  field.focus();
+  field.setRangeText("", 0, field.value.length, "end");
+  field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function safeStorageGet(key: string) {
