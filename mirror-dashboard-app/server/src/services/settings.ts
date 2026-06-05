@@ -22,8 +22,8 @@ async function setSetting(key: string, value: string) {
 
 export async function getSettings(): Promise<AppSettings> {
   const db = await getDb();
-  const rssRows = await db.all<{ url: string }>("SELECT url FROM rss_feeds WHERE enabled = 1 ORDER BY id");
-  const watchRows = await db.all<{ symbol: string }>("SELECT symbol FROM finance_watchlist WHERE enabled = 1 ORDER BY id");
+  const rssRows = await db.all("SELECT url FROM rss_feeds WHERE enabled = 1 ORDER BY id") as Array<{ url: string }>;
+  const watchRows = await db.all("SELECT symbol FROM finance_watchlist WHERE enabled = 1 ORDER BY id") as Array<{ symbol: string }>;
 
   return {
     calendarFeedUrl: await getSetting(keys.calendarFeedUrl, config.calendar.icalFeedUrl),

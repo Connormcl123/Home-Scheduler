@@ -2,6 +2,8 @@ import yahooFinance from "yahoo-finance2";
 import type { FinanceQuote } from "@mirror-dashboard/shared";
 import type { FinanceProvider } from "./FinanceProvider.js";
 
+const yahoo = yahooFinance as any;
+
 export class YahooFinanceProvider implements FinanceProvider {
   readonly name = "yahoo-test";
 
@@ -13,7 +15,7 @@ export class YahooFinanceProvider implements FinanceProvider {
 
   private async getQuote(symbol: string): Promise<FinanceQuote> {
     try {
-      const quote: any = await yahooFinance.quote(symbol);
+      const quote: any = await yahoo.quote(symbol);
       return {
         symbol,
         name: quote.shortName || quote.longName || symbol,
