@@ -24,6 +24,8 @@ FINANCE_MODULE_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/modules/MMM-HomeFinance"
 FINANCE_MODULE_TARGET="$MAGICMIRROR_DIR/modules/MMM-HomeFinance"
 PAGE_CONTROLS_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/modules/MMM-HomePageControls"
 PAGE_CONTROLS_TARGET="$MAGICMIRROR_DIR/modules/MMM-HomePageControls"
+CUSTOM_CSS_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/css/custom.css"
+CUSTOM_CSS_TARGET="$MAGICMIRROR_DIR/css/custom.css"
 CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.js"
 CONFIG_TARGET="$MAGICMIRROR_DIR/config/config.js"
 EXPERIMENT_CONFIG_SOURCE="$HOME_SCHEDULER_DIR/magicmirror/config/config.experiments.js"
@@ -100,6 +102,12 @@ mkdir -p "$PAGE_CONTROLS_TARGET"
 cp -R "$PAGE_CONTROLS_SOURCE/." "$PAGE_CONTROLS_TARGET/"
 echo "Installed fresh MMM-HomePageControls module at $PAGE_CONTROLS_TARGET"
 install_module_dependencies "$PAGE_CONTROLS_TARGET"
+
+if [ -f "$CUSTOM_CSS_SOURCE" ]; then
+  mkdir -p "$(dirname "$CUSTOM_CSS_TARGET")"
+  cp "$CUSTOM_CSS_SOURCE" "$CUSTOM_CSS_TARGET"
+  echo "Installed Home Scheduler custom MagicMirror CSS at $CUSTOM_CSS_TARGET"
+fi
 
 mkdir -p "$PHOTO_DIR"
 mkdir -p "$BACKGROUND_PHOTO_DIR"

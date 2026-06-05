@@ -183,9 +183,14 @@ const config = {
     },
     {
       module: "MMM-HomePageControls",
-      position: "bottom_bar",
+      position: "fullscreen_above",
       config: {
-        labels: ["Default", "Calendar", "Finance", "Notes"]
+        pages: [
+          { label: "Home", icon: "home" },
+          { label: "Calendar", icon: "calendar" },
+          { label: "Finance", icon: "finance" },
+          { label: "Notes", icon: "notes" }
+        ]
       }
     },
     {

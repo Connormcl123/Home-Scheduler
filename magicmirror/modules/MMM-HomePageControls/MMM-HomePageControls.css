@@ -1,50 +1,159 @@
 .hpc-controls {
+  position: fixed;
+  z-index: 9999;
+  top: 50%;
+  left: 18px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
-  gap: 12px;
-  width: 100vw;
-  padding: 0 18px 14px;
+  gap: 10px;
+  width: 104px;
+  max-height: calc(100vh - 36px);
+  padding: 12px;
   box-sizing: border-box;
+  transform: translateY(-50%);
+  border: 1px solid rgba(38, 55, 49, 0.13);
+  border-radius: 26px;
+  background: rgba(247, 251, 255, 0.82);
+  box-shadow: 0 20px 55px rgba(25, 44, 65, 0.16);
+  backdrop-filter: blur(18px);
   font-family: "Segoe UI", system-ui, sans-serif;
   pointer-events: auto;
 }
 
 .hpc-controls button {
-  display: grid;
-  min-width: 76px;
-  height: 44px;
-  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 80px;
+  min-width: 80px;
+  height: 72px;
+  min-height: 72px;
   place-items: center;
-  border: 1px solid rgba(38, 55, 49, 0.14);
-  border-radius: 999px;
-  padding: 0 14px;
-  background: rgba(255, 255, 255, 0.78);
+  justify-content: center;
+  align-items: center;
+  border: 1px solid rgba(83, 105, 125, 0.16);
+  border-radius: 18px;
+  padding: 8px 6px;
+  background: rgba(255, 255, 255, 0.74);
   color: #22302c;
   font: inherit;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 650;
   line-height: 1;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.hpc-controls button:active {
+  transform: scale(0.96);
+}
+
+.hpc-controls svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.hpc-page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+.hpc-page.active {
+  border-color: rgba(76, 139, 216, 0.42);
+  background: linear-gradient(180deg, #5fafff 0%, #3f8ee6 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(63, 142, 230, 0.28);
+}
+
+.hpc-page span {
+  max-width: 68px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hpc-status {
   display: grid;
-  min-width: 170px;
+  width: 80px;
+  min-width: 80px;
   justify-items: center;
   gap: 2px;
-  border: 1px solid rgba(38, 55, 49, 0.14);
-  border-radius: 999px;
-  padding: 8px 18px;
-  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(83, 105, 125, 0.14);
+  border-radius: 18px;
+  padding: 9px 6px;
+  background: rgba(255, 255, 255, 0.64);
   color: #22302c;
 }
 
 .hpc-status strong {
-  font-size: 14px;
+  max-width: 68px;
+  overflow: hidden;
+  font-size: 12px;
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hpc-status span {
   color: #65736f;
   font-size: 11px;
+}
+
+.hpc-cycle-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hpc-controls .hpc-cycle {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.hpc-controls .hpc-cycle svg {
+  width: 21px;
+  height: 21px;
+}
+
+@media (max-width: 900px), (max-height: 650px) {
+  .hpc-controls {
+    left: 8px;
+    width: 82px;
+    padding: 8px;
+    border-radius: 20px;
+  }
+
+  .hpc-controls button,
+  .hpc-status {
+    width: 64px;
+    min-width: 64px;
+  }
+
+  .hpc-controls button {
+    height: 58px;
+    min-height: 58px;
+    border-radius: 15px;
+    font-size: 10px;
+  }
+
+  .hpc-controls svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .hpc-page span,
+  .hpc-status strong {
+    max-width: 56px;
+  }
 }
