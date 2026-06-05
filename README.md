@@ -255,6 +255,8 @@ cd ~/Home-Scheduler
 bash scripts/start-magicmirror-hdmi.sh
 ```
 
+The HDMI launcher syncs the Home Scheduler-owned `MMM-HomePageControls` module and `magicmirror/css/custom.css` into `~/MagicMirror` before launch. This keeps the persistent left-side module selector updated without replacing your live `~/MagicMirror/config/config.js`.
+
 If Electron has trouble with the Pi desktop display backend, force one explicitly:
 
 ```bash
