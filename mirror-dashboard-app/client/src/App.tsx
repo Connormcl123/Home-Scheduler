@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, type LucideIcon, Newspaper, Plus, Save, Settings, StickyNote, SunMedium, Trash2 } from "lucide-react";
 import {
@@ -203,16 +203,154 @@ function WeatherCard({ dashboard }: { dashboard: DashboardSummary }) {
 }
 
 function CalendarPanel({ events }: { events: CalendarEvent[] }) {
+  const [weekEvents, setWeekEvents] = useState(events.map(normalizeEventEnd));
+  const weekStart = startOfWeek(new Date());
+  const days = Array.from({ length: 7 }, (_, index) => addClientDays(weekStart, index));
+  const startHour = 6;
+  const endHour = 22;
+  const hourHeight = 72;
+  const dayWidthPercent = 100 / 7;
+
+  useEffect(() => {
+    setWeekEvents(events.map(normalizeEventEnd));
+  }, [events]);
+
+  function updateEventTime(id: string, patch: { start?: Date; end?: Date }) {
+    setWeekEvents((current) =>
+      current.map((event) => {
+        if (event.id !== id) return event;
+        const nextStart = patch.start ?? new Date(event.start);
+        const nextEnd = patch.end ?? new Date(event.end || event.start);
+        return { ...event, start: nextStart.toISOString(), end: nextEnd.toISOString() };
+      })
+    );
+  }
+
+  function beginDrag(event: ReactPointerEvent<HTMLDivElement>, calendarEvent: CalendarEvent) {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const grid = target.closest("[data-week-grid]") as HTMLElement | null;
+    if (!grid) return;
+    const start = new Date(calendarEvent.start);
+    const end = new Date(calendarEvent.end || calendarEvent.start);
+    const duration = end.getTime() - start.getTime();
+    const offsetY = event.clientY - target.getBoundingClientRect().top;
+
+    function move(pointerEvent: PointerEvent) {
+      const rect = grid.getBoundingClientRect();
+      const dayIndex = clamp(Math.floor(((pointerEvent.clientX - rect.left) / rect.width) * 7), 0, 6);
+      const minutesFromStart = clamp(Math.round(((pointerEvent.clientY - rect.top - offsetY) / hourHeight) * 60 / 15) * 15, 0, (endHour - startHour) * 60 - 15);
+      const nextStart = new Date(days[dayIndex]);
+      nextStart.setHours(startHour, minutesFromStart, 0, 0);
+      const nextEnd = new Date(nextStart.getTime() + duration);
+      updateEventTime(calendarEvent.id, { start: nextStart, end: nextEnd });
+    }
+
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    }
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  function beginResize(event: ReactPointerEvent<HTMLDivElement>, calendarEvent: CalendarEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    const target = event.currentTarget;
+    const grid = target.closest("[data-week-grid]") as HTMLElement | null;
+    if (!grid) return;
+    const start = new Date(calendarEvent.start);
+
+    function move(pointerEvent: PointerEvent) {
+      const rect = grid.getBoundingClientRect();
+      const minutesFromStart = clamp(Math.round(((pointerEvent.clientY - rect.top) / hourHeight) * 60 / 15) * 15, 15, (endHour - startHour) * 60);
+      const nextEnd = new Date(start);
+      nextEnd.setHours(startHour, minutesFromStart, 0, 0);
+      if (nextEnd.getTime() <= start.getTime()) nextEnd.setTime(start.getTime() + 15 * 60 * 1000);
+      updateEventTime(calendarEvent.id, { end: nextEnd });
+    }
+
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    }
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   return (
-    <Card className="flex-1">
-      <SectionTitle icon={CalendarDays} title="Calendar Agenda" />
-      <div className="mt-6 grid grid-cols-3 gap-4">
-        {["Today", "Tomorrow", "Upcoming"].map((label, index) => (
-          <div key={label} className="rounded-2xl bg-white/70 p-5">
-            <h2 className="mb-4 text-2xl font-bold">{label}</h2>
-            <EventList events={events.slice(index * 3, index * 3 + 3)} />
+    <Card className="flex-1 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <SectionTitle icon={CalendarDays} title="Weekly Calendar" />
+        <p className="rounded-full bg-white/80 px-5 py-3 text-lg font-semibold text-slate-600">Drag to move - pull bottom edge to resize</p>
+      </div>
+      <div className="mt-5 grid grid-cols-[90px_1fr]">
+        <div />
+        <div className="grid grid-cols-7 overflow-hidden rounded-t-2xl border border-mirror-line bg-white/75">
+          {days.map((day) => (
+            <div key={day.toISOString()} className="border-r border-mirror-line px-3 py-3 last:border-r-0">
+              <p className="text-lg font-bold text-slate-500">{day.toLocaleDateString([], { weekday: "short" })}</p>
+              <p className="text-3xl font-bold">{day.getDate()}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid h-[63vh] grid-cols-[90px_1fr] overflow-y-auto rounded-b-2xl border-x border-b border-mirror-line bg-white/55">
+        <div className="relative" style={{ height: (endHour - startHour) * hourHeight }}>
+          {Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index).map((hour) => (
+            <div key={hour} className="absolute left-0 right-2 -translate-y-3 text-right text-lg font-bold text-slate-500" style={{ top: (hour - startHour) * hourHeight }}>
+              {formatHour(hour)}
+            </div>
+          ))}
+        </div>
+        <div data-week-grid className="relative touch-none" style={{ height: (endHour - startHour) * hourHeight }}>
+          <div className="absolute inset-0 grid grid-cols-7">
+            {days.map((day) => (
+              <div key={day.toISOString()} className="border-r border-mirror-line last:border-r-0" />
+            ))}
           </div>
-        ))}
+          <div className="absolute inset-0">
+            {Array.from({ length: endHour - startHour + 1 }, (_, index) => (
+              <div key={index} className="absolute left-0 right-0 border-t border-mirror-line" style={{ top: index * hourHeight }} />
+            ))}
+          </div>
+          {weekEvents.map((calendarEvent) => {
+            const start = new Date(calendarEvent.start);
+            const end = new Date(calendarEvent.end || calendarEvent.start);
+            const dayIndex = days.findIndex((day) => isSameClientDate(day, start));
+            if (dayIndex < 0) return null;
+            const top = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * hourHeight;
+            const height = Math.max(42, (end.getTime() - start.getTime()) / (60 * 60 * 1000) * hourHeight);
+            if (top < 0 || top > (endHour - startHour) * hourHeight) return null;
+
+            return (
+              <div
+                key={calendarEvent.id}
+                onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
+                className="absolute cursor-grab select-none rounded-2xl border border-sky-300 bg-sky-100 px-4 py-3 shadow-lg shadow-sky-200/60 active:cursor-grabbing"
+                style={{
+                  left: `calc(${dayIndex * dayWidthPercent}% + 8px)`,
+                  top,
+                  width: `calc(${dayWidthPercent}% - 16px)`,
+                  height
+                }}
+              >
+                <p className="text-sm font-bold text-sky-800">{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
+                <p className="mt-1 truncate text-xl font-bold text-slate-800">{calendarEvent.title}</p>
+                <div
+                  onPointerDown={(pointerEvent) => beginResize(pointerEvent, calendarEvent)}
+                  className="absolute bottom-1 left-1/2 h-5 w-16 -translate-x-1/2 rounded-full bg-sky-300"
+                />
+              </div>
+            );
+          })}
+          {!weekEvents.length && (
+            <div className="absolute inset-x-0 top-10 text-center text-2xl font-semibold text-slate-500">No events this week.</div>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -519,6 +657,16 @@ function formatEventTime(value: string) {
   return new Date(value).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
+function formatTimeOnly(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatHour(hour: number) {
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const display = hour % 12 || 12;
+  return `${display} ${suffix}`;
+}
+
 function formatShortDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }
@@ -547,4 +695,33 @@ function tomorrowAt(hours: number, minutes: number) {
   date.setDate(date.getDate() + 1);
   date.setHours(hours, minutes, 0, 0);
   return date.toISOString();
+}
+
+function normalizeEventEnd(event: CalendarEvent): CalendarEvent {
+  if (event.end) return event;
+  const end = new Date(event.start);
+  end.setMinutes(end.getMinutes() + 45);
+  return { ...event, end: end.toISOString() };
+}
+
+function startOfWeek(date: Date) {
+  const next = new Date(date);
+  const day = next.getDay();
+  next.setDate(next.getDate() - day);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function addClientDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function isSameClientDate(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }

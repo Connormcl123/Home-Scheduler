@@ -123,6 +123,9 @@ curl -X POST http://localhost:4174/api/finance/watchlist \
 - Add, enable/disable, and delete RSS feed records.
 - Add, enable/disable, and delete finance watchlist symbols.
 - Refresh the home dashboard after local storage changes.
+- Weekly calendar board with days across the top, AM/PM time slots down the side, and local drag/resize behavior for mock events.
+
+Calendar drag/resize is currently UI-only against mock events. The next calendar phase should persist event changes through iCal/Google-compatible calendar services.
 
 ## Production Build
 
