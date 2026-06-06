@@ -12,6 +12,7 @@ import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryIt
 import { getNews } from "./services/news.js";
 import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
 import { getPersonalFinanceSummary } from "./services/personalFinance.js";
+import { createPlaidLinkToken, exchangePlaidPublicToken, getPlaidStatus, syncAllPlaidItems } from "./services/plaidProvider.js";
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.js";
@@ -165,6 +166,39 @@ app.get("/api/finance/summary", async (_req, res, next) => {
 app.get("/api/finance/personal", async (_req, res, next) => {
   try {
     res.json(await getPersonalFinanceSummary());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/finance/plaid/status", async (_req, res, next) => {
+  try {
+    res.json(await getPlaidStatus());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/finance/plaid/link-token", async (_req, res, next) => {
+  try {
+    res.json(await createPlaidLinkToken());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/finance/plaid/exchange-public-token", async (req, res, next) => {
+  try {
+    if (!req.body?.publicToken) return res.status(400).json({ error: "Plaid public token is required." });
+    res.status(201).json(await exchangePlaidPublicToken(req.body.publicToken, req.body.institutionName));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/finance/plaid/sync", async (_req, res, next) => {
+  try {
+    res.json(await syncAllPlaidItems());
   } catch (error) {
     next(error);
   }

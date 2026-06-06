@@ -30,5 +30,14 @@ export const config = {
   finance: {
     provider: process.env.FINANCE_PROVIDER || "mock",
     watchlist: (process.env.FINANCE_WATCHLIST || "AAPL,MSFT,SPY,QQQ").split(",").map((symbol) => symbol.trim()).filter(Boolean)
+  },
+  plaid: {
+    clientId: process.env.PLAID_CLIENT_ID || "",
+    secret: process.env.PLAID_SECRET || "",
+    env: process.env.PLAID_ENV || "sandbox",
+    clientName: process.env.PLAID_CLIENT_NAME || "Home Scheduler",
+    products: (process.env.PLAID_PRODUCTS || "transactions").split(",").map((product) => product.trim()).filter(Boolean),
+    countryCodes: (process.env.PLAID_COUNTRY_CODES || "US").split(",").map((country) => country.trim()).filter(Boolean),
+    userId: process.env.PLAID_USER_ID || "home-scheduler-local-user"
   }
 };

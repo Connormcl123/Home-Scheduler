@@ -1,4 +1,4 @@
-import type { DashboardSummary, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { DashboardSummary, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -72,6 +72,22 @@ export function fetchWatchlist() {
 
 export function fetchPersonalFinanceSummary() {
   return request<PersonalFinanceSummary>("/api/finance/personal");
+}
+
+export function fetchPlaidStatus() {
+  return request<PlaidConnectionStatus>("/api/finance/plaid/status");
+}
+
+export function createPlaidLinkToken() {
+  return request<{ link_token: string }>("/api/finance/plaid/link-token", { method: "POST" });
+}
+
+export function exchangePlaidPublicToken(input: { publicToken: string; institutionName?: string }) {
+  return request<{ itemId: string; institutionName?: string | null }>("/api/finance/plaid/exchange-public-token", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function syncPlaidFinance() {
+  return request<{ syncedItems: number; results: Array<{ itemId: string; added: number; modified: number; removed: number }> }>("/api/finance/plaid/sync", { method: "POST" });
 }
 
 export function createWatchlistItem(input: { symbol: string; enabled?: boolean }) {

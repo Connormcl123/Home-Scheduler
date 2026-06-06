@@ -1,8 +1,9 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, Moon, PieChart, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
 import {
   createGroceryItem,
+  createPlaidLinkToken,
   createRssFeed,
   createTask,
   createWatchlistItem,
@@ -16,10 +17,13 @@ import {
   fetchNote,
   fetchNotes,
   fetchPersonalFinanceSummary,
+  fetchPlaidStatus,
   fetchRssFeeds,
   fetchTasks,
   fetchWatchlist,
   saveNote,
+  exchangePlaidPublicToken,
+  syncPlaidFinance,
   updateGroceryItem,
   updateRssFeed,
   updateTask,
@@ -28,6 +32,18 @@ import {
 
 type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
+
+declare global {
+  interface Window {
+    Plaid?: {
+      create: (options: {
+        token: string;
+        onSuccess: (publicToken: string, metadata: { institution?: { name?: string } }) => void;
+        onExit?: (error: unknown) => void;
+      }) => { open: () => void };
+    };
+  }
+}
 
 const demoPersonalFinance: PersonalFinanceSummary = {
   provider: "demo",
@@ -929,16 +945,69 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
 
 function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; initialSummary: PersonalFinanceSummary }) {
   const [summary, setSummary] = useState(initialSummary || demoPersonalFinance);
+  const [plaidStatus, setPlaidStatus] = useState<PlaidConnectionStatus | null>(null);
+  const [plaidMessage, setPlaidMessage] = useState("");
+  const [plaidBusy, setPlaidBusy] = useState(false);
 
   useEffect(() => {
     setSummary(initialSummary || demoPersonalFinance);
   }, [initialSummary]);
 
+  async function loadPersonalFinance() {
+    const [nextSummary, nextStatus] = await Promise.all([fetchPersonalFinanceSummary(), fetchPlaidStatus()]);
+    setSummary(nextSummary);
+    setPlaidStatus(nextStatus);
+  }
+
   useEffect(() => {
-    fetchPersonalFinanceSummary()
-      .then(setSummary)
+    loadPersonalFinance()
       .catch(() => undefined);
   }, []);
+
+  async function connectPlaid() {
+    try {
+      setPlaidBusy(true);
+      setPlaidMessage("Opening Plaid...");
+      await loadPlaidScript();
+      const { link_token: linkToken } = await createPlaidLinkToken();
+      window.Plaid?.create({
+        token: linkToken,
+        onSuccess: async (publicToken, metadata) => {
+          try {
+            setPlaidMessage("Link connected. Importing accounts and transactions...");
+            await exchangePlaidPublicToken({ publicToken, institutionName: metadata.institution?.name });
+            await loadPersonalFinance();
+            setPlaidMessage("Plaid sync complete.");
+          } catch (error) {
+            setPlaidMessage(error instanceof Error ? error.message : "Plaid token exchange failed.");
+          } finally {
+            setPlaidBusy(false);
+          }
+        },
+        onExit: () => {
+          setPlaidMessage("Plaid Link closed.");
+          setPlaidBusy(false);
+        }
+      }).open();
+    } catch (error) {
+      setPlaidMessage(error instanceof Error ? error.message : "Plaid setup failed.");
+      setPlaidBusy(false);
+    }
+  }
+
+  async function syncPlaid() {
+    try {
+      setPlaidBusy(true);
+      setPlaidMessage("Syncing bank data...");
+      const result = await syncPlaidFinance();
+      await loadPersonalFinance();
+      setPlaidMessage(`Synced ${result.syncedItems} Plaid connection${result.syncedItems === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setPlaidMessage(error instanceof Error ? error.message : "Plaid sync failed.");
+    } finally {
+      setPlaidBusy(false);
+    }
+  }
 
   const budgetPercent = summary.budgetLimit ? Math.min(100, Math.round((summary.budgetSpent / summary.budgetLimit) * 100)) : 0;
   const maxTrend = Math.max(1, ...summary.trend.flatMap((point) => [point.income, point.spending]));
@@ -954,6 +1023,18 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           <p className="text-lg font-bold text-slate-500">Data provider</p>
           <p className="text-2xl font-black">{summary.provider}</p>
         </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-[1fr_190px_190px] items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-sm dark:bg-slate-900">
+        <div>
+          <p className="text-xl font-black">Bank connections</p>
+          <p className="text-lg font-semibold text-slate-500">
+            {plaidStatus?.configured ? `${plaidStatus.itemCount} Plaid connection${plaidStatus.itemCount === 1 ? "" : "s"} - ${plaidStatus.environment}` : "Set Plaid sandbox keys in .env to connect accounts."}
+          </p>
+          {plaidMessage && <p className="mt-1 text-base font-bold text-sky-700">{plaidMessage}</p>}
+        </div>
+        <button onClick={connectPlaid} disabled={plaidBusy || plaidStatus?.configured === false} className="touch-button bg-emerald-600 px-5 text-white">Connect</button>
+        <button onClick={syncPlaid} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button bg-sky-600 px-5 text-white">Sync</button>
       </div>
 
       <div className="mt-6 grid grid-cols-4 gap-4">
@@ -1090,6 +1171,26 @@ function FinanceMetric({ icon: Icon, label, value, tone }: { icon: LucideIcon; l
       <p className="mt-1 text-4xl font-black">{value}</p>
     </div>
   );
+}
+
+function loadPlaidScript() {
+  if (window.Plaid) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>("script[data-plaid-link]");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Plaid Link failed to load.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+    script.async = true;
+    script.dataset.plaidLink = "true";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Plaid Link failed to load."));
+    document.head.appendChild(script);
+  });
 }
 
 function SettingsPanel({ onChanged }: { onChanged: () => void }) {

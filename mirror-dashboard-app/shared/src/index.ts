@@ -115,6 +115,18 @@ export interface PersonalFinanceSummary {
   insights: string[];
 }
 
+export interface PlaidConnectionStatus {
+  configured: boolean;
+  environment: string;
+  itemCount: number;
+  items: Array<{
+    itemId: string;
+    institutionName?: string | null;
+    status: string;
+    lastSyncedAt?: string | null;
+  }>;
+}
+
 export interface RssFeed {
   id: number;
   title: string;

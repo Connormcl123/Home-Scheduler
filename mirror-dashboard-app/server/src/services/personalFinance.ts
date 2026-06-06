@@ -34,6 +34,7 @@ export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummar
   const db = await getDb();
   await seedPersonalFinanceDemoData();
 
+  const plaidItemCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM plaid_items WHERE status = 'active'");
   const accounts = (await db.all("SELECT * FROM finance_accounts ORDER BY type ASC, id ASC")).map(rowToAccount);
   const budgets = await getBudgetsWithSpend();
   const recentTransactions = (await db.all("SELECT * FROM finance_transactions ORDER BY transaction_date DESC, id DESC LIMIT 12")).map(rowToTransaction);
@@ -45,7 +46,7 @@ export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummar
   const totalDebt = Math.abs(accounts.filter((account) => account.balance < 0).reduce((sum, account) => sum + account.balance, 0));
 
   return {
-    provider: "local-demo",
+    provider: plaidItemCount?.count ? "plaid" : "local-demo",
     monthLabel: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date()),
     totalCash,
     totalDebt,

@@ -51,6 +51,7 @@ Important settings:
 - `FINANCE_PROVIDER`: `yahoo` for the unofficial test provider, or `mock` for local-only testing.
 - `PERSONAL_FINANCE_PROVIDER`: currently `local-demo`, which seeds SQLite with accounts, budgets, and transactions for the Monarch-style dashboard.
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
+- `PLAID_CLIENT_NAME`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_USER_ID`: Plaid Link settings. The first implementation uses the Transactions product.
 - `OPENAI_API_KEY`, `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
 
 All Phase 3 providers fall back to mock data when a feed, network call, or quote lookup fails.
@@ -76,6 +77,10 @@ Implemented endpoints:
 - `GET /api/news`
 - `GET /api/finance/summary`
 - `GET /api/finance/personal`
+- `GET /api/finance/plaid/status`
+- `POST /api/finance/plaid/link-token`
+- `POST /api/finance/plaid/exchange-public-token`
+- `POST /api/finance/plaid/sync`
 - `GET /api/settings`
 - `PATCH /api/settings`
 - `GET /api/rss-feeds`
@@ -167,6 +172,36 @@ The Finance tab is now split into two lanes:
 For real bank and credit-card linking, use an aggregator such as Plaid, MX, or Finicity rather than attempting to connect directly to each bank. The next backend step should add a provider behind `server/src/services/personalFinance.ts` that syncs account and transaction records into the existing SQLite tables.
 
 OpenAI finance analysis should read summarized, redacted budget and transaction data from the local service. The current UI has an AI Money Review panel, but it only displays local rule-based insights until `FINANCE_AI_ENABLED=true` is implemented.
+
+## Plaid Setup
+
+Plaid is configured server-side only. Do not put Plaid secrets in React code or commit them to Git.
+
+1. Create a Plaid developer account and copy your sandbox `client_id` and `secret`.
+2. On the Pi, edit `mirror-dashboard-app/.env`:
+
+```bash
+PLAID_CLIENT_ID=your_client_id
+PLAID_SECRET=your_sandbox_secret
+PLAID_ENV=sandbox
+PLAID_PRODUCTS=transactions
+PLAID_COUNTRY_CODES=US
+PLAID_CLIENT_NAME=Home Scheduler
+```
+
+3. Reinstall so the Plaid SDK is present:
+
+```bash
+cd ~/Home-Scheduler/mirror-dashboard-app
+npm install
+npm run build
+npm run start
+```
+
+4. Open the Finance tab and tap `Connect`. In sandbox mode, Plaid Link can use sandbox institutions and test credentials from Plaid's dashboard/docs.
+5. After Link succeeds, tap `Sync` to pull accounts and transactions through `/transactions/sync`.
+
+The app stores Plaid access tokens in local SQLite because this dashboard is local-only. Treat `data/mirror-dashboard.sqlite` as sensitive and do not commit or share it.
 
 Multiple iCloud calendars:
 
