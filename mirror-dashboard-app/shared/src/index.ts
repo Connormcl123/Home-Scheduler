@@ -1,4 +1,5 @@
 export type Priority = "low" | "normal" | "high";
+export type GroceryStatus = "low" | "out" | "ok";
 
 export interface CalendarEvent {
   id: string;
@@ -73,6 +74,18 @@ export interface FinanceWatchlistItem {
   id: number;
   symbol: string;
   enabled: boolean;
+}
+
+export interface GroceryItem {
+  id: number;
+  name: string;
+  quantity?: string | null;
+  category?: string | null;
+  supplier?: string | null;
+  status: GroceryStatus;
+  purchased: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardSummary {

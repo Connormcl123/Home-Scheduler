@@ -1,27 +1,31 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
-import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, Moon, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, StickyNote, SunMedium, Trash2, WifiOff } from "lucide-react";
+import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, Moon, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, StickyNote, SunMedium, Trash2, WifiOff } from "lucide-react";
 import {
+  createGroceryItem,
   createRssFeed,
   createTask,
   createWatchlistItem,
+  deleteGroceryItem,
   deleteNote,
   deleteRssFeed,
   deleteTask,
   deleteWatchlistItem,
   fetchDashboard,
+  fetchGroceryItems,
   fetchNote,
   fetchNotes,
   fetchRssFeeds,
   fetchTasks,
   fetchWatchlist,
   saveNote,
+  updateGroceryItem,
   updateRssFeed,
   updateTask,
   updateWatchlistItem
 } from "./api";
 
-type View = "home" | "calendar" | "tasks" | "notes" | "finance" | "settings";
+type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
 
 const demoDashboard: DashboardSummary = {
@@ -61,6 +65,7 @@ const demoDashboard: DashboardSummary = {
 const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "home", label: "Home", icon: Home },
   { view: "calendar", label: "Calendar", icon: CalendarDays },
+  { view: "grocery", label: "Grocery", icon: ShoppingBasket },
   { view: "tasks", label: "Tasks", icon: CheckCircle2 },
   { view: "notes", label: "Notes", icon: StickyNote },
   { view: "finance", label: "Finance", icon: Landmark },
@@ -164,6 +169,7 @@ export default function App() {
 
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
+    if (view === "grocery") return <GroceryPanel />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} />;
@@ -670,6 +676,105 @@ function CalendarScheduleView({ events }: { events: CalendarEvent[] }) {
   );
 }
 
+function GroceryPanel() {
+  const [items, setItems] = useState<GroceryItem[]>([]);
+  const [name, setName] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [category, setCategory] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [status, setStatus] = useState<GroceryStatus>("low");
+  const activeItems = items.filter((item) => !item.purchased);
+  const purchasedItems = items.filter((item) => item.purchased);
+
+  async function load() {
+    setItems(await fetchGroceryItems());
+  }
+
+  useEffect(() => {
+    load().catch(() => undefined);
+  }, []);
+
+  async function addItem() {
+    if (!name.trim()) return;
+    await createGroceryItem({
+      name: name.trim(),
+      quantity: quantity || undefined,
+      category: category || undefined,
+      supplier: supplier || undefined,
+      status
+    });
+    setName("");
+    setQuantity("");
+    await load();
+  }
+
+  return (
+    <Card className="flex-1 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <SectionTitle icon={ShoppingBasket} title="Grocery Tracker" />
+        <p className="rounded-full bg-amber-100 px-5 py-3 text-xl font-bold text-amber-800">{activeItems.length} to buy this week</p>
+      </div>
+      <div className="mt-6 grid grid-cols-[1.2fr_0.7fr_0.8fr_0.8fr_180px_100px] gap-3">
+        <input value={name} onChange={(event) => setName(event.target.value)} className="touch-input" placeholder="Food or supply" />
+        <input value={quantity} onChange={(event) => setQuantity(event.target.value)} className="touch-input" placeholder="Qty" />
+        <input value={category} onChange={(event) => setCategory(event.target.value)} className="touch-input" placeholder="Category" />
+        <input value={supplier} onChange={(event) => setSupplier(event.target.value)} className="touch-input" placeholder="Store" />
+        <select value={status} onChange={(event) => setStatus(event.target.value as GroceryStatus)} className="touch-input">
+          <option value="low">Low</option>
+          <option value="out">Out</option>
+          <option value="ok">Stocked</option>
+        </select>
+        <button onClick={addItem} className="touch-button bg-emerald-600 text-white"><Plus className="h-7 w-7" /></button>
+      </div>
+
+      <div className="mt-6 grid h-[58vh] grid-cols-[1fr_340px] gap-5">
+        <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+          <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
+          <div className="space-y-3">
+            {activeItems.map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} />)}
+            {!activeItems.length && <p className="rounded-2xl bg-slate-50 p-6 text-2xl font-bold text-slate-500">Nothing on the grocery list yet.</p>}
+          </div>
+        </div>
+        <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+          <h3 className="mb-4 text-2xl font-bold">Purchased</h3>
+          <div className="space-y-3">
+            {purchasedItems.slice(0, 12).map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} compact />)}
+            {!purchasedItems.length && <p className="rounded-2xl bg-slate-50 p-5 text-lg font-bold text-slate-500">Purchased items appear here.</p>}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function GroceryItemRow({ item, onChanged, compact = false }: { item: GroceryItem; onChanged: () => Promise<void>; compact?: boolean }) {
+  const badge = groceryStatusStyle(item.status);
+  return (
+    <div className={`grid items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 ${compact ? "grid-cols-[1fr_92px]" : "grid-cols-[1fr_150px_130px_90px_90px]"}`}>
+      <div className={item.purchased ? "opacity-50" : ""}>
+        <p className={`font-bold ${compact ? "text-xl" : "text-3xl"} ${item.purchased ? "line-through" : ""}`}>{item.name}</p>
+        <p className="text-lg font-semibold text-slate-500">
+          {[item.quantity, item.category, item.supplier].filter(Boolean).join(" - ") || "No details"}
+        </p>
+      </div>
+      {!compact && (
+        <>
+          <select value={item.status} onChange={(event) => updateGroceryItem(item.id, { status: event.target.value as GroceryStatus }).then(onChanged)} className={`h-16 rounded-2xl px-3 text-xl font-bold ${badge}`}>
+            <option value="low">Low</option>
+            <option value="out">Out</option>
+            <option value="ok">Stocked</option>
+          </select>
+          <button onClick={() => updateGroceryItem(item.id, { purchased: !item.purchased }).then(onChanged)} className="touch-button bg-emerald-100 text-emerald-700">
+            {item.purchased ? "Undo" : "Bought"}
+          </button>
+          <button onClick={() => updateGroceryItem(item.id, { status: "out" }).then(onChanged)} className="touch-button bg-rose-100 text-rose-700">Out</button>
+        </>
+      )}
+      <button onClick={() => deleteGroceryItem(item.id).then(onChanged)} className="touch-button bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><Trash2 className="h-6 w-6" /></button>
+    </div>
+  );
+}
+
 function TaskPanel({ initialTasks, onChanged }: { initialTasks: Task[]; onChanged: () => void }) {
   const [tasks, setTasks] = useState(initialTasks);
   const [title, setTitle] = useState("");
@@ -1085,6 +1190,12 @@ function eventColor(event: CalendarEvent) {
   const source = `${event.title}-${event.id}`;
   const index = Array.from(source).reduce((total, char) => total + char.charCodeAt(0), 0) % profilePalette.length;
   return profilePalette[index];
+}
+
+function groceryStatusStyle(status: GroceryStatus) {
+  if (status === "out") return "bg-rose-100 text-rose-800";
+  if (status === "ok") return "bg-emerald-100 text-emerald-800";
+  return "bg-amber-100 text-amber-800";
 }
 
 function startOfWeek(date: Date) {

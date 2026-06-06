@@ -8,6 +8,7 @@ import { getDashboard } from "./services/dashboard.js";
 import { getCalendarEvents } from "./services/calendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
 import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
+import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
 import { getNews } from "./services/news.js";
 import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
@@ -242,6 +243,42 @@ app.patch("/api/finance/watchlist/:id", async (req, res, next) => {
 app.delete("/api/finance/watchlist/:id", async (req, res, next) => {
   try {
     await deleteFinanceWatchlistItem(Number(req.params.id));
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/grocery", async (req, res, next) => {
+  try {
+    res.json(await listGroceryItems({ activeOnly: req.query.activeOnly === "true" }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/grocery", async (req, res, next) => {
+  try {
+    if (!req.body?.name?.trim()) return res.status(400).json({ error: "Grocery item name is required." });
+    res.status(201).json(await createGroceryItem(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/grocery/:id", async (req, res, next) => {
+  try {
+    const item = await updateGroceryItem(Number(req.params.id), req.body);
+    if (!item) return res.status(404).json({ error: "Grocery item not found." });
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/grocery/:id", async (req, res, next) => {
+  try {
+    await deleteGroceryItem(Number(req.params.id));
     res.status(204).end();
   } catch (error) {
     next(error);

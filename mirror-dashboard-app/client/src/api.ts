@@ -1,4 +1,4 @@
-import type { DashboardSummary, FinanceWatchlistItem, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { DashboardSummary, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -80,4 +80,20 @@ export function updateWatchlistItem(id: number, input: Partial<{ symbol: string;
 
 export function deleteWatchlistItem(id: number) {
   return request<void>(`/api/finance/watchlist/${id}`, { method: "DELETE" });
+}
+
+export function fetchGroceryItems(activeOnly = false) {
+  return request<GroceryItem[]>(`/api/grocery${activeOnly ? "?activeOnly=true" : ""}`);
+}
+
+export function createGroceryItem(input: { name: string; quantity?: string; category?: string; supplier?: string; status?: GroceryStatus }) {
+  return request<GroceryItem>("/api/grocery", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateGroceryItem(id: number, input: Partial<{ name: string; quantity: string | null; category: string | null; supplier: string | null; status: GroceryStatus; purchased: boolean }>) {
+  return request<GroceryItem>(`/api/grocery/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function deleteGroceryItem(id: number) {
+  return request<void>(`/api/grocery/${id}`, { method: "DELETE" });
 }

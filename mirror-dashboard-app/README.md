@@ -82,6 +82,10 @@ Implemented endpoints:
 - `POST /api/finance/watchlist`
 - `PATCH /api/finance/watchlist/:id`
 - `DELETE /api/finance/watchlist/:id`
+- `GET /api/grocery`
+- `POST /api/grocery`
+- `PATCH /api/grocery/:id`
+- `DELETE /api/grocery/:id`
 
 ## Local Storage Examples
 
@@ -117,12 +121,21 @@ curl -X POST http://localhost:4174/api/finance/watchlist \
   -d '{"symbol":"SPY"}'
 ```
 
+Add a grocery item:
+
+```bash
+curl -X POST http://localhost:4174/api/grocery \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Milk","quantity":"1 gallon","category":"Dairy","supplier":"Grocery store","status":"low"}'
+```
+
 ## Phase 2 Touchscreen Features
 
 - Create, complete, reprioritize, and delete local tasks.
 - Create, edit, browse, and delete daily notes by date.
 - Add, enable/disable, and delete RSS feed records.
 - Add, enable/disable, and delete finance watchlist symbols.
+- Track weekly grocery items and household supplies that are low or out.
 - Refresh the home dashboard after local storage changes.
 - Weekly calendar board with days across the top, AM/PM time slots down the side, and local drag/resize behavior for mock events.
 - Calendar page uses a Skylight-inspired family organizer layout with a top view selector, today summary rail, color-coded calendar/profile chips, and a wide weekly schedule board.
