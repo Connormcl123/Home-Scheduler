@@ -63,6 +63,58 @@ export interface FinanceQuote {
   changePercent: number | null;
 }
 
+export interface FinanceAccount {
+  id: number;
+  providerAccountId?: string | null;
+  name: string;
+  institution: string;
+  type: "checking" | "savings" | "credit" | "investment" | "other";
+  balance: number;
+  currency: string;
+  lastSyncedAt?: string | null;
+}
+
+export interface FinanceBudget {
+  id: number;
+  category: string;
+  limitAmount: number;
+  spentAmount: number;
+  color: string;
+}
+
+export interface FinanceTransaction {
+  id: number;
+  accountId?: number | null;
+  merchant: string;
+  category: string;
+  amount: number;
+  transactionDate: string;
+  notes?: string | null;
+}
+
+export interface FinanceTrendPoint {
+  label: string;
+  income: number;
+  spending: number;
+}
+
+export interface PersonalFinanceSummary {
+  provider: string;
+  monthLabel: string;
+  totalCash: number;
+  totalDebt: number;
+  monthlyIncome: number;
+  monthlySpending: number;
+  cashFlow: number;
+  budgetLimit: number;
+  budgetSpent: number;
+  accounts: FinanceAccount[];
+  budgets: FinanceBudget[];
+  recentTransactions: FinanceTransaction[];
+  trend: FinanceTrendPoint[];
+  insights: string[];
+}
+
 export interface RssFeed {
   id: number;
   title: string;
@@ -98,6 +150,7 @@ export interface DashboardSummary {
   finance: {
     provider: string;
     quotes: FinanceQuote[];
+    personal: PersonalFinanceSummary;
   };
 }
 

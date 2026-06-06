@@ -2,7 +2,7 @@
 
 Standalone touchscreen family command-center dashboard inspired by the existing MagicMirror prototype. MagicMirror remains untouched; this app is a new React, Express, and SQLite runtime intended for Raspberry Pi OS and Chromium kiosk mode.
 
-This branch is Phase 3. Calendar, weather, news, and finance now have first-pass read providers with mock fallbacks, while tasks, daily notes, RSS feed list storage, and finance watchlist storage are editable through the local touchscreen UI and SQLite API.
+This branch is Phase 3. Calendar, weather, news, and finance now have first-pass read providers with mock fallbacks, while tasks, daily notes, RSS feed list storage, grocery tracking, and finance watchlist storage are editable through the local touchscreen UI and SQLite API.
 
 ## Structure
 
@@ -49,6 +49,9 @@ Important settings:
 - `DEFAULT_RSS_FEEDS`: comma-separated RSS feed URLs.
 - `FINANCE_WATCHLIST`: used by the mock finance provider to shape placeholder cards.
 - `FINANCE_PROVIDER`: `yahoo` for the unofficial test provider, or `mock` for local-only testing.
+- `PERSONAL_FINANCE_PROVIDER`: currently `local-demo`, which seeds SQLite with accounts, budgets, and transactions for the Monarch-style dashboard.
+- `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
+- `OPENAI_API_KEY`, `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
 
 All Phase 3 providers fall back to mock data when a feed, network call, or quote lookup fails.
 
@@ -72,6 +75,7 @@ Implemented endpoints:
 - `GET /api/weather`
 - `GET /api/news`
 - `GET /api/finance/summary`
+- `GET /api/finance/personal`
 - `GET /api/settings`
 - `PATCH /api/settings`
 - `GET /api/rss-feeds`
@@ -149,8 +153,20 @@ Calendar drag/resize is currently UI-only against mock events. The next calendar
 - Weather reads from Open-Meteo using the configured latitude, longitude, and timezone.
 - News reads RSS feeds from the local feed storage table, falling back to `DEFAULT_RSS_FEEDS`.
 - Finance reads the local watchlist symbols and uses `FINANCE_PROVIDER=yahoo` for the unofficial test provider.
+- Personal finance uses local SQLite demo tables for accounts, budgets, and transactions. The UI is intentionally shaped like a household finance dashboard so bank aggregation can be added behind the service layer later.
 
 Provider data is read-only in this phase. Calendar edits in the weekly board are still local UI behavior until Google Calendar write support is added.
+
+## Personal Finance Roadmap
+
+The Finance tab is now split into two lanes:
+
+- Market watch: existing symbol watchlist and Yahoo/mock quote provider.
+- Household finance: accounts, credit-card balances, budgets, monthly spending, recent transactions, and AI-ready observations.
+
+For real bank and credit-card linking, use an aggregator such as Plaid, MX, or Finicity rather than attempting to connect directly to each bank. The next backend step should add a provider behind `server/src/services/personalFinance.ts` that syncs account and transaction records into the existing SQLite tables.
+
+OpenAI finance analysis should read summarized, redacted budget and transaction data from the local service. The current UI has an AI Money Review panel, but it only displays local rule-based insights until `FINANCE_AI_ENABLED=true` is implemented.
 
 Multiple iCloud calendars:
 
@@ -244,3 +260,5 @@ sudo systemctl status mirror-dashboard
 - Add support for multiple calendar feeds with colors and labels.
 - Add reader panel behavior for news links.
 - Add finance settings and a reliable paid finance provider behind `server/src/services/finance/FinanceProvider.ts`.
+- Add a real personal-finance provider behind `server/src/services/personalFinance.ts`, starting with Plaid sandbox.
+- Add OpenAI-powered finance analysis using summarized, privacy-conscious local data.

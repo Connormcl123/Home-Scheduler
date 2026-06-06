@@ -1,6 +1,6 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
-import { CalendarDays, CheckCircle2, CloudSun, Home, Landmark, Moon, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, StickyNote, SunMedium, Trash2, WifiOff } from "lucide-react";
+import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, Moon, PieChart, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
 import {
   createGroceryItem,
   createRssFeed,
@@ -15,6 +15,7 @@ import {
   fetchGroceryItems,
   fetchNote,
   fetchNotes,
+  fetchPersonalFinanceSummary,
   fetchRssFeeds,
   fetchTasks,
   fetchWatchlist,
@@ -27,6 +28,42 @@ import {
 
 type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
+
+const demoPersonalFinance: PersonalFinanceSummary = {
+  provider: "demo",
+  monthLabel: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date()),
+  totalCash: 17120.92,
+  totalDebt: 1950.58,
+  monthlyIncome: 4900,
+  monthlySpending: 1559.69,
+  cashFlow: 3340.31,
+  budgetLimit: 2410,
+  budgetSpent: 1519.1,
+  accounts: [
+    { id: 1, name: "Everyday Checking", institution: "Local Bank", type: "checking", balance: 4280.22, currency: "USD", lastSyncedAt: new Date().toISOString() },
+    { id: 2, name: "Family Savings", institution: "Local Bank", type: "savings", balance: 12840.7, currency: "USD", lastSyncedAt: new Date().toISOString() },
+    { id: 3, name: "Rewards Card", institution: "Credit Card", type: "credit", balance: -1430.18, currency: "USD", lastSyncedAt: new Date().toISOString() }
+  ],
+  budgets: [
+    { id: 1, category: "Groceries", limitAmount: 850, spentAmount: 310.5, color: "#10b981" },
+    { id: 2, category: "Dining", limitAmount: 300, spentAmount: 75.63, color: "#f97316" },
+    { id: 3, category: "Gas", limitAmount: 260, spentAmount: 48.2, color: "#0ea5e9" },
+    { id: 4, category: "Home", limitAmount: 500, spentAmount: 91.33, color: "#8b5cf6" },
+    { id: 5, category: "Shopping", limitAmount: 450, spentAmount: 192.59, color: "#ec4899" }
+  ],
+  recentTransactions: [
+    { id: 1, merchant: "Grocery Market", category: "Groceries", amount: -126.4, transactionDate: today() },
+    { id: 2, merchant: "Gas Station", category: "Gas", amount: -48.2, transactionDate: today() },
+    { id: 3, merchant: "Paycheck", category: "Income", amount: 2450, transactionDate: today() }
+  ],
+  trend: [
+    { label: "W1", income: 2450, spending: 360 },
+    { label: "W2", income: 0, spending: 420 },
+    { label: "W3", income: 2450, spending: 515 },
+    { label: "W4", income: 0, spending: 265 }
+  ],
+  insights: ["Groceries are tracking comfortably under budget.", "Cash flow is positive this month.", "AI analysis can be enabled once a data provider is connected."]
+};
 
 const demoDashboard: DashboardSummary = {
   generatedAt: new Date().toISOString(),
@@ -58,7 +95,8 @@ const demoDashboard: DashboardSummary = {
     quotes: [
       { symbol: "SPY", name: "S&P 500 ETF", price: 542.31, change: 2.44, changePercent: 0.45 },
       { symbol: "AAPL", name: "Apple", price: 214.72, change: -1.18, changePercent: -0.55 }
-    ]
+    ],
+    personal: demoPersonalFinance
   }
 };
 
@@ -172,7 +210,7 @@ export default function App() {
     if (view === "grocery") return <GroceryPanel />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
-    if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} />;
+    if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return <HomePanel dashboard={dashboard} now={now} />;
   }, [dashboard, now, view]);
@@ -889,23 +927,168 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-function FinancePanel({ quotes }: { quotes: FinanceQuote[] }) {
+function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; initialSummary: PersonalFinanceSummary }) {
+  const [summary, setSummary] = useState(initialSummary || demoPersonalFinance);
+
+  useEffect(() => {
+    setSummary(initialSummary || demoPersonalFinance);
+  }, [initialSummary]);
+
+  useEffect(() => {
+    fetchPersonalFinanceSummary()
+      .then(setSummary)
+      .catch(() => undefined);
+  }, []);
+
+  const budgetPercent = summary.budgetLimit ? Math.min(100, Math.round((summary.budgetSpent / summary.budgetLimit) * 100)) : 0;
+  const maxTrend = Math.max(1, ...summary.trend.flatMap((point) => [point.income, point.spending]));
+
   return (
-    <Card className="flex-1">
-      <SectionTitle icon={Landmark} title="Finance" />
-      <div className="mt-6 grid grid-cols-3 gap-5">
-        {quotes.map((quote) => (
-          <div key={quote.symbol} className="rounded-3xl bg-white/75 p-6">
-            <p className="text-xl font-bold text-slate-500">{quote.symbol}</p>
-            <p className="mt-2 truncate text-2xl font-semibold">{quote.name}</p>
-            <p className="mt-6 text-5xl font-bold">{money(quote.price)}</p>
-            <p className={`mt-2 text-2xl font-bold ${quote.changePercent && quote.changePercent < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-              {signed(quote.change)} - {signed(quote.changePercent)}%
-            </p>
+    <Card className="flex-1 overflow-y-auto bg-gradient-to-br from-white via-emerald-50 to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <SectionTitle icon={Landmark} title="Finance" />
+          <p className="mt-2 text-xl font-semibold text-slate-500">Monarch-style family money dashboard - {summary.monthLabel}</p>
+        </div>
+        <div className="rounded-3xl bg-white/80 px-5 py-4 text-right shadow-sm dark:bg-slate-900">
+          <p className="text-lg font-bold text-slate-500">Data provider</p>
+          <p className="text-2xl font-black">{summary.provider}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-4 gap-4">
+        <FinanceMetric icon={Wallet} label="Cash" value={money(summary.totalCash)} tone="emerald" />
+        <FinanceMetric icon={CreditCard} label="Debt" value={money(summary.totalDebt)} tone="rose" />
+        <FinanceMetric icon={ArrowUpRight} label="Income" value={money(summary.monthlyIncome)} tone="sky" />
+        <FinanceMetric icon={ArrowDownRight} label="Spending" value={money(summary.monthlySpending)} tone="amber" />
+      </div>
+
+      <div className="mt-5 grid h-[42vh] grid-cols-[1.15fr_0.85fr] gap-5">
+        <div className="grid grid-rows-[240px_1fr] gap-5 overflow-hidden">
+          <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xl font-bold text-slate-500">Cash Flow</p>
+                <p className={`mt-1 text-5xl font-black ${summary.cashFlow >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{money(summary.cashFlow)}</p>
+              </div>
+              <div className="rounded-full bg-emerald-100 p-4 text-emerald-700"><PieChart className="h-9 w-9" /></div>
+            </div>
+            <div className="mt-6 flex h-24 items-end gap-3">
+              {summary.trend.map((point) => (
+                <div key={point.label} className="flex flex-1 flex-col items-center gap-2">
+                  <div className="flex h-16 w-full items-end justify-center gap-1">
+                    <span className="w-5 rounded-t-full bg-emerald-400" style={{ height: `${Math.max(8, (point.income / maxTrend) * 64)}px` }} />
+                    <span className="w-5 rounded-t-full bg-sky-500" style={{ height: `${Math.max(8, (point.spending / maxTrend) * 64)}px` }} />
+                  </div>
+                  <span className="text-sm font-bold text-slate-500">{point.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+
+          <div className="overflow-y-auto rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-black">Budgets</h3>
+              <p className="rounded-full bg-slate-100 px-4 py-2 text-lg font-bold text-slate-600">{budgetPercent}% used</p>
+            </div>
+            <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${budgetPercent}%` }} />
+            </div>
+            <div className="mt-5 space-y-4">
+              {summary.budgets.map((budget) => {
+                const percent = budget.limitAmount ? Math.min(100, Math.round((budget.spentAmount / budget.limitAmount) * 100)) : 0;
+                return (
+                  <div key={budget.id}>
+                    <div className="mb-2 flex items-center justify-between text-xl font-bold">
+                      <span>{budget.category}</span>
+                      <span>{money(budget.spentAmount)} / {money(budget.limitAmount)}</span>
+                    </div>
+                    <div className="h-4 overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: budget.color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-rows-[190px_1fr] gap-5 overflow-hidden">
+          <div className="rounded-3xl bg-slate-950 p-5 text-white shadow-sm dark:bg-black/40">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-8 w-8 text-emerald-300" />
+              <h3 className="text-2xl font-black">AI Money Review</h3>
+            </div>
+            <div className="mt-4 space-y-2">
+              {summary.insights.slice(0, 3).map((insight) => (
+                <p key={insight} className="rounded-2xl bg-white/10 px-4 py-2 text-lg font-semibold">{insight}</p>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-y-auto rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+            <h3 className="text-2xl font-black">Recent Transactions</h3>
+            <div className="mt-4 space-y-3">
+              {summary.recentTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between rounded-2xl bg-white/80 p-4 dark:bg-slate-800">
+                  <div>
+                    <p className="text-xl font-black">{transaction.merchant}</p>
+                    <p className="text-base font-semibold text-slate-500">{transaction.category} - {transaction.transactionDate}</p>
+                  </div>
+                  <p className={`text-2xl font-black ${transaction.amount < 0 ? "text-slate-800 dark:text-slate-100" : "text-emerald-600"}`}>{money(transaction.amount)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-[1fr_1fr] gap-5">
+        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+          <h3 className="text-2xl font-black">Accounts</h3>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {summary.accounts.slice(0, 4).map((account) => (
+              <div key={account.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                <p className="truncate text-lg font-bold text-slate-500">{account.institution}</p>
+                <p className="truncate text-xl font-black">{account.name}</p>
+                <p className={`mt-2 text-2xl font-black ${account.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(account.balance)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+          <h3 className="text-2xl font-black">Market Watch</h3>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {quotes.slice(0, 4).map((quote) => (
+              <div key={quote.symbol} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                <p className="text-xl font-black">{quote.symbol}</p>
+                <p className="truncate text-base font-semibold text-slate-500">{quote.name}</p>
+                <p className="mt-2 text-2xl font-black">{money(quote.price)}</p>
+                <p className={quote.changePercent && quote.changePercent < 0 ? "font-bold text-rose-600" : "font-bold text-emerald-600"}>{signed(quote.changePercent)}%</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </Card>
+  );
+}
+
+function FinanceMetric({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: string; value: string; tone: "emerald" | "rose" | "sky" | "amber" }) {
+  const tones = {
+    emerald: "bg-emerald-100 text-emerald-700",
+    rose: "bg-rose-100 text-rose-700",
+    sky: "bg-sky-100 text-sky-700",
+    amber: "bg-amber-100 text-amber-700"
+  };
+  return (
+    <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${tones[tone]}`}>
+        <Icon className="h-8 w-8" />
+      </div>
+      <p className="text-lg font-bold text-slate-500">{label}</p>
+      <p className="mt-1 text-4xl font-black">{value}</p>
+    </div>
   );
 }
 

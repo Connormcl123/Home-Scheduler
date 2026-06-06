@@ -1,4 +1,4 @@
-import type { DashboardSummary, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { DashboardSummary, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -68,6 +68,10 @@ export function deleteRssFeed(id: number) {
 
 export function fetchWatchlist() {
   return request<FinanceWatchlistItem[]>("/api/finance/watchlist");
+}
+
+export function fetchPersonalFinanceSummary() {
+  return request<PersonalFinanceSummary>("/api/finance/personal");
 }
 
 export function createWatchlistItem(input: { symbol: string; enabled?: boolean }) {

@@ -11,6 +11,7 @@ import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatc
 import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
 import { getNews } from "./services/news.js";
 import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
+import { getPersonalFinanceSummary } from "./services/personalFinance.js";
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.js";
@@ -156,6 +157,14 @@ app.get("/api/news", async (_req, res, next) => {
 app.get("/api/finance/summary", async (_req, res, next) => {
   try {
     res.json(await getFinanceSummary());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/finance/personal", async (_req, res, next) => {
+  try {
+    res.json(await getPersonalFinanceSummary());
   } catch (error) {
     next(error);
   }

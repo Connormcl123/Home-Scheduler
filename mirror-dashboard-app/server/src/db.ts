@@ -59,6 +59,42 @@ export async function initializeSchema(database: Database) {
       enabled INTEGER NOT NULL DEFAULT 1
     );
 
+    CREATE TABLE IF NOT EXISTS finance_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider_account_id TEXT,
+      name TEXT NOT NULL,
+      institution TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'checking',
+      balance REAL NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      last_synced_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS finance_budgets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL UNIQUE,
+      limit_amount REAL NOT NULL,
+      color TEXT NOT NULL DEFAULT '#3b82f6',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS finance_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider_transaction_id TEXT,
+      account_id INTEGER,
+      merchant TEXT NOT NULL,
+      category TEXT NOT NULL,
+      amount REAL NOT NULL,
+      transaction_date TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES finance_accounts(id) ON DELETE SET NULL
+    );
+
     CREATE TABLE IF NOT EXISTS grocery_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
