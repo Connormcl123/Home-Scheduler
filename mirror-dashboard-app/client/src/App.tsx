@@ -1157,7 +1157,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           <h3 className="text-2xl font-black">Rules & Markets</h3>
           <div className="mt-3 space-y-2">
             {summary.categoryRules.slice(0, 4).map((rule) => (
-              <p key={rule.id} className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold dark:bg-slate-800">{rule.matchText} -> {rule.category}</p>
+              <p key={rule.id} className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold dark:bg-slate-800">{rule.matchText} to {rule.category}</p>
             ))}
             {!summary.categoryRules.length && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold text-slate-500 dark:bg-slate-800">No custom rules yet.</p>}
           </div>
