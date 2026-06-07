@@ -81,6 +81,9 @@ Implemented endpoints:
 - `POST /api/finance/plaid/link-token`
 - `POST /api/finance/plaid/exchange-public-token`
 - `POST /api/finance/plaid/sync`
+- `GET /api/finance/category-rules`
+- `POST /api/finance/category-rules`
+- `PATCH /api/finance/transactions/:id/category`
 - `GET /api/settings`
 - `PATCH /api/settings`
 - `GET /api/rss-feeds`
@@ -202,6 +205,17 @@ npm run start
 5. After Link succeeds, tap `Sync` to pull accounts and transactions through `/transactions/sync`.
 
 The app stores Plaid access tokens in local SQLite because this dashboard is local-only. Treat `data/mirror-dashboard.sqlite` as sensitive and do not commit or share it.
+
+## Finance Categorization
+
+Plaid categories are normalized into dashboard groups such as Groceries, Dining, Gas, Bills, Shopping, Home, Health, Travel, Entertainment, Income, Transfers, and Fees. Anything the app cannot confidently map remains `Uncategorized`.
+
+In the Finance tab:
+
+- Use the transaction category dropdown to manually categorize one transaction.
+- Tap `Rule` on a transaction to create a merchant matching rule, such as `STARBUCKS -> Dining`.
+- New rules immediately update matching existing transactions unless they were manually categorized.
+- Future Plaid syncs apply custom rules before using Plaid's provider category.
 
 Multiple iCloud calendars:
 

@@ -90,6 +90,15 @@ export interface FinanceTransaction {
   amount: number;
   transactionDate: string;
   notes?: string | null;
+  categorizedBy?: "provider" | "rule" | "manual" | "demo";
+}
+
+export interface FinanceCategoryRule {
+  id: number;
+  matchText: string;
+  category: string;
+  enabled: boolean;
+  createdAt: string;
 }
 
 export interface FinanceTrendPoint {
@@ -111,6 +120,8 @@ export interface PersonalFinanceSummary {
   accounts: FinanceAccount[];
   budgets: FinanceBudget[];
   recentTransactions: FinanceTransaction[];
+  uncategorizedTransactions: FinanceTransaction[];
+  categoryRules: FinanceCategoryRule[];
   trend: FinanceTrendPoint[];
   insights: string[];
 }

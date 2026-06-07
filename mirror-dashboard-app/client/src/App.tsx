@@ -1,5 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, Moon, PieChart, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
 import {
   createGroceryItem,
@@ -24,6 +24,7 @@ import {
   saveNote,
   exchangePlaidPublicToken,
   syncPlaidFinance,
+  updateFinanceTransactionCategory,
   updateGroceryItem,
   updateRssFeed,
   updateTask,
@@ -944,18 +945,21 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
 }
 
 function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; initialSummary: PersonalFinanceSummary }) {
-  const [summary, setSummary] = useState(initialSummary || demoPersonalFinance);
+  const [summary, setSummary] = useState(() => normalizeFinanceSummary(initialSummary));
   const [plaidStatus, setPlaidStatus] = useState<PlaidConnectionStatus | null>(null);
   const [plaidMessage, setPlaidMessage] = useState("");
   const [plaidBusy, setPlaidBusy] = useState(false);
+  const [ruleTransaction, setRuleTransaction] = useState<FinanceTransaction | null>(null);
+  const [ruleMatch, setRuleMatch] = useState("");
+  const [ruleCategory, setRuleCategory] = useState("");
 
   useEffect(() => {
-    setSummary(initialSummary || demoPersonalFinance);
+    setSummary(normalizeFinanceSummary(initialSummary));
   }, [initialSummary]);
 
   async function loadPersonalFinance() {
     const [nextSummary, nextStatus] = await Promise.all([fetchPersonalFinanceSummary(), fetchPlaidStatus()]);
-    setSummary(nextSummary);
+    setSummary(normalizeFinanceSummary(nextSummary));
     setPlaidStatus(nextStatus);
   }
 
@@ -1009,15 +1013,39 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
     }
   }
 
+  async function changeTransactionCategory(transaction: FinanceTransaction, category: string) {
+    await updateFinanceTransactionCategory(transaction.id, { category });
+    await loadPersonalFinance();
+  }
+
+  function openRule(transaction: FinanceTransaction) {
+    setRuleTransaction(transaction);
+    setRuleMatch(transaction.merchant);
+    setRuleCategory(transaction.category === "Uncategorized" ? summary.budgets[0]?.category || "Shopping" : transaction.category);
+  }
+
+  async function saveRule() {
+    if (!ruleTransaction || !ruleMatch.trim() || !ruleCategory.trim()) return;
+    await updateFinanceTransactionCategory(ruleTransaction.id, {
+      category: ruleCategory.trim(),
+      createRule: true,
+      matchText: ruleMatch.trim()
+    });
+    setRuleTransaction(null);
+    await loadPersonalFinance();
+  }
+
   const budgetPercent = summary.budgetLimit ? Math.min(100, Math.round((summary.budgetSpent / summary.budgetLimit) * 100)) : 0;
   const maxTrend = Math.max(1, ...summary.trend.flatMap((point) => [point.income, point.spending]));
+  const categoryOptions = Array.from(new Set([...summary.budgets.map((budget) => budget.category), "Groceries", "Dining", "Gas", "Bills", "Shopping", "Home", "Health", "Travel", "Entertainment", "Income", "Transfers", "Fees", "Uncategorized"]));
+  const transactionsToReview = summary.uncategorizedTransactions.length ? summary.uncategorizedTransactions : summary.recentTransactions;
 
   return (
     <Card className="flex-1 overflow-y-auto bg-gradient-to-br from-white via-emerald-50 to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
       <div className="flex items-start justify-between gap-4">
         <div>
           <SectionTitle icon={Landmark} title="Finance" />
-          <p className="mt-2 text-xl font-semibold text-slate-500">Monarch-style family money dashboard - {summary.monthLabel}</p>
+          <p className="mt-2 text-xl font-semibold text-slate-500">Family money dashboard - {summary.monthLabel}</p>
         </div>
         <div className="rounded-3xl bg-white/80 px-5 py-4 text-right shadow-sm dark:bg-slate-900">
           <p className="text-lg font-bold text-slate-500">Data provider</p>
@@ -1044,57 +1072,74 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
         <FinanceMetric icon={ArrowDownRight} label="Spending" value={money(summary.monthlySpending)} tone="amber" />
       </div>
 
-      <div className="mt-5 grid h-[42vh] grid-cols-[1.15fr_0.85fr] gap-5">
-        <div className="grid grid-rows-[240px_1fr] gap-5 overflow-hidden">
-          <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xl font-bold text-slate-500">Cash Flow</p>
-                <p className={`mt-1 text-5xl font-black ${summary.cashFlow >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{money(summary.cashFlow)}</p>
-              </div>
-              <div className="rounded-full bg-emerald-100 p-4 text-emerald-700"><PieChart className="h-9 w-9" /></div>
-            </div>
-            <div className="mt-6 flex h-24 items-end gap-3">
-              {summary.trend.map((point) => (
-                <div key={point.label} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="flex h-16 w-full items-end justify-center gap-1">
-                    <span className="w-5 rounded-t-full bg-emerald-400" style={{ height: `${Math.max(8, (point.income / maxTrend) * 64)}px` }} />
-                    <span className="w-5 rounded-t-full bg-sky-500" style={{ height: `${Math.max(8, (point.spending / maxTrend) * 64)}px` }} />
-                  </div>
-                  <span className="text-sm font-bold text-slate-500">{point.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      <div className="mt-5 grid grid-cols-[360px_1fr_1.15fr] gap-5">
+        <div className="rounded-3xl bg-white/80 p-6 text-center shadow-sm dark:bg-slate-900">
+          <BudgetCircle percent={budgetPercent} spent={summary.budgetSpent} limit={summary.budgetLimit} />
+          <p className="mt-4 text-xl font-bold text-slate-500">Monthly Budget</p>
+          <p className={`text-3xl font-black ${summary.cashFlow >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{money(summary.cashFlow)} cash flow</p>
+        </div>
 
-          <div className="overflow-y-auto rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-black">Budgets</h3>
-              <p className="rounded-full bg-slate-100 px-4 py-2 text-lg font-bold text-slate-600">{budgetPercent}% used</p>
-            </div>
-            <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${budgetPercent}%` }} />
-            </div>
-            <div className="mt-5 space-y-4">
-              {summary.budgets.map((budget) => {
-                const percent = budget.limitAmount ? Math.min(100, Math.round((budget.spentAmount / budget.limitAmount) * 100)) : 0;
-                return (
-                  <div key={budget.id}>
-                    <div className="mb-2 flex items-center justify-between text-xl font-bold">
-                      <span>{budget.category}</span>
-                      <span>{money(budget.spentAmount)} / {money(budget.limitAmount)}</span>
-                    </div>
-                    <div className="h-4 overflow-hidden rounded-full bg-slate-200">
-                      <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: budget.color }} />
-                    </div>
+        <div className="overflow-hidden rounded-3xl bg-white/80 p-5 shadow-sm dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black">Budget Checks</h3>
+            <p className="rounded-full bg-slate-100 px-4 py-2 text-lg font-bold text-slate-600">{summary.budgets.length} groups</p>
+          </div>
+          <div className="mt-4 max-h-[360px] space-y-4 overflow-y-auto pr-2">
+            {summary.budgets.map((budget) => {
+              const percent = budget.limitAmount ? Math.min(100, Math.round((budget.spentAmount / budget.limitAmount) * 100)) : 0;
+              return (
+                <div key={budget.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                  <div className="mb-2 flex items-center justify-between text-xl font-bold">
+                    <span>{budget.category}</span>
+                    <span>{percent}%</span>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="h-4 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: budget.color }} />
+                  </div>
+                  <p className="mt-2 text-lg font-semibold text-slate-500">{money(budget.spentAmount)} of {money(budget.limitAmount)}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="grid grid-rows-[190px_1fr] gap-5 overflow-hidden">
+        <div className="overflow-hidden rounded-3xl bg-white/80 p-5 shadow-sm dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-2xl font-black">Transactions</h3>
+              <p className="text-lg font-semibold text-slate-500">{summary.uncategorizedTransactions.length} need review</p>
+            </div>
+            <button onClick={syncPlaid} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button h-16 bg-sky-600 px-5 text-white">Sync</button>
+          </div>
+          <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">
+            {transactionsToReview.map((transaction) => (
+              <FinanceTransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                categories={categoryOptions}
+                onCategoryChange={(category) => changeTransactionCategory(transaction, category)}
+                onRule={() => openRule(transaction)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-[1fr_1fr_1fr] gap-5">
+        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+          <h3 className="text-2xl font-black">Accounts</h3>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {summary.accounts.slice(0, 6).map((account) => (
+              <div key={account.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                <p className="truncate text-lg font-bold text-slate-500">{account.institution}</p>
+                <p className="truncate text-xl font-black">{account.name}</p>
+                <p className={`mt-2 text-2xl font-black ${account.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(account.balance)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
           <div className="rounded-3xl bg-slate-950 p-5 text-white shadow-sm dark:bg-black/40">
             <div className="flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-emerald-300" />
@@ -1106,39 +1151,16 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
               ))}
             </div>
           </div>
-
-          <div className="overflow-y-auto rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-            <h3 className="text-2xl font-black">Recent Transactions</h3>
-            <div className="mt-4 space-y-3">
-              {summary.recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between rounded-2xl bg-white/80 p-4 dark:bg-slate-800">
-                  <div>
-                    <p className="text-xl font-black">{transaction.merchant}</p>
-                    <p className="text-base font-semibold text-slate-500">{transaction.category} - {transaction.transactionDate}</p>
-                  </div>
-                  <p className={`text-2xl font-black ${transaction.amount < 0 ? "text-slate-800 dark:text-slate-100" : "text-emerald-600"}`}>{money(transaction.amount)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
-      </div>
 
-      <div className="mt-5 grid grid-cols-[1fr_1fr] gap-5">
         <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-          <h3 className="text-2xl font-black">Accounts</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {summary.accounts.slice(0, 4).map((account) => (
-              <div key={account.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
-                <p className="truncate text-lg font-bold text-slate-500">{account.institution}</p>
-                <p className="truncate text-xl font-black">{account.name}</p>
-                <p className={`mt-2 text-2xl font-black ${account.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(account.balance)}</p>
-              </div>
+          <h3 className="text-2xl font-black">Rules & Markets</h3>
+          <div className="mt-3 space-y-2">
+            {summary.categoryRules.slice(0, 4).map((rule) => (
+              <p key={rule.id} className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold dark:bg-slate-800">{rule.matchText} -> {rule.category}</p>
             ))}
+            {!summary.categoryRules.length && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold text-slate-500 dark:bg-slate-800">No custom rules yet.</p>}
           </div>
-        </div>
-        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-          <h3 className="text-2xl font-black">Market Watch</h3>
           <div className="mt-3 grid grid-cols-2 gap-3">
             {quotes.slice(0, 4).map((quote) => (
               <div key={quote.symbol} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
@@ -1151,6 +1173,25 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           </div>
         </div>
       </div>
+
+      {ruleTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
+          <div className="w-[720px] rounded-3xl bg-white p-7 shadow-2xl dark:bg-slate-900">
+            <h3 className="text-3xl font-black">Create Category Rule</h3>
+            <p className="mt-2 text-xl font-semibold text-slate-500">Apply this category whenever a merchant contains this text.</p>
+            <div className="mt-5 grid gap-4">
+              <input value={ruleMatch} onChange={(event) => setRuleMatch(event.target.value)} className="touch-input" placeholder="Merchant text to match" />
+              <select value={ruleCategory} onChange={(event) => setRuleCategory(event.target.value)} className="touch-input">
+                {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setRuleTransaction(null)} className="touch-button bg-slate-100 px-6 text-slate-700">Cancel</button>
+              <button onClick={saveRule} className="touch-button bg-emerald-600 px-6 text-white">Save Rule</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -1169,6 +1210,52 @@ function FinanceMetric({ icon: Icon, label, value, tone }: { icon: LucideIcon; l
       </div>
       <p className="text-lg font-bold text-slate-500">{label}</p>
       <p className="mt-1 text-4xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function normalizeFinanceSummary(summary?: PersonalFinanceSummary): PersonalFinanceSummary {
+  return {
+    ...demoPersonalFinance,
+    ...(summary || {}),
+    accounts: summary?.accounts || [],
+    budgets: summary?.budgets || [],
+    recentTransactions: summary?.recentTransactions || [],
+    uncategorizedTransactions: summary?.uncategorizedTransactions || [],
+    categoryRules: summary?.categoryRules || [],
+    trend: summary?.trend || [],
+    insights: summary?.insights || []
+  };
+}
+
+function BudgetCircle({ percent, spent, limit }: { percent: number; spent: number; limit: number }) {
+  const clamped = Math.min(100, Math.max(0, percent));
+  const color = clamped >= 90 ? "#e11d48" : clamped >= 75 ? "#f59e0b" : "#10b981";
+  return (
+    <div className="mx-auto flex h-64 w-64 items-center justify-center rounded-full p-4" style={{ background: `conic-gradient(${color} ${clamped * 3.6}deg, #e2e8f0 0deg)` }}>
+      <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white shadow-inner dark:bg-slate-900">
+        <p className="text-6xl font-black" style={{ color }}>{clamped}%</p>
+        <p className="mt-1 text-lg font-bold text-slate-500">used</p>
+        <p className="mt-3 text-2xl font-black">{money(spent)}</p>
+        <p className="text-base font-bold text-slate-500">of {money(limit)}</p>
+      </div>
+    </div>
+  );
+}
+
+function FinanceTransactionRow({ transaction, categories, onCategoryChange, onRule }: { transaction: FinanceTransaction; categories: string[]; onCategoryChange: (category: string) => void; onRule: () => void }) {
+  const needsReview = transaction.category === "Uncategorized";
+  return (
+    <div className={`grid grid-cols-[1fr_180px_96px] items-center gap-3 rounded-2xl p-4 ${needsReview ? "bg-amber-50 ring-2 ring-amber-200" : "bg-white/80 dark:bg-slate-800"}`}>
+      <div>
+        <p className="truncate text-xl font-black">{transaction.merchant}</p>
+        <p className="text-base font-semibold text-slate-500">{transaction.transactionDate} - {transaction.categorizedBy || "provider"}</p>
+        <p className={`mt-1 text-2xl font-black ${transaction.amount < 0 ? "text-slate-800 dark:text-slate-100" : "text-emerald-600"}`}>{money(transaction.amount)}</p>
+      </div>
+      <select value={transaction.category} onChange={(event) => onCategoryChange(event.target.value)} className="h-16 rounded-2xl border border-mirror-line bg-white px-3 text-lg font-bold text-slate-800 outline-none focus:ring-4 focus:ring-sky-200 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
+        {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+      </select>
+      <button onClick={onRule} className="touch-button h-16 bg-emerald-100 text-emerald-700">Rule</button>
     </div>
   );
 }

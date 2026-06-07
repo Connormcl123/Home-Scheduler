@@ -1,4 +1,4 @@
-import type { FinanceAccount, FinanceBudget, FinanceTransaction, FinanceTrendPoint, PersonalFinanceSummary } from "@mirror-dashboard/shared";
+import type { FinanceAccount, FinanceBudget, FinanceCategoryRule, FinanceTransaction, FinanceTrendPoint, PersonalFinanceSummary } from "@mirror-dashboard/shared";
 import { getDb } from "../db.js";
 
 const demoAccounts = [
@@ -30,6 +30,25 @@ const demoTransactions = [
   ["Pharmacy", "Health", -36.2, 20]
 ] as const;
 
+const categoryAliases: Record<string, string> = {
+  FOOD_AND_DRINK: "Dining",
+  GENERAL_MERCHANDISE: "Shopping",
+  GENERAL_SERVICES: "Home",
+  GOVERNMENT_AND_NON_PROFIT: "Bills",
+  HOME_IMPROVEMENT: "Home",
+  LOAN_PAYMENTS: "Debt",
+  MEDICAL: "Health",
+  PERSONAL_CARE: "Health",
+  RENT_AND_UTILITIES: "Bills",
+  TRANSPORTATION: "Gas",
+  TRAVEL: "Travel",
+  TRANSFER_IN: "Income",
+  TRANSFER_OUT: "Transfers",
+  INCOME: "Income",
+  BANK_FEES: "Fees",
+  ENTERTAINMENT: "Entertainment"
+};
+
 export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummary> {
   const db = await getDb();
   await seedPersonalFinanceDemoData();
@@ -38,6 +57,8 @@ export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummar
   const accounts = (await db.all("SELECT * FROM finance_accounts ORDER BY type ASC, id ASC")).map(rowToAccount);
   const budgets = await getBudgetsWithSpend();
   const recentTransactions = (await db.all("SELECT * FROM finance_transactions ORDER BY transaction_date DESC, id DESC LIMIT 12")).map(rowToTransaction);
+  const uncategorizedTransactions = (await db.all("SELECT * FROM finance_transactions WHERE category = 'Uncategorized' ORDER BY transaction_date DESC, id DESC LIMIT 12")).map(rowToTransaction);
+  const categoryRules = await listCategoryRules();
   const totals = await getMonthlyTotals();
   const trend = await getTrend();
   const budgetLimit = budgets.reduce((sum, budget) => sum + budget.limitAmount, 0);
@@ -58,9 +79,83 @@ export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummar
     accounts,
     budgets,
     recentTransactions,
+    uncategorizedTransactions,
+    categoryRules,
     trend,
     insights: buildInsights({ budgets, monthlySpending: totals.spending, cashFlow: totals.income - totals.spending })
   };
+}
+
+export async function categorizeMerchant(merchant: string, providerCategory?: string | null) {
+  const ruleCategory = await getRuleCategoryForMerchant(merchant);
+  if (ruleCategory) return { category: ruleCategory, categorizedBy: "rule" as const };
+  return { category: normalizeCategory(providerCategory), categorizedBy: "provider" as const };
+}
+
+export async function listCategoryRules(): Promise<FinanceCategoryRule[]> {
+  const db = await getDb();
+  const rows = await db.all("SELECT * FROM finance_category_rules ORDER BY match_text ASC");
+  return rows.map(rowToCategoryRule);
+}
+
+export async function createCategoryRule(input: { matchText: string; category: string }) {
+  const db = await getDb();
+  const matchText = input.matchText.trim();
+  const category = input.category.trim();
+  if (!matchText || !category) throw new Error("Rule match text and category are required.");
+
+  const result = await db.run(
+    `INSERT INTO finance_category_rules (match_text, category)
+     VALUES (?, ?)
+     ON CONFLICT(match_text) DO UPDATE SET category = excluded.category, enabled = 1, updated_at = CURRENT_TIMESTAMP`,
+    matchText,
+    category
+  );
+
+  await applyCategoryRule({ matchText, category });
+  const row = result.lastID
+    ? await db.get("SELECT * FROM finance_category_rules WHERE id = ?", result.lastID)
+    : await db.get("SELECT * FROM finance_category_rules WHERE match_text = ?", matchText);
+  return rowToCategoryRule(row);
+}
+
+export async function updateTransactionCategory(id: number, input: { category: string; createRule?: boolean; matchText?: string }) {
+  const db = await getDb();
+  const current = await db.get("SELECT * FROM finance_transactions WHERE id = ?", id);
+  if (!current) return null;
+
+  const category = input.category.trim();
+  await db.run(
+    "UPDATE finance_transactions SET category = ?, categorized_by = 'manual', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    category,
+    id
+  );
+
+  if (input.createRule) {
+    await createCategoryRule({ matchText: input.matchText || current.merchant, category });
+  }
+
+  const row = await db.get("SELECT * FROM finance_transactions WHERE id = ?", id);
+  return rowToTransaction(row);
+}
+
+async function getRuleCategoryForMerchant(merchant: string) {
+  const db = await getDb();
+  const rules = await db.all("SELECT match_text, category FROM finance_category_rules WHERE enabled = 1 ORDER BY LENGTH(match_text) DESC") as Array<{ match_text: string; category: string }>;
+  const normalizedMerchant = merchant.toLowerCase();
+  const rule = rules.find((entry) => normalizedMerchant.includes(entry.match_text.toLowerCase()));
+  return rule?.category;
+}
+
+async function applyCategoryRule(input: { matchText: string; category: string }) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE finance_transactions
+     SET category = ?, categorized_by = 'rule', updated_at = CURRENT_TIMESTAMP
+     WHERE LOWER(merchant) LIKE ? AND categorized_by != 'manual'`,
+    input.category,
+    `%${input.matchText.toLowerCase()}%`
+  );
 }
 
 async function seedPersonalFinanceDemoData() {
@@ -187,8 +282,28 @@ function rowToTransaction(row: any): FinanceTransaction {
     category: row.category,
     amount: row.amount,
     transactionDate: row.transaction_date,
-    notes: row.notes
+    notes: row.notes,
+    categorizedBy: row.categorized_by || "provider"
   };
+}
+
+function rowToCategoryRule(row: any): FinanceCategoryRule {
+  return {
+    id: row.id,
+    matchText: row.match_text,
+    category: row.category,
+    enabled: Boolean(row.enabled),
+    createdAt: row.created_at
+  };
+}
+
+function normalizeCategory(category?: string | null) {
+  if (!category) return "Uncategorized";
+  return categoryAliases[category] || toTitleCase(category.replaceAll("_", " "));
+}
+
+function toTitleCase(value: string) {
+  return value.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatCurrency(value: number) {

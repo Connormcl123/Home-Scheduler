@@ -11,7 +11,7 @@ import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatc
 import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
 import { getNews } from "./services/news.js";
 import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
-import { getPersonalFinanceSummary } from "./services/personalFinance.js";
+import { createCategoryRule, getPersonalFinanceSummary, listCategoryRules, updateTransactionCategory } from "./services/personalFinance.js";
 import { createPlaidLinkToken, exchangePlaidPublicToken, getPlaidStatus, syncAllPlaidItems } from "./services/plaidProvider.js";
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
@@ -199,6 +199,34 @@ app.post("/api/finance/plaid/exchange-public-token", async (req, res, next) => {
 app.post("/api/finance/plaid/sync", async (_req, res, next) => {
   try {
     res.json(await syncAllPlaidItems());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/finance/category-rules", async (_req, res, next) => {
+  try {
+    res.json(await listCategoryRules());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/finance/category-rules", async (req, res, next) => {
+  try {
+    if (!req.body?.matchText?.trim() || !req.body?.category?.trim()) return res.status(400).json({ error: "Rule match text and category are required." });
+    res.status(201).json(await createCategoryRule(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/finance/transactions/:id/category", async (req, res, next) => {
+  try {
+    if (!req.body?.category?.trim()) return res.status(400).json({ error: "Category is required." });
+    const transaction = await updateTransactionCategory(Number(req.params.id), req.body);
+    if (!transaction) return res.status(404).json({ error: "Transaction not found." });
+    res.json(transaction);
   } catch (error) {
     next(error);
   }

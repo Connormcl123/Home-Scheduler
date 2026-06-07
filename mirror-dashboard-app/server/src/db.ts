@@ -95,6 +95,15 @@ export async function initializeSchema(database: Database) {
       FOREIGN KEY (account_id) REFERENCES finance_accounts(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS finance_category_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      match_text TEXT NOT NULL UNIQUE,
+      category TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS plaid_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       item_id TEXT NOT NULL UNIQUE,
@@ -124,6 +133,7 @@ export async function initializeSchema(database: Database) {
   await ensureColumn(database, "finance_accounts", "provider_account_id", "TEXT");
   await ensureColumn(database, "finance_transactions", "provider_item_id", "TEXT");
   await ensureColumn(database, "finance_transactions", "pending", "INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(database, "finance_transactions", "categorized_by", "TEXT NOT NULL DEFAULT 'provider'");
 }
 
 async function ensureColumn(database: Database, table: string, column: string, definition: string) {

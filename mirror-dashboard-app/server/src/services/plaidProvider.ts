@@ -1,6 +1,7 @@
 import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 import { config } from "../config.js";
 import { getDb } from "../db.js";
+import { categorizeMerchant } from "./personalFinance.js";
 
 type PlaidItemRow = {
   id: number;
@@ -194,39 +195,42 @@ async function upsertFinanceAccount(input: {
 
 async function upsertFinanceTransaction(providerItemId: string, accountId: number | null, transaction: any) {
   const db = await getDb();
-  const category = transaction.personal_finance_category?.primary || transaction.category?.[0] || "Uncategorized";
   const merchant = transaction.merchant_name || transaction.name || "Transaction";
+  const providerCategory = transaction.personal_finance_category?.primary || transaction.category?.[0] || null;
+  const categorization = await categorizeMerchant(merchant, providerCategory);
   const normalizedAmount = -Number(transaction.amount || 0);
   const existing = await db.get<{ id: number }>("SELECT id FROM finance_transactions WHERE provider_transaction_id = ?", transaction.transaction_id);
 
   if (existing) {
     await db.run(
       `UPDATE finance_transactions
-       SET provider_item_id = ?, account_id = ?, merchant = ?, category = ?, amount = ?, transaction_date = ?, pending = ?, updated_at = CURRENT_TIMESTAMP
+       SET provider_item_id = ?, account_id = ?, merchant = ?, category = CASE WHEN categorized_by = 'manual' THEN category ELSE ? END, amount = ?, transaction_date = ?, pending = ?, categorized_by = CASE WHEN categorized_by = 'manual' THEN categorized_by ELSE ? END, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       providerItemId,
       accountId,
       merchant,
-      category,
+      categorization.category,
       normalizedAmount,
       transaction.date,
       transaction.pending ? 1 : 0,
+      categorization.categorizedBy,
       existing.id
     );
     return;
   }
 
   await db.run(
-    `INSERT INTO finance_transactions (provider_item_id, provider_transaction_id, account_id, merchant, category, amount, transaction_date, pending)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO finance_transactions (provider_item_id, provider_transaction_id, account_id, merchant, category, amount, transaction_date, pending, categorized_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     providerItemId,
     transaction.transaction_id,
     accountId,
     merchant,
-    category,
+    categorization.category,
     normalizedAmount,
     transaction.date,
-    transaction.pending ? 1 : 0
+    transaction.pending ? 1 : 0,
+    categorization.categorizedBy
   );
 }
 
