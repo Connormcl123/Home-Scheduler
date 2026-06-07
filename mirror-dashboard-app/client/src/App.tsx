@@ -255,6 +255,65 @@ const groceryQuickCategories = [
   }
 ];
 
+const groceryIconCodes: Record<string, string> = {
+  Dairy: "1f95b",
+  Milk: "1f95b",
+  Eggs: "1f95a",
+  Butter: "1f9c8",
+  Cheese: "1f9c0",
+  Yogurt: "1f963",
+  Creamer: "2615",
+  Fruit: "1f34e",
+  Apples: "1f34e",
+  Bananas: "1f34c",
+  Berries: "1fad0",
+  Grapes: "1f347",
+  Oranges: "1f34a",
+  Lemons: "1f34b",
+  Meat: "1f969",
+  Chicken: "1f357",
+  "Ground beef": "1f969",
+  Steak: "1f969",
+  Bacon: "1f953",
+  Turkey: "1f356",
+  Fish: "1f41f",
+  Vegetables: "1f955",
+  Lettuce: "1f96c",
+  Carrots: "1f955",
+  Onions: "1f9c5",
+  Peppers: "1fad1",
+  Potatoes: "1f954",
+  Broccoli: "1f966",
+  Spices: "1f9c2",
+  Salt: "1f9c2",
+  Pepper: "1f9c2",
+  "Garlic powder": "1f9c4",
+  Paprika: "1f336-fe0f",
+  Cinnamon: "1f944",
+  "Italian seasoning": "1f33f",
+  Pantry: "1f35e",
+  Bread: "1f35e",
+  Rice: "1f35a",
+  Pasta: "1f35d",
+  Cereal: "1f963",
+  Flour: "1f33e",
+  Sugar: "1f35a",
+  Frozen: "2744-fe0f",
+  "Frozen pizza": "1f355",
+  "Frozen veggies": "1f966",
+  "Ice cream": "1f368",
+  Waffles: "1f9c7",
+  Fries: "1f35f",
+  "Smoothie fruit": "1fad0",
+  Household: "1f9fc",
+  "Paper towels": "1f9fb",
+  "Toilet paper": "1f9fb",
+  "Dish soap": "1f9fc",
+  "Trash bags": "1f5d1-fe0f",
+  "Laundry soap": "1f9fa",
+  Batteries: "1f50b"
+};
+
 export default function App() {
   const [dashboard, setDashboard] = useState<DashboardSummary>(demoDashboard);
   const [view, setView] = useState<View>("home");
@@ -848,6 +907,7 @@ function GroceryPanel() {
   const [supplier, setSupplier] = useState("");
   const [status, setStatus] = useState<GroceryStatus>("low");
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const activeItems = items.filter((item) => !item.purchased);
   const purchasedItems = items.filter((item) => item.purchased);
 
@@ -893,6 +953,9 @@ function GroceryPanel() {
       <div className="flex items-center justify-between">
         <SectionTitle icon={ShoppingBasket} title="Grocery Tracker" />
         <div className="flex items-center gap-3">
+          <button onClick={() => setShareOpen(true)} className="touch-button bg-sky-600 px-7 text-white">
+            Package List
+          </button>
           <button onClick={() => setQuickAddOpen(true)} className="touch-button bg-emerald-600 px-7 text-white">
             <Plus className="mr-2 h-7 w-7" /> Quick Add
           </button>
@@ -929,6 +992,7 @@ function GroceryPanel() {
         </div>
       </div>
       {quickAddOpen && <QuickGroceryModal onClose={() => setQuickAddOpen(false)} onAdd={quickAddItem} />}
+      {shareOpen && <GroceryShareModal items={activeItems} onClose={() => setShareOpen(false)} />}
     </Card>
   );
 }
@@ -991,7 +1055,7 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
             {groceryQuickCategories.map((group) => (
               <button key={group.category} onClick={() => setSelectedCategory(group)} className="min-h-40 rounded-3xl bg-white p-5 text-left shadow-sm transition active:scale-95 dark:bg-slate-800">
                 <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${group.color}24` }}>
-                  {group.icon}
+                  <GroceryThumbnail name={group.category} alt={group.category} />
                 </span>
                 <span className="mt-5 block text-3xl font-black">{group.category}</span>
                 <span className="mt-1 block text-lg font-bold text-slate-500">{group.items.length} common items</span>
@@ -1004,7 +1068,6 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
               <QuickGroceryButton
                 key={`${selectedCategory.category}-${item.name}`}
                 name={item.name}
-                icon={item.icon}
                 category={selectedCategory.category}
                 color={selectedCategory.color}
                 busy={busyItem === item.name}
@@ -1018,17 +1081,71 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
   );
 }
 
-function QuickGroceryButton({ name, icon, category, color, busy, onAdd }: { name: string; icon: string; category: string; color: string; busy: boolean; onAdd: () => void }) {
+function QuickGroceryButton({ name, category, color, busy, onAdd }: { name: string; category: string; color: string; busy: boolean; onAdd: () => void }) {
   return (
     <button onClick={onAdd} disabled={busy} className="grid min-h-32 grid-cols-[76px_1fr] items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-sm transition active:scale-95 disabled:opacity-60 dark:bg-slate-800">
       <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${color}24` }}>
-        {icon}
+        <GroceryThumbnail name={name} alt={name} />
       </span>
       <span className="min-w-0">
         <span className="block truncate text-3xl font-black text-slate-900 dark:text-slate-100">{name}</span>
         <span className="block truncate text-lg font-bold uppercase text-slate-500">{busy ? "Adding..." : category}</span>
       </span>
     </button>
+  );
+}
+
+function GroceryThumbnail({ name, alt }: { name: string; alt: string }) {
+  const code = groceryIconCodes[name] || groceryIconCodes.Pantry;
+  return <img className="h-12 w-12 object-contain" src={`https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`} alt={alt} />;
+}
+
+function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: () => void }) {
+  const [message, setMessage] = useState("");
+  const listText = formatGroceryList(items);
+  const encodedList = encodeURIComponent(listText);
+
+  async function copyList() {
+    await navigator.clipboard?.writeText(listText);
+    setMessage("Copied shopping list.");
+  }
+
+  async function shareList() {
+    if (!navigator.share) {
+      await copyList();
+      setMessage("Share is not available here, so I copied the list.");
+      return;
+    }
+    await navigator.share({ title: "Shopping List", text: listText });
+    setMessage("Shopping list shared.");
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
+      <div className="flex max-h-[86vh] w-[860px] flex-col rounded-3xl bg-[#fbfbf7] p-7 shadow-2xl dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-mirror-line pb-5">
+          <div>
+            <p className="text-lg font-bold uppercase text-slate-500">Shopping Package</p>
+            <h3 className="text-4xl font-black">{items.length} item{items.length === 1 ? "" : "s"} ready</h3>
+          </div>
+          <button onClick={onClose} className="touch-button bg-rose-100 px-6 text-rose-700">Close</button>
+        </div>
+
+        <div className="mt-6 grid min-h-0 flex-1 grid-cols-[1fr_250px] gap-5">
+          <textarea readOnly value={listText} className="min-h-[440px] resize-none rounded-3xl border border-mirror-line bg-white/90 p-5 text-2xl font-semibold leading-relaxed text-slate-800 outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-100" />
+          <div className="space-y-3">
+            <button onClick={shareList} className="touch-button w-full bg-emerald-600 px-5 text-white">Share</button>
+            <button onClick={copyList} className="touch-button w-full bg-sky-600 px-5 text-white">Copy</button>
+            <a className="touch-button w-full bg-indigo-100 px-5 text-indigo-700" href={`sms:?&body=${encodedList}`}>Text</a>
+            <a className="touch-button w-full bg-amber-100 px-5 text-amber-700" href={`mailto:?subject=Shopping%20List&body=${encodedList}`}>Email</a>
+            <p className="rounded-2xl bg-white/80 p-4 text-lg font-bold text-slate-500 dark:bg-slate-800">
+              Use Copy if the Pi cannot open a phone app. The list is grouped by category so it is easier to shop aisle by aisle.
+            </p>
+            {message && <p className="rounded-2xl bg-emerald-100 p-4 text-lg font-bold text-emerald-800">{message}</p>}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1769,6 +1886,30 @@ function groceryStatusStyle(status: GroceryStatus) {
   if (status === "out") return "bg-rose-100 text-rose-800";
   if (status === "ok") return "bg-emerald-100 text-emerald-800";
   return "bg-amber-100 text-amber-800";
+}
+
+function formatGroceryList(items: GroceryItem[]) {
+  if (!items.length) return "Shopping List\n\nNo active grocery items yet.";
+  const grouped = items.reduce<Record<string, GroceryItem[]>>((next, item) => {
+    const group = item.category || "Other";
+    next[group] = next[group] || [];
+    next[group].push(item);
+    return next;
+  }, {});
+
+  const sections = Object.entries(grouped)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([category, groupItems]) => {
+      const lines = groupItems
+        .sort((left, right) => left.name.localeCompare(right.name))
+        .map((item) => {
+          const details = [item.quantity, item.supplier, item.status === "out" ? "out" : ""].filter(Boolean).join(", ");
+          return `- ${item.name}${details ? ` (${details})` : ""}`;
+        });
+      return `${category}\n${lines.join("\n")}`;
+    });
+
+  return `Shopping List\n${new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}\n\n${sections.join("\n\n")}`;
 }
 
 function startOfWeek(date: Date) {
