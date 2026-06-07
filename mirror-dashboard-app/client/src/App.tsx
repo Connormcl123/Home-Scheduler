@@ -152,42 +152,106 @@ const groceryQuickCategories = [
   {
     category: "Dairy",
     color: "#38bdf8",
-    items: ["Milk", "Eggs", "Butter", "Cheese", "Yogurt", "Creamer"]
+    icon: "🥛",
+    items: [
+      { name: "Milk", icon: "🥛" },
+      { name: "Eggs", icon: "🥚" },
+      { name: "Butter", icon: "🧈" },
+      { name: "Cheese", icon: "🧀" },
+      { name: "Yogurt", icon: "🥣" },
+      { name: "Creamer", icon: "☕" }
+    ]
   },
   {
     category: "Fruit",
     color: "#fb7185",
-    items: ["Apples", "Bananas", "Berries", "Grapes", "Oranges", "Lemons"]
+    icon: "🍎",
+    items: [
+      { name: "Apples", icon: "🍎" },
+      { name: "Bananas", icon: "🍌" },
+      { name: "Berries", icon: "🫐" },
+      { name: "Grapes", icon: "🍇" },
+      { name: "Oranges", icon: "🍊" },
+      { name: "Lemons", icon: "🍋" }
+    ]
   },
   {
     category: "Meat",
     color: "#f97316",
-    items: ["Chicken", "Ground beef", "Steak", "Bacon", "Turkey", "Fish"]
+    icon: "🥩",
+    items: [
+      { name: "Chicken", icon: "🍗" },
+      { name: "Ground beef", icon: "🥩" },
+      { name: "Steak", icon: "🥩" },
+      { name: "Bacon", icon: "🥓" },
+      { name: "Turkey", icon: "🍖" },
+      { name: "Fish", icon: "🐟" }
+    ]
   },
   {
     category: "Vegetables",
     color: "#22c55e",
-    items: ["Lettuce", "Carrots", "Onions", "Peppers", "Potatoes", "Broccoli"]
+    icon: "🥕",
+    items: [
+      { name: "Lettuce", icon: "🥬" },
+      { name: "Carrots", icon: "🥕" },
+      { name: "Onions", icon: "🧅" },
+      { name: "Peppers", icon: "🫑" },
+      { name: "Potatoes", icon: "🥔" },
+      { name: "Broccoli", icon: "🥦" }
+    ]
   },
   {
     category: "Spices",
     color: "#a855f7",
-    items: ["Salt", "Pepper", "Garlic powder", "Paprika", "Cinnamon", "Italian seasoning"]
+    icon: "🧂",
+    items: [
+      { name: "Salt", icon: "🧂" },
+      { name: "Pepper", icon: "🧂" },
+      { name: "Garlic powder", icon: "🧄" },
+      { name: "Paprika", icon: "🌶️" },
+      { name: "Cinnamon", icon: "🥄" },
+      { name: "Italian seasoning", icon: "🌿" }
+    ]
   },
   {
     category: "Pantry",
     color: "#eab308",
-    items: ["Bread", "Rice", "Pasta", "Cereal", "Flour", "Sugar"]
+    icon: "🍞",
+    items: [
+      { name: "Bread", icon: "🍞" },
+      { name: "Rice", icon: "🍚" },
+      { name: "Pasta", icon: "🍝" },
+      { name: "Cereal", icon: "🥣" },
+      { name: "Flour", icon: "🌾" },
+      { name: "Sugar", icon: "🍚" }
+    ]
   },
   {
     category: "Frozen",
     color: "#06b6d4",
-    items: ["Frozen pizza", "Frozen veggies", "Ice cream", "Waffles", "Fries", "Smoothie fruit"]
+    icon: "❄️",
+    items: [
+      { name: "Frozen pizza", icon: "🍕" },
+      { name: "Frozen veggies", icon: "🥦" },
+      { name: "Ice cream", icon: "🍨" },
+      { name: "Waffles", icon: "🧇" },
+      { name: "Fries", icon: "🍟" },
+      { name: "Smoothie fruit", icon: "🫐" }
+    ]
   },
   {
     category: "Household",
     color: "#64748b",
-    items: ["Paper towels", "Toilet paper", "Dish soap", "Trash bags", "Laundry soap", "Batteries"]
+    icon: "🧼",
+    items: [
+      { name: "Paper towels", icon: "🧻" },
+      { name: "Toilet paper", icon: "🧻" },
+      { name: "Dish soap", icon: "🧼" },
+      { name: "Trash bags", icon: "🗑️" },
+      { name: "Laundry soap", icon: "🧺" },
+      { name: "Batteries", icon: "🔋" }
+    ]
   }
 ];
 
@@ -783,6 +847,7 @@ function GroceryPanel() {
   const [category, setCategory] = useState("");
   const [supplier, setSupplier] = useState("");
   const [status, setStatus] = useState<GroceryStatus>("low");
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const activeItems = items.filter((item) => !item.purchased);
   const purchasedItems = items.filter((item) => item.purchased);
 
@@ -827,7 +892,12 @@ function GroceryPanel() {
     <Card className="flex-1 overflow-hidden">
       <div className="flex items-center justify-between">
         <SectionTitle icon={ShoppingBasket} title="Grocery Tracker" />
-        <p className="rounded-full bg-amber-100 px-5 py-3 text-xl font-bold text-amber-800">{activeItems.length} to buy this week</p>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setQuickAddOpen(true)} className="touch-button bg-emerald-600 px-7 text-white">
+            <Plus className="mr-2 h-7 w-7" /> Quick Add
+          </button>
+          <p className="rounded-full bg-amber-100 px-5 py-3 text-xl font-bold text-amber-800">{activeItems.length} to buy this week</p>
+        </div>
       </div>
       <div className="mt-6 grid grid-cols-[1.2fr_0.7fr_0.8fr_0.8fr_180px_100px] gap-3">
         <input value={name} onChange={(event) => setName(event.target.value)} className="touch-input" placeholder="Food or supply" />
@@ -842,34 +912,7 @@ function GroceryPanel() {
         <button onClick={addItem} className="touch-button bg-emerald-600 text-white"><Plus className="h-7 w-7" /></button>
       </div>
 
-      <div className="mt-6 grid h-[58vh] grid-cols-[470px_1fr_340px] gap-5">
-        <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-2xl font-bold">Quick Add</h3>
-            <p className="rounded-full bg-emerald-100 px-4 py-2 text-lg font-bold text-emerald-700">Tap item</p>
-          </div>
-          <div className="space-y-5">
-            {groceryQuickCategories.map((group) => (
-              <div key={group.category}>
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="h-4 w-4 rounded-full" style={{ backgroundColor: group.color }} />
-                  <h4 className="text-xl font-black">{group.category}</h4>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {group.items.map((item) => (
-                    <QuickGroceryButton
-                      key={`${group.category}-${item}`}
-                      name={item}
-                      category={group.category}
-                      color={group.color}
-                      onAdd={() => quickAddItem(item, group.category)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="mt-6 grid h-[58vh] grid-cols-[1fr_340px] gap-5">
         <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
           <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
           <div className="space-y-3">
@@ -885,6 +928,7 @@ function GroceryPanel() {
           </div>
         </div>
       </div>
+      {quickAddOpen && <QuickGroceryModal onClose={() => setQuickAddOpen(false)} onAdd={quickAddItem} />}
     </Card>
   );
 }
@@ -917,16 +961,72 @@ function GroceryItemRow({ item, onChanged, compact = false }: { item: GroceryIte
   );
 }
 
-function QuickGroceryButton({ name, category, color, onAdd }: { name: string; category: string; color: string; onAdd: () => void }) {
-  const thumbnail = name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, category: string) => Promise<void> }) {
+  const [selectedCategory, setSelectedCategory] = useState<(typeof groceryQuickCategories)[number] | null>(null);
+  const [busyItem, setBusyItem] = useState("");
+
+  async function addAndClose(name: string, category: string) {
+    setBusyItem(name);
+    await onAdd(name, category);
+    setBusyItem("");
+    onClose();
+  }
+
   return (
-    <button onClick={onAdd} className="grid min-h-24 grid-cols-[58px_1fr] items-center gap-3 rounded-2xl bg-white/85 p-3 text-left shadow-sm transition active:scale-95 dark:bg-slate-900">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-lg font-black text-white shadow-sm" style={{ backgroundColor: color }}>
-        {thumbnail}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
+      <div className="flex max-h-[86vh] w-[980px] flex-col rounded-3xl bg-[#fbfbf7] p-7 shadow-2xl dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-mirror-line pb-5">
+          <div>
+            <p className="text-lg font-bold uppercase text-slate-500">Quick Add</p>
+            <h3 className="text-4xl font-black">{selectedCategory ? selectedCategory.category : "Choose a category"}</h3>
+          </div>
+          <div className="flex gap-3">
+            {selectedCategory && <button onClick={() => setSelectedCategory(null)} className="touch-button bg-slate-100 px-6 text-slate-700">Back</button>}
+            <button onClick={onClose} className="touch-button bg-rose-100 px-6 text-rose-700">Close</button>
+          </div>
+        </div>
+
+        {!selectedCategory ? (
+          <div className="mt-6 grid grid-cols-4 gap-4 overflow-y-auto pr-1">
+            {groceryQuickCategories.map((group) => (
+              <button key={group.category} onClick={() => setSelectedCategory(group)} className="min-h-40 rounded-3xl bg-white p-5 text-left shadow-sm transition active:scale-95 dark:bg-slate-800">
+                <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${group.color}24` }}>
+                  {group.icon}
+                </span>
+                <span className="mt-5 block text-3xl font-black">{group.category}</span>
+                <span className="mt-1 block text-lg font-bold text-slate-500">{group.items.length} common items</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 grid grid-cols-3 gap-4 overflow-y-auto pr-1">
+            {selectedCategory.items.map((item) => (
+              <QuickGroceryButton
+                key={`${selectedCategory.category}-${item.name}`}
+                name={item.name}
+                icon={item.icon}
+                category={selectedCategory.category}
+                color={selectedCategory.color}
+                busy={busyItem === item.name}
+                onAdd={() => addAndClose(item.name, selectedCategory.category)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuickGroceryButton({ name, icon, category, color, busy, onAdd }: { name: string; icon: string; category: string; color: string; busy: boolean; onAdd: () => void }) {
+  return (
+    <button onClick={onAdd} disabled={busy} className="grid min-h-32 grid-cols-[76px_1fr] items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-sm transition active:scale-95 disabled:opacity-60 dark:bg-slate-800">
+      <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${color}24` }}>
+        {icon}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-xl font-black text-slate-900 dark:text-slate-100">{name}</span>
-        <span className="block truncate text-sm font-bold uppercase text-slate-500">{category}</span>
+        <span className="block truncate text-3xl font-black text-slate-900 dark:text-slate-100">{name}</span>
+        <span className="block truncate text-lg font-bold uppercase text-slate-500">{busy ? "Adding..." : category}</span>
       </span>
     </button>
   );
