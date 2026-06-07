@@ -73,6 +73,8 @@ const demoPersonalFinance: PersonalFinanceSummary = {
     { id: 2, merchant: "Gas Station", category: "Gas", amount: -48.2, transactionDate: today() },
     { id: 3, merchant: "Paycheck", category: "Income", amount: 2450, transactionDate: today() }
   ],
+  uncategorizedTransactions: [],
+  categoryRules: [],
   trend: [
     { label: "W1", income: 2450, spending: 360 },
     { label: "W2", income: 0, spending: 420 },
