@@ -1102,6 +1102,7 @@ function GroceryThumbnail({ name, alt }: { name: string; alt: string }) {
 
 function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: () => void }) {
   const [message, setMessage] = useState("");
+  const [showQr, setShowQr] = useState(false);
   const listText = formatGroceryList(items);
   const encodedList = encodeURIComponent(listText);
 
@@ -1136,11 +1137,18 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
           <div className="space-y-3">
             <button onClick={shareList} className="touch-button w-full bg-emerald-600 px-5 text-white">Share</button>
             <button onClick={copyList} className="touch-button w-full bg-sky-600 px-5 text-white">Copy</button>
+            <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-slate-900 px-5 text-white dark:bg-slate-100 dark:text-slate-900">Phone QR</button>
             <a className="touch-button w-full bg-indigo-100 px-5 text-indigo-700" href={`sms:?&body=${encodedList}`}>Text</a>
             <a className="touch-button w-full bg-amber-100 px-5 text-amber-700" href={`mailto:?subject=Shopping%20List&body=${encodedList}`}>Email</a>
             <p className="rounded-2xl bg-white/80 p-4 text-lg font-bold text-slate-500 dark:bg-slate-800">
-              Use Copy if the Pi cannot open a phone app. The list is grouped by category so it is easier to shop aisle by aisle.
+              Use Phone QR if the Pi cannot open a text or email app. Scan it with your phone, then copy or share the list from there.
             </p>
+            {showQr && (
+              <div className="rounded-3xl bg-white p-4 text-center shadow-sm">
+                <img className="mx-auto h-64 w-64" src={`https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodedList}`} alt="Shopping list QR code" />
+                <p className="mt-3 text-lg font-black text-slate-700">Scan with your phone</p>
+              </div>
+            )}
             {message && <p className="rounded-2xl bg-emerald-100 p-4 text-lg font-bold text-emerald-800">{message}</p>}
           </div>
         </div>
