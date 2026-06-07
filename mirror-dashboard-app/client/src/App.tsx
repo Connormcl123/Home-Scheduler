@@ -148,6 +148,49 @@ const profilePalette = [
   { name: "Work", color: "#8b5cf6", soft: "#ede9fe", text: "#6d28d9" }
 ];
 
+const groceryQuickCategories = [
+  {
+    category: "Dairy",
+    color: "#38bdf8",
+    items: ["Milk", "Eggs", "Butter", "Cheese", "Yogurt", "Creamer"]
+  },
+  {
+    category: "Fruit",
+    color: "#fb7185",
+    items: ["Apples", "Bananas", "Berries", "Grapes", "Oranges", "Lemons"]
+  },
+  {
+    category: "Meat",
+    color: "#f97316",
+    items: ["Chicken", "Ground beef", "Steak", "Bacon", "Turkey", "Fish"]
+  },
+  {
+    category: "Vegetables",
+    color: "#22c55e",
+    items: ["Lettuce", "Carrots", "Onions", "Peppers", "Potatoes", "Broccoli"]
+  },
+  {
+    category: "Spices",
+    color: "#a855f7",
+    items: ["Salt", "Pepper", "Garlic powder", "Paprika", "Cinnamon", "Italian seasoning"]
+  },
+  {
+    category: "Pantry",
+    color: "#eab308",
+    items: ["Bread", "Rice", "Pasta", "Cereal", "Flour", "Sugar"]
+  },
+  {
+    category: "Frozen",
+    color: "#06b6d4",
+    items: ["Frozen pizza", "Frozen veggies", "Ice cream", "Waffles", "Fries", "Smoothie fruit"]
+  },
+  {
+    category: "Household",
+    color: "#64748b",
+    items: ["Paper towels", "Toilet paper", "Dish soap", "Trash bags", "Laundry soap", "Batteries"]
+  }
+];
+
 export default function App() {
   const [dashboard, setDashboard] = useState<DashboardSummary>(demoDashboard);
   const [view, setView] = useState<View>("home");
@@ -765,6 +808,21 @@ function GroceryPanel() {
     await load();
   }
 
+  async function quickAddItem(itemName: string, itemCategory: string) {
+    const existing = items.find((item) => item.name.toLowerCase() === itemName.toLowerCase() && item.category === itemCategory && !item.purchased);
+    if (existing) {
+      await updateGroceryItem(existing.id, { status: "low" });
+      await load();
+      return;
+    }
+    await createGroceryItem({
+      name: itemName,
+      category: itemCategory,
+      status: "low"
+    });
+    await load();
+  }
+
   return (
     <Card className="flex-1 overflow-hidden">
       <div className="flex items-center justify-between">
@@ -784,7 +842,34 @@ function GroceryPanel() {
         <button onClick={addItem} className="touch-button bg-emerald-600 text-white"><Plus className="h-7 w-7" /></button>
       </div>
 
-      <div className="mt-6 grid h-[58vh] grid-cols-[1fr_340px] gap-5">
+      <div className="mt-6 grid h-[58vh] grid-cols-[470px_1fr_340px] gap-5">
+        <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-2xl font-bold">Quick Add</h3>
+            <p className="rounded-full bg-emerald-100 px-4 py-2 text-lg font-bold text-emerald-700">Tap item</p>
+          </div>
+          <div className="space-y-5">
+            {groceryQuickCategories.map((group) => (
+              <div key={group.category}>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-4 w-4 rounded-full" style={{ backgroundColor: group.color }} />
+                  <h4 className="text-xl font-black">{group.category}</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {group.items.map((item) => (
+                    <QuickGroceryButton
+                      key={`${group.category}-${item}`}
+                      name={item}
+                      category={group.category}
+                      color={group.color}
+                      onAdd={() => quickAddItem(item, group.category)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
           <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
           <div className="space-y-3">
@@ -829,6 +914,21 @@ function GroceryItemRow({ item, onChanged, compact = false }: { item: GroceryIte
       )}
       <button onClick={() => deleteGroceryItem(item.id).then(onChanged)} className="touch-button bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><Trash2 className="h-6 w-6" /></button>
     </div>
+  );
+}
+
+function QuickGroceryButton({ name, category, color, onAdd }: { name: string; category: string; color: string; onAdd: () => void }) {
+  const thumbnail = name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <button onClick={onAdd} className="grid min-h-24 grid-cols-[58px_1fr] items-center gap-3 rounded-2xl bg-white/85 p-3 text-left shadow-sm transition active:scale-95 dark:bg-slate-900">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-lg font-black text-white shadow-sm" style={{ backgroundColor: color }}>
+        {thumbnail}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-xl font-black text-slate-900 dark:text-slate-100">{name}</span>
+        <span className="block truncate text-sm font-bold uppercase text-slate-500">{category}</span>
+      </span>
+    </button>
   );
 }
 
