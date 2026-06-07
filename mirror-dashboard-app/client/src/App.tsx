@@ -1,6 +1,6 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, Moon, PieChart, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, MapPinned, Moon, PieChart, Plane, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -31,8 +31,27 @@ import {
   updateWatchlistItem
 } from "./api";
 
-type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "settings";
+type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "travel" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
+type TravelTripType = "low-effort" | "beach" | "new-england" | "city" | "nature" | "splurge";
+
+type TravelCandidate = {
+  id: string;
+  name: string;
+  location: string;
+  types: TravelTripType[];
+  durationFit: number[];
+  flightHours: number;
+  estimatedCost: number;
+  ease: number;
+  babyFit: number;
+  deal: number;
+  weather: number;
+  tags: string[];
+  summary: string;
+  visual: string;
+  route: string[];
+};
 
 declare global {
   interface Window {
@@ -126,6 +145,7 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "tasks", label: "Tasks", icon: CheckCircle2 },
   { view: "notes", label: "Notes", icon: StickyNote },
   { view: "finance", label: "Finance", icon: Landmark },
+  { view: "travel", label: "Travel", icon: Plane },
   { view: "settings", label: "Settings", icon: Settings }
 ];
 
@@ -146,6 +166,111 @@ const profilePalette = [
   { name: "School", color: "#10b981", soft: "#d1fae5", text: "#047857" },
   { name: "Personal", color: "#ec4899", soft: "#fce7f3", text: "#be185d" },
   { name: "Work", color: "#8b5cf6", soft: "#ede9fe", text: "#6d28d9" }
+];
+
+const travelCandidates: TravelCandidate[] = [
+  {
+    id: "bermuda",
+    name: "Bermuda Beach Reset",
+    location: "Bermuda",
+    types: ["beach", "splurge", "low-effort"],
+    durationFit: [5, 7],
+    flightHours: 2.2,
+    estimatedCost: 6200,
+    ease: 90,
+    babyFit: 86,
+    deal: 74,
+    weather: 82,
+    tags: ["Direct from BOS", "Short flight", "Beach"],
+    summary: "A short international hop with real vacation energy and a sane travel day.",
+    visual: "linear-gradient(135deg, #0f766e, #3572a5)",
+    route: ["BOS airport buffer", "Prebooked transfer", "Beach-first arrival day"]
+  },
+  {
+    id: "cape",
+    name: "Cape Cod Slow Week",
+    location: "Chatham, MA",
+    types: ["new-england", "beach", "low-effort"],
+    durationFit: [5, 7, 10],
+    flightHours: 0,
+    estimatedCost: 3900,
+    ease: 95,
+    babyFit: 92,
+    deal: 64,
+    weather: 78,
+    tags: ["Driveable", "Kitchen-friendly", "Flexible"],
+    summary: "Low logistics, classic summer rhythm, and easy recovery if plans change.",
+    visual: "linear-gradient(135deg, #2f7d5c, #d49b3a)",
+    route: ["Plymouth halfway stop", "Chatham home base", "Short beach blocks"]
+  },
+  {
+    id: "montreal",
+    name: "Montreal City Break",
+    location: "Montreal, QC",
+    types: ["city", "low-effort"],
+    durationFit: [3, 5],
+    flightHours: 1.3,
+    estimatedCost: 3100,
+    ease: 82,
+    babyFit: 78,
+    deal: 81,
+    weather: 80,
+    tags: ["Short flight", "Walkable", "Food"],
+    summary: "A cultural reset that still keeps travel time and daily ambition under control.",
+    visual: "linear-gradient(135deg, #a23d6d, #3572a5)",
+    route: ["Nonstop to YUL", "Old Montreal base", "One outing per day"]
+  },
+  {
+    id: "maine",
+    name: "Coastal Maine Cottage",
+    location: "Kennebunkport, ME",
+    types: ["new-england", "nature", "low-effort"],
+    durationFit: [3, 5, 7],
+    flightHours: 0,
+    estimatedCost: 3400,
+    ease: 91,
+    babyFit: 88,
+    deal: 69,
+    weather: 76,
+    tags: ["Driveable", "Quiet", "Sea air"],
+    summary: "A gentle change of scene with beaches, short outings, and flexible days.",
+    visual: "linear-gradient(135deg, #315f72, #7aa66a)",
+    route: ["Portsmouth coffee stop", "Dock Square stroll", "Goose Rocks Beach"]
+  },
+  {
+    id: "asheville",
+    name: "Blue Ridge Recharge",
+    location: "Asheville, NC",
+    types: ["nature", "city"],
+    durationFit: [5, 7],
+    flightHours: 2.4,
+    estimatedCost: 4200,
+    ease: 74,
+    babyFit: 73,
+    deal: 77,
+    weather: 74,
+    tags: ["Mountains", "Cabins", "Food"],
+    summary: "Soft adventure, rental-home comfort, and good food between naps.",
+    visual: "linear-gradient(135deg, #25695a, #6d7e36)",
+    route: ["Fly to AVL", "Grocery stop before check-in", "Blue Ridge overlook loop"]
+  },
+  {
+    id: "dc",
+    name: "DC Museum Loop",
+    location: "Washington, DC",
+    types: ["city"],
+    durationFit: [3, 5],
+    flightHours: 1.5,
+    estimatedCost: 2800,
+    ease: 78,
+    babyFit: 70,
+    deal: 79,
+    weather: 55,
+    tags: ["Museums", "Direct", "Value"],
+    summary: "Strong value and easy flights, with indoor backup plans for hot days.",
+    visual: "linear-gradient(135deg, #8f354f, #456c8a)",
+    route: ["Fly into DCA", "Central hotel base", "Morning museum rhythm"]
+  }
 ];
 
 const groceryQuickCategories = [
@@ -398,6 +523,7 @@ export default function App() {
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
+    if (view === "travel") return <TravelHubPanel />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return <HomePanel dashboard={dashboard} now={now} />;
   }, [dashboard, now, view]);
@@ -1614,6 +1740,196 @@ function loadPlaidScript() {
   });
 }
 
+function TravelHubPanel() {
+  const [tripType, setTripType] = useState<TravelTripType>("low-effort");
+  const [duration, setDuration] = useState(5);
+  const [budget, setBudget] = useState(5000);
+  const [selectedId, setSelectedId] = useState(travelCandidates[0]?.id ?? "");
+
+  const rankedTrips = useMemo(() => {
+    return travelCandidates
+      .map((trip) => ({ trip, score: scoreTravelTrip(trip, tripType, duration, budget) }))
+      .sort((a, b) => b.score - a.score);
+  }, [budget, duration, tripType]);
+
+  const selected = rankedTrips.find(({ trip }) => trip.id === selectedId)?.trip ?? rankedTrips[0]?.trip;
+  const dealTrips = [...travelCandidates].sort((a, b) => b.deal - a.deal).slice(0, 3);
+
+  return (
+    <div className="grid flex-1 grid-cols-[310px_minmax(0,1fr)] gap-5 overflow-hidden">
+      <aside className="flex min-h-0 flex-col gap-5 rounded-[24px] border border-teal-100 bg-white/90 p-5 shadow-sm dark:border-teal-500/20 dark:bg-slate-900/90">
+        <div className="flex items-center gap-4">
+          <span className="grid h-16 w-16 place-items-center rounded-2xl bg-teal-700 text-2xl font-black text-white">TH</span>
+          <div>
+            <p className="text-3xl font-black text-slate-900 dark:text-white">Travel Hub</p>
+            <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">Family trip autopilot</p>
+          </div>
+        </div>
+        <div className="grid gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
+          <label className="text-lg font-black text-slate-700 dark:text-slate-200">
+            Trip type
+            <select value={tripType} onChange={(event) => setTripType(event.target.value as TravelTripType)} className="touch-input mt-2 text-xl">
+              <option value="low-effort">Low-effort with baby</option>
+              <option value="beach">Beach reset</option>
+              <option value="new-england">Driveable New England</option>
+              <option value="city">City change of scenery</option>
+              <option value="nature">Nature and fresh air</option>
+              <option value="splurge">Splurge week</option>
+            </select>
+          </label>
+          <label className="text-lg font-black text-slate-700 dark:text-slate-200">
+            Duration
+            <select value={duration} onChange={(event) => setDuration(Number(event.target.value))} className="touch-input mt-2 text-xl">
+              <option value={3}>Long weekend</option>
+              <option value={5}>5 nights</option>
+              <option value={7}>Full week</option>
+              <option value={10}>Slow 10-day trip</option>
+            </select>
+          </label>
+          <label className="text-lg font-black text-slate-700 dark:text-slate-200">
+            Weekly budget
+            <input value={budget} onChange={(event) => setBudget(Number(event.target.value))} type="range" min={1500} max={12000} step={250} className="mt-4 w-full accent-teal-700" />
+            <span className="mt-2 block text-3xl text-teal-700 dark:text-teal-300">{money(budget)}</span>
+          </label>
+        </div>
+        <div className="mt-auto grid gap-3">
+          <TravelStat label="days off" value="62" />
+          <TravelStat label="primary airport" value="BOS" />
+          <TravelStat label="saved ideas" value="0" />
+        </div>
+      </aside>
+
+      <section className="min-h-0 overflow-y-auto rounded-[24px] border border-white/75 bg-[#f8faf7]/95 p-5 shadow-sm dark:border-white/10 dark:bg-slate-950/90">
+        <div className="flex items-end justify-between gap-5">
+          <div>
+            <p className="text-lg font-black uppercase tracking-normal text-teal-700 dark:text-teal-300">June 15 - August 15, 2026</p>
+            <h2 className="mt-1 text-5xl font-black text-slate-950 dark:text-white">Planned Trip Builder</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <TravelMetric label="best fit" value={`${rankedTrips[0]?.score ?? 0}%`} />
+            <TravelMetric label="under budget" value={rankedTrips.filter(({ trip }) => trip.estimatedCost <= budget).length.toString()} />
+            <TravelMetric label="short hops" value={travelCandidates.filter((trip) => trip.flightHours <= 2.5).length.toString()} />
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-[20px] border border-teal-100 bg-white p-5 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Build trip candidates</h3>
+              <p className="mt-1 text-xl font-semibold text-slate-500 dark:text-slate-400">Ranked by ease, family fit, timing, budget, and deal strength.</p>
+            </div>
+            <button type="button" className="touch-button bg-teal-700 px-8 text-white">
+              <Sparkles className="mr-2 h-7 w-7" />
+              Generate
+            </button>
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-4">
+            {rankedTrips.slice(0, 6).map(({ trip, score }) => (
+              <button
+                key={trip.id}
+                type="button"
+                onClick={() => setSelectedId(trip.id)}
+                className={`overflow-hidden rounded-[20px] border bg-white text-left shadow-sm transition active:scale-[0.98] dark:bg-slate-800 ${
+                  selected?.id === trip.id ? "border-teal-500 ring-4 ring-teal-200 dark:ring-teal-500/30" : "border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                <div className="h-24 p-4 text-white" style={{ background: trip.visual }}>
+                  <div className="flex items-start justify-between">
+                    <MapPinned className="h-8 w-8" />
+                    <span className="rounded-full bg-white/20 px-3 py-1 text-lg font-black">{score}%</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <p className="text-2xl font-black text-slate-900 dark:text-white">{trip.name}</p>
+                  <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
+                  <p className="mt-3 line-clamp-2 text-lg font-semibold text-slate-600 dark:text-slate-300">{trip.summary}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {trip.tags.slice(0, 3).map((tag) => (
+                      <span key={tag} className="rounded-full bg-teal-50 px-3 py-1 text-base font-black text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] gap-5">
+          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="text-3xl font-black text-slate-900 dark:text-white">Selected idea</h3>
+            {selected && (
+              <div className="mt-4 grid gap-4">
+                <div className="rounded-[18px] p-5 text-white" style={{ background: selected.visual }}>
+                  <p className="text-4xl font-black">{selected.name}</p>
+                  <p className="mt-1 text-2xl font-bold opacity-90">{selected.location}</p>
+                </div>
+                <div className="grid grid-cols-4 gap-3">
+                  <TravelMetric label="ease" value={`${selected.ease}%`} />
+                  <TravelMetric label="family fit" value={`${selected.babyFit}%`} />
+                  <TravelMetric label="deal" value={`${selected.deal}%`} />
+                  <TravelMetric label="cost" value={money(selected.estimatedCost)} />
+                </div>
+                <ol className="grid gap-3">
+                  {selected.route.map((stop, index) => (
+                    <li key={stop} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-xl font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-200">{index + 1}</span>
+                      {stop}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-5">
+            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Deal finder</h3>
+              <div className="mt-4 grid gap-3">
+                {dealTrips.map((trip) => (
+                  <button key={trip.id} type="button" onClick={() => setSelectedId(trip.id)} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 text-left active:scale-[0.98] dark:bg-slate-800">
+                    <div>
+                      <p className="text-xl font-black text-slate-900 dark:text-white">{trip.name}</p>
+                      <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
+                    </div>
+                    <span className="rounded-full bg-amber-100 px-4 py-2 text-xl font-black text-amber-800">{trip.deal}%</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Leave rhythm</h3>
+              <div className="mt-4 grid grid-cols-7 gap-2">
+                {Array.from({ length: 28 }, (_, index) => (
+                  <span key={index} className={`h-12 rounded-xl ${index % 9 === 1 ? "bg-teal-600" : index % 7 === 5 ? "bg-amber-300" : "bg-slate-100 dark:bg-slate-800"}`} />
+                ))}
+              </div>
+              <p className="mt-4 text-xl font-bold text-slate-500 dark:text-slate-400">Space bigger trips apart and keep recovery weekends visible.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TravelStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+      <p className="text-3xl font-black text-slate-900 dark:text-white">{value}</p>
+      <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{label}</p>
+    </div>
+  );
+}
+
+function TravelMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-center dark:border-slate-700 dark:bg-slate-800">
+      <p className="text-2xl font-black text-slate-900 dark:text-white">{value}</p>
+      <p className="text-base font-black uppercase tracking-normal text-slate-500 dark:text-slate-400">{label}</p>
+    </div>
+  );
+}
+
 function SettingsPanel({ onChanged }: { onChanged: () => void }) {
   const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [watchlist, setWatchlist] = useState<FinanceWatchlistItem[]>([]);
@@ -1865,6 +2181,15 @@ function money(value: number | null) {
 function signed(value: number | null) {
   if (value === null) return "--";
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
+function scoreTravelTrip(trip: TravelCandidate, tripType: TravelTripType, duration: number, budget: number) {
+  const typeFit = trip.types.includes(tripType) ? 18 : 0;
+  const durationFit = trip.durationFit.includes(duration) ? 14 : 0;
+  const budgetFit = trip.estimatedCost <= budget ? 12 : Math.max(-10, Math.round((budget - trip.estimatedCost) / 500));
+  const noFlightBonus = trip.flightHours === 0 ? 8 : Math.max(0, 8 - Math.round(trip.flightHours * 2));
+  const weighted = Math.round((trip.ease * 0.26) + (trip.babyFit * 0.22) + (trip.deal * 0.18) + (trip.weather * 0.12) + typeFit + durationFit + budgetFit + noFlightBonus);
+  return Math.min(99, Math.max(35, weighted));
 }
 
 function today() {
