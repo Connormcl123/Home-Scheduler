@@ -314,6 +314,8 @@ const groceryIconCodes: Record<string, string> = {
   Batteries: "1f50b"
 };
 
+const groceryWhatsappPhone = "17742650686";
+
 export default function App() {
   const [dashboard, setDashboard] = useState<DashboardSummary>(demoDashboard);
   const [view, setView] = useState<View>("home");
@@ -1138,7 +1140,7 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
             <button onClick={shareList} className="touch-button w-full bg-emerald-600 px-5 text-white">Share</button>
             <button onClick={copyList} className="touch-button w-full bg-sky-600 px-5 text-white">Copy</button>
             <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-slate-900 px-5 text-white dark:bg-slate-100 dark:text-slate-900">Phone QR</button>
-            <a className="touch-button w-full bg-green-100 px-5 text-green-800" href={`https://wa.me/?text=${encodedList}`}>WhatsApp</a>
+            <a className="touch-button w-full bg-green-100 px-5 text-green-800" href={`https://wa.me/${groceryWhatsappPhone}?text=${encodedList}`}>WhatsApp Phone</a>
             <a className="touch-button w-full bg-indigo-100 px-5 text-indigo-700" href={`sms:?&body=${encodedList}`}>Text</a>
             <a className="touch-button w-full bg-amber-100 px-5 text-amber-700" href={`mailto:?subject=Shopping%20List&body=${encodedList}`}>Email</a>
             <p className="rounded-2xl bg-white/80 p-4 text-lg font-bold text-slate-500 dark:bg-slate-800">
