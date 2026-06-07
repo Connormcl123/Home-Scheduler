@@ -1138,20 +1138,25 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
             <button onClick={shareList} className="touch-button w-full bg-emerald-600 px-5 text-white">Share</button>
             <button onClick={copyList} className="touch-button w-full bg-sky-600 px-5 text-white">Copy</button>
             <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-slate-900 px-5 text-white dark:bg-slate-100 dark:text-slate-900">Phone QR</button>
+            <a className="touch-button w-full bg-green-100 px-5 text-green-800" href={`https://wa.me/?text=${encodedList}`}>WhatsApp</a>
             <a className="touch-button w-full bg-indigo-100 px-5 text-indigo-700" href={`sms:?&body=${encodedList}`}>Text</a>
             <a className="touch-button w-full bg-amber-100 px-5 text-amber-700" href={`mailto:?subject=Shopping%20List&body=${encodedList}`}>Email</a>
             <p className="rounded-2xl bg-white/80 p-4 text-lg font-bold text-slate-500 dark:bg-slate-800">
               Use Phone QR if the Pi cannot open a text or email app. Scan it with your phone, then copy or share the list from there.
             </p>
-            {showQr && (
-              <div className="rounded-3xl bg-white p-4 text-center shadow-sm">
-                <img className="mx-auto h-64 w-64" src={`https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodedList}`} alt="Shopping list QR code" />
-                <p className="mt-3 text-lg font-black text-slate-700">Scan with your phone</p>
-              </div>
-            )}
             {message && <p className="rounded-2xl bg-emerald-100 p-4 text-lg font-bold text-emerald-800">{message}</p>}
           </div>
         </div>
+        {showQr && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-8">
+            <div className="rounded-[2rem] bg-white p-8 text-center shadow-2xl">
+              <img className="mx-auto h-[52vh] max-h-[560px] min-h-80 w-[52vh] min-w-80 max-w-[560px]" src={`https://api.qrserver.com/v1/create-qr-code/?size=720x720&data=${encodedList}`} alt="Shopping list QR code" />
+              <p className="mt-5 text-3xl font-black text-slate-800">Scan with your phone</p>
+              <p className="mt-2 text-xl font-bold text-slate-500">Your organized grocery list is inside this QR code.</p>
+              <button onClick={() => setShowQr(false)} className="touch-button mx-auto mt-5 bg-slate-900 px-8 text-white">Done</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
