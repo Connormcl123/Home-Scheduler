@@ -1520,13 +1520,18 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
     }
   }
 
-  async function syncPlaid() {
+  async function syncPlaid(forceFull = false) {
     try {
       setPlaidBusy(true);
-      setPlaidMessage("Syncing bank data...");
-      const result = await syncPlaidFinance();
+      setPlaidMessage(forceFull ? "Running full Plaid refresh..." : "Syncing bank data...");
+      const result = await syncPlaidFinance({ forceFull });
       await loadPersonalFinance();
-      setPlaidMessage(`Synced ${result.syncedItems} Plaid connection${result.syncedItems === 1 ? "" : "s"}.`);
+      const totals = result.results.reduce((sum, entry) => ({
+        added: sum.added + entry.added,
+        modified: sum.modified + entry.modified,
+        removed: sum.removed + entry.removed
+      }), { added: 0, modified: 0, removed: 0 });
+      setPlaidMessage(`${forceFull ? "Full refresh" : "Sync"} checked ${result.syncedItems} connection${result.syncedItems === 1 ? "" : "s"}: ${totals.added} added, ${totals.modified} updated, ${totals.removed} removed.`);
     } catch (error) {
       setPlaidMessage(error instanceof Error ? error.message : "Plaid sync failed.");
     } finally {
@@ -1559,7 +1564,11 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
   const budgetPercent = summary.budgetLimit ? Math.min(100, Math.round((summary.budgetSpent / summary.budgetLimit) * 100)) : 0;
   const maxTrend = Math.max(1, ...summary.trend.flatMap((point) => [point.income, point.spending]));
   const categoryOptions = Array.from(new Set([...summary.budgets.map((budget) => budget.category), "Groceries", "Dining", "Gas", "Bills", "Shopping", "Home", "Health", "Travel", "Entertainment", "Income", "Transfers", "Fees", "Uncategorized"]));
-  const transactionsToReview = summary.uncategorizedTransactions.length ? summary.uncategorizedTransactions : summary.recentTransactions;
+  const lastPlaidSync = plaidStatus?.items
+    .map((item) => item.lastSyncedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
 
   return (
     <Card className="flex-1 overflow-y-auto bg-gradient-to-br from-white via-emerald-50 to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
@@ -1574,16 +1583,18 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-[1fr_190px_190px] items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-sm dark:bg-slate-900">
+      <div className="mt-5 grid grid-cols-[1fr_170px_170px_190px] items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-sm dark:bg-slate-900">
         <div>
           <p className="text-xl font-black">Bank connections</p>
           <p className="text-lg font-semibold text-slate-500">
             {plaidStatus?.configured ? `${plaidStatus.itemCount} Plaid connection${plaidStatus.itemCount === 1 ? "" : "s"} - ${plaidStatus.environment}` : "Set Plaid sandbox keys in .env to connect accounts."}
           </p>
+          {lastPlaidSync && <p className="text-base font-bold text-slate-500">Last Plaid sync {formatServerDateTime(lastPlaidSync)}</p>}
           {plaidMessage && <p className="mt-1 text-base font-bold text-sky-700">{plaidMessage}</p>}
         </div>
         <button onClick={connectPlaid} disabled={plaidBusy || plaidStatus?.configured === false} className="touch-button bg-emerald-600 px-5 text-white">Connect</button>
-        <button onClick={syncPlaid} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button bg-sky-600 px-5 text-white">Sync</button>
+        <button onClick={() => syncPlaid(false)} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button bg-sky-600 px-5 text-white">Sync</button>
+        <button onClick={() => syncPlaid(true)} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button bg-indigo-100 px-5 text-indigo-700">Full Refresh</button>
       </div>
 
       <div className="mt-6 grid grid-cols-4 gap-4">
@@ -1628,12 +1639,12 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-2xl font-black">Transactions</h3>
-              <p className="text-lg font-semibold text-slate-500">{summary.uncategorizedTransactions.length} need review</p>
+              <p className="text-lg font-semibold text-slate-500">{summary.recentTransactions.length} recent - {summary.uncategorizedTransactions.length} need review</p>
             </div>
-            <button onClick={syncPlaid} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button h-16 bg-sky-600 px-5 text-white">Sync</button>
+            <button onClick={() => syncPlaid(false)} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button h-16 bg-sky-600 px-5 text-white">Sync</button>
           </div>
           <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">
-            {transactionsToReview.map((transaction) => (
+            {summary.recentTransactions.map((transaction) => (
               <FinanceTransactionRow
                 key={transaction.id}
                 transaction={transaction}
@@ -1770,7 +1781,11 @@ function FinanceTransactionRow({ transaction, categories, onCategoryChange, onRu
     <div className={`grid grid-cols-[1fr_180px_96px] items-center gap-3 rounded-2xl p-4 ${needsReview ? "bg-amber-50 ring-2 ring-amber-200" : "bg-white/80 dark:bg-slate-800"}`}>
       <div>
         <p className="truncate text-xl font-black">{transaction.merchant}</p>
-        <p className="text-base font-semibold text-slate-500">{transaction.transactionDate} - {transaction.categorizedBy || "provider"}</p>
+        <p className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-500">
+          <span>{transaction.transactionDate}</span>
+          <span>- {transaction.categorizedBy || "provider"}</span>
+          {transaction.pending && <span className="rounded-full bg-amber-100 px-2 py-1 text-sm font-black text-amber-800">Pending</span>}
+        </p>
         <p className={`mt-1 text-2xl font-black ${transaction.amount < 0 ? "text-slate-800 dark:text-slate-100" : "text-emerald-600"}`}>{money(transaction.amount)}</p>
       </div>
       <select value={transaction.category} onChange={(event) => onCategoryChange(event.target.value)} className="h-16 rounded-2xl border border-mirror-line bg-white px-3 text-lg font-bold text-slate-800 outline-none focus:ring-4 focus:ring-sky-200 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
@@ -2233,6 +2248,11 @@ function formatHour(hour: number) {
 
 function formatShortDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+}
+
+function formatServerDateTime(value: string) {
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  return new Date(normalized).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function money(value: number | null) {

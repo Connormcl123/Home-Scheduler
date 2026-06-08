@@ -90,6 +90,7 @@ export interface FinanceTransaction {
   amount: number;
   transactionDate: string;
   notes?: string | null;
+  pending?: boolean;
   categorizedBy?: "provider" | "rule" | "manual" | "demo";
 }
 

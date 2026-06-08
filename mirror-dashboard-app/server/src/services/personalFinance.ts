@@ -56,7 +56,7 @@ export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummar
   const plaidItemCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM plaid_items WHERE status = 'active'");
   const accounts = (await db.all("SELECT * FROM finance_accounts ORDER BY type ASC, id ASC")).map(rowToAccount);
   const budgets = await getBudgetsWithSpend();
-  const recentTransactions = (await db.all("SELECT * FROM finance_transactions ORDER BY transaction_date DESC, id DESC LIMIT 12")).map(rowToTransaction);
+  const recentTransactions = (await db.all("SELECT * FROM finance_transactions ORDER BY transaction_date DESC, id DESC LIMIT 40")).map(rowToTransaction);
   const uncategorizedTransactions = (await db.all("SELECT * FROM finance_transactions WHERE category = 'Uncategorized' ORDER BY transaction_date DESC, id DESC LIMIT 12")).map(rowToTransaction);
   const categoryRules = await listCategoryRules();
   const totals = await getMonthlyTotals();
@@ -283,6 +283,7 @@ function rowToTransaction(row: any): FinanceTransaction {
     amount: row.amount,
     transactionDate: row.transaction_date,
     notes: row.notes,
+    pending: Boolean(row.pending),
     categorizedBy: row.categorized_by || "provider"
   };
 }

@@ -86,8 +86,8 @@ export function exchangePlaidPublicToken(input: { publicToken: string; instituti
   return request<{ itemId: string; institutionName?: string | null }>("/api/finance/plaid/exchange-public-token", { method: "POST", body: JSON.stringify(input) });
 }
 
-export function syncPlaidFinance() {
-  return request<{ syncedItems: number; results: Array<{ itemId: string; added: number; modified: number; removed: number }> }>("/api/finance/plaid/sync", { method: "POST" });
+export function syncPlaidFinance(input: { forceFull?: boolean } = {}) {
+  return request<{ syncedItems: number; forceFull?: boolean; results: Array<{ itemId: string; added: number; modified: number; removed: number }> }>("/api/finance/plaid/sync", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function createFinanceCategoryRule(input: { matchText: string; category: string }) {

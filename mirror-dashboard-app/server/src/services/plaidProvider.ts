@@ -80,15 +80,15 @@ async function clearPlaceholderFinanceData() {
   await db.run("DELETE FROM finance_accounts WHERE provider_account_id IS NULL");
 }
 
-export async function syncAllPlaidItems() {
+export async function syncAllPlaidItems(options: { forceFull?: boolean } = {}) {
   assertPlaidConfigured();
   const db = await getDb();
   const items = await db.all("SELECT * FROM plaid_items WHERE status = 'active' ORDER BY id ASC") as PlaidItemRow[];
   const results = [];
   for (const item of items) {
-    results.push(await syncPlaidItem(item.access_token, item.item_id, item.cursor || undefined));
+    results.push(await syncPlaidItem(item.access_token, item.item_id, options.forceFull ? undefined : item.cursor || undefined));
   }
-  return { syncedItems: results.length, results };
+  return { syncedItems: results.length, forceFull: Boolean(options.forceFull), results };
 }
 
 async function syncPlaidItem(accessToken: string, itemId: string, cursor?: string) {

@@ -198,7 +198,7 @@ app.post("/api/finance/plaid/exchange-public-token", async (req, res, next) => {
 
 app.post("/api/finance/plaid/sync", async (_req, res, next) => {
   try {
-    res.json(await syncAllPlaidItems());
+    res.json(await syncAllPlaidItems({ forceFull: Boolean(_req.body?.forceFull) }));
   } catch (error) {
     next(error);
   }
