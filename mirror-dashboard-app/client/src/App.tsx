@@ -442,6 +442,11 @@ const groceryIconCodes: Record<string, string> = {
 const groceryWhatsappPhone = "17742650686";
 
 export default function App() {
+  if (typeof window !== "undefined" && window.location.pathname === "/share/grocery") return <GroceryDocumentPage />;
+  return <DashboardApp />;
+}
+
+function DashboardApp() {
   const [dashboard, setDashboard] = useState<DashboardSummary>(demoDashboard);
   const [view, setView] = useState<View>("home");
   const [error, setError] = useState<string | null>(null);
@@ -1233,6 +1238,8 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
   const [showQr, setShowQr] = useState(false);
   const listText = formatGroceryList(items);
   const encodedList = encodeURIComponent(listText);
+  const groceryDocumentUrl = buildGroceryDocumentUrl(listText);
+  const encodedDocumentUrl = encodeURIComponent(groceryDocumentUrl);
 
   async function copyList() {
     await navigator.clipboard?.writeText(listText);
@@ -1265,12 +1272,12 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
           <div className="space-y-3">
             <button onClick={shareList} className="touch-button w-full bg-emerald-600 px-5 text-white">Share</button>
             <button onClick={copyList} className="touch-button w-full bg-sky-600 px-5 text-white">Copy</button>
-            <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-slate-900 px-5 text-white dark:bg-slate-100 dark:text-slate-900">Phone QR</button>
+            <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-slate-900 px-5 text-white dark:bg-slate-100 dark:text-slate-900">Document QR</button>
             <a className="touch-button w-full bg-green-100 px-5 text-green-800" href={`https://wa.me/${groceryWhatsappPhone}?text=${encodedList}`}>WhatsApp Phone</a>
             <a className="touch-button w-full bg-indigo-100 px-5 text-indigo-700" href={`sms:?&body=${encodedList}`}>Text</a>
             <a className="touch-button w-full bg-amber-100 px-5 text-amber-700" href={`mailto:?subject=Shopping%20List&body=${encodedList}`}>Email</a>
             <p className="rounded-2xl bg-white/80 p-4 text-lg font-bold text-slate-500 dark:bg-slate-800">
-              Use Phone QR if the Pi cannot open a text or email app. Scan it with your phone, then copy or share the list from there.
+              Use Document QR to open an organized grocery-list page on your phone, then share it into Notes.
             </p>
             {message && <p className="rounded-2xl bg-emerald-100 p-4 text-lg font-bold text-emerald-800">{message}</p>}
           </div>
@@ -1278,15 +1285,69 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
         {showQr && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-8">
             <div className="rounded-[2rem] bg-white p-8 text-center shadow-2xl">
-              <img className="mx-auto h-[52vh] max-h-[560px] min-h-80 w-[52vh] min-w-80 max-w-[560px]" src={`https://api.qrserver.com/v1/create-qr-code/?size=720x720&data=${encodedList}`} alt="Shopping list QR code" />
+              <img className="mx-auto h-[52vh] max-h-[560px] min-h-80 w-[52vh] min-w-80 max-w-[560px]" src={`https://api.qrserver.com/v1/create-qr-code/?size=720x720&data=${encodedDocumentUrl}`} alt="Shopping list document QR code" />
               <p className="mt-5 text-3xl font-black text-slate-800">Scan with your phone</p>
-              <p className="mt-2 text-xl font-bold text-slate-500">Your organized grocery list is inside this QR code.</p>
+              <p className="mt-2 text-xl font-bold text-slate-500">This opens a grocery document, not a phone search.</p>
               <button onClick={() => setShowQr(false)} className="touch-button mx-auto mt-5 bg-slate-900 px-8 text-white">Done</button>
             </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function GroceryDocumentPage() {
+  const [message, setMessage] = useState("");
+  const listText = new URLSearchParams(window.location.search).get("list") || "Shopping List\n\nNo items were included.";
+  const lines = listText.split("\n");
+  const title = lines[0] || "Shopping List";
+  const sections = parseGroceryDocumentSections(lines.slice(1));
+
+  async function copyList() {
+    await navigator.clipboard?.writeText(listText);
+    setMessage("Copied. You can paste it into Notes.");
+  }
+
+  async function shareList() {
+    if (!navigator.share) {
+      await copyList();
+      return;
+    }
+    await navigator.share({ title, text: listText });
+    setMessage("Shared.");
+  }
+
+  return (
+    <main className="min-h-screen bg-[#f8faf7] px-5 py-6 text-slate-900">
+      <section className="mx-auto max-w-3xl rounded-[28px] bg-white p-6 shadow-xl">
+        <p className="text-sm font-black uppercase tracking-normal text-teal-700">Home Scheduler</p>
+        <h1 className="mt-1 text-4xl font-black">{title}</h1>
+        <p className="mt-2 text-lg font-bold text-slate-500">Organized for your next grocery trip.</p>
+
+        <div className="mt-6 flex gap-3">
+          <button onClick={shareList} className="min-h-14 flex-1 rounded-2xl bg-teal-700 px-5 text-xl font-black text-white">Share</button>
+          <button onClick={copyList} className="min-h-14 flex-1 rounded-2xl bg-sky-100 px-5 text-xl font-black text-sky-800">Copy</button>
+        </div>
+        {message && <p className="mt-4 rounded-2xl bg-emerald-100 p-4 text-lg font-black text-emerald-800">{message}</p>}
+
+        <div className="mt-6 grid gap-4">
+          {sections.map((section) => (
+            <div key={section.heading} className="rounded-3xl bg-slate-50 p-5">
+              <h2 className="text-2xl font-black text-slate-800">{section.heading}</h2>
+              <div className="mt-3 grid gap-2">
+                {section.items.map((item) => (
+                  <label key={item} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-xl font-bold">
+                    <input type="checkbox" className="h-6 w-6 accent-teal-700" />
+                    <span>{item.replace(/^- /, "")}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }
 
@@ -2190,6 +2251,40 @@ function scoreTravelTrip(trip: TravelCandidate, tripType: TravelTripType, durati
   const noFlightBonus = trip.flightHours === 0 ? 8 : Math.max(0, 8 - Math.round(trip.flightHours * 2));
   const weighted = Math.round((trip.ease * 0.26) + (trip.babyFit * 0.22) + (trip.deal * 0.18) + (trip.weather * 0.12) + typeFit + durationFit + budgetFit + noFlightBonus);
   return Math.min(99, Math.max(35, weighted));
+}
+
+function buildGroceryDocumentUrl(listText: string) {
+  const origin = getShareOrigin();
+  return `${origin}/share/grocery?list=${encodeURIComponent(listText)}`;
+}
+
+function getShareOrigin() {
+  if (typeof window === "undefined") return "";
+  const { protocol, hostname, port } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") return `${protocol}//192.168.1.174${port ? `:${port}` : ""}`;
+  return window.location.origin;
+}
+
+function parseGroceryDocumentSections(lines: string[]) {
+  const sections: Array<{ heading: string; items: string[] }> = [];
+  let current: { heading: string; items: string[] } | null = null;
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) return;
+    if (!line.startsWith("- ")) {
+      current = { heading: line.replace(/:$/, ""), items: [] };
+      sections.push(current);
+      return;
+    }
+    if (!current) {
+      current = { heading: "Items", items: [] };
+      sections.push(current);
+    }
+    current.items.push(line);
+  });
+
+  return sections.length ? sections : [{ heading: "Items", items: ["No active grocery items yet."] }];
 }
 
 function today() {
