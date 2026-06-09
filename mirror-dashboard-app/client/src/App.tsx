@@ -461,9 +461,11 @@ function DashboardApp() {
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
+  const [navDrag, setNavDrag] = useState<{ x: number; y: number; startX: number; startY: number; offsetX: number; offsetY: number; width: number; height: number; startedAt: number } | null>(null);
   const keyboardTargetRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
   const ignoreNextClickRef = useRef(false);
+  const lastNavTapRef = useRef<{ view: View; time: number } | null>(null);
 
   const refreshDashboard = () => {
     fetchDashboard()
@@ -557,30 +559,47 @@ function DashboardApp() {
     if (navEditMode) {
       ignoreNextClickRef.current = true;
       setDraggingView(navView);
+      setNavDrag(getNavDragState(event));
       return;
     }
     longPressTimerRef.current = window.setTimeout(() => {
       ignoreNextClickRef.current = true;
       setNavEditMode(true);
       setDraggingView(navView);
+      setNavDrag(getNavDragState(event));
     }, 520);
   }
 
   function moveNavPress(event: ReactPointerEvent<HTMLButtonElement>) {
     if (!navEditMode || !draggingView) return;
+    setNavDrag((current) => current ? { ...current, x: event.clientX, y: event.clientY } : getNavDragState(event));
     const targetView = getNavViewAtPoint(event.clientX, event.clientY);
     if (!targetView || targetView === draggingView) return;
     setNavOrder((current) => moveNavView(current, draggingView, targetView));
   }
 
-  function finishNavPress() {
+  function finishNavPress(event: ReactPointerEvent<HTMLButtonElement>, navView: View) {
     clearNavLongPress();
+    const currentDrag = navDrag;
+    if (navEditMode && currentDrag) {
+      const distance = Math.hypot(event.clientX - currentDrag.startX, event.clientY - currentDrag.startY);
+      const duration = Date.now() - currentDrag.startedAt;
+      const lastTap = lastNavTapRef.current;
+      if (distance < 10 && duration < 360 && lastTap?.view === navView && Date.now() - lastTap.time < 430) {
+        exitNavEditMode();
+        return;
+      }
+      if (distance < 10 && duration < 360) {
+        lastNavTapRef.current = { view: navView, time: Date.now() };
+      }
+    }
     if (draggingView) {
       window.setTimeout(() => {
         ignoreNextClickRef.current = false;
       }, 80);
     }
     setDraggingView(null);
+    setNavDrag(null);
   }
 
   function clickNavItem(event: ReactMouseEvent<HTMLButtonElement>, navView: View) {
@@ -593,11 +612,41 @@ function DashboardApp() {
     if (!navEditMode) setView(navView);
   }
 
+  function doubleClickNavItem(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    exitNavEditMode();
+  }
+
   function clearNavLongPress() {
     if (longPressTimerRef.current) {
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  }
+
+  function exitNavEditMode() {
+    clearNavLongPress();
+    ignoreNextClickRef.current = false;
+    lastNavTapRef.current = null;
+    setNavEditMode(false);
+    setDraggingView(null);
+    setNavDrag(null);
+  }
+
+  function getNavDragState(event: ReactPointerEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return {
+      x: event.clientX,
+      y: event.clientY,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
+      startedAt: Date.now()
+    };
   }
 
   return (
@@ -626,9 +675,10 @@ function DashboardApp() {
                 data-nav-view={item.view}
                 onPointerDown={(event) => beginNavPress(event, item.view)}
                 onPointerMove={moveNavPress}
-                onPointerUp={finishNavPress}
-                onPointerCancel={finishNavPress}
+                onPointerUp={(event) => finishNavPress(event, item.view)}
+                onPointerCancel={(event) => finishNavPress(event, item.view)}
                 onClick={(event) => clickNavItem(event, item.view)}
+                onDoubleClick={doubleClickNavItem}
                 className={`nav-app-button flex h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold transition active:scale-95 ${
                   active ? "bg-sky-600 text-white shadow-lg shadow-sky-300/40" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
                 } ${navEditMode ? "nav-app-edit cursor-grab shadow-xl" : ""} ${dragging ? "nav-app-dragging z-10" : ""} ${
@@ -643,14 +693,18 @@ function DashboardApp() {
           })}
           {navEditMode && (
             <button
-              onClick={() => {
-                setNavEditMode(false);
-                setDraggingView(null);
-              }}
+              onClick={exitNavEditMode}
               className="mt-auto min-h-14 rounded-2xl bg-slate-900 px-3 text-base font-black text-white active:scale-95 dark:bg-slate-100 dark:text-slate-900"
             >
               Done
             </button>
+          )}
+          {draggingView && navDrag && (
+            <NavDragPreview
+              item={navItems.find((entry) => entry.view === draggingView)}
+              drag={navDrag}
+              active={view === draggingView}
+            />
           )}
         </aside>
         <section className="flex min-w-0 flex-1 flex-col gap-5">
@@ -711,6 +765,29 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
           Updated {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Designed for kiosk touch, with manual page buttons and local-first data.
         </p>
       </Card>
+    </div>
+  );
+}
+
+function NavDragPreview({ item, drag, active }: { item?: { view: View; label: string; icon: LucideIcon }; drag: { x: number; y: number; offsetX: number; offsetY: number; width: number; height: number }; active: boolean }) {
+  if (!item) return null;
+  const Icon = item.icon;
+  return (
+    <div
+      className={`pointer-events-none fixed z-[90] flex flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold shadow-2xl ring-4 ring-white/70 ${
+        active ? "bg-sky-600 text-white" : "bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+      }`}
+      style={{
+        left: drag.x - drag.offsetX,
+        top: drag.y - drag.offsetY,
+        width: drag.width,
+        height: drag.height,
+        transform: "scale(1.14)",
+        transformOrigin: "center"
+      }}
+    >
+      <Icon className="h-8 w-8" />
+      <span>{item.label}</span>
     </div>
   );
 }
