@@ -164,6 +164,34 @@ export interface GroceryItem {
   updatedAt: string;
 }
 
+export interface TravelInspiration {
+  id: number;
+  source: "instagram" | "manual";
+  url: string;
+  title: string;
+  location?: string | null;
+  notes?: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TravelItineraryDay {
+  day: number;
+  title: string;
+  stops: string[];
+  notes: string;
+}
+
+export interface TravelItineraryResult {
+  provider: "openai" | "local";
+  generatedAt: string;
+  title: string;
+  summary: string;
+  days: TravelItineraryDay[];
+  sourceCount: number;
+}
+
 export interface DashboardSummary {
   generatedAt: string;
   calendar: CalendarEvent[];

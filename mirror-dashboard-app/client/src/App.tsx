@@ -1,16 +1,18 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, MapPinned, Moon, PieChart, Plane, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
   createRssFeed,
   createTask,
+  createTravelInspiration,
   createWatchlistItem,
   deleteGroceryItem,
   deleteNote,
   deleteRssFeed,
   deleteTask,
+  deleteTravelInspiration,
   deleteWatchlistItem,
   fetchDashboard,
   fetchGroceryItems,
@@ -20,7 +22,9 @@ import {
   fetchPlaidStatus,
   fetchRssFeeds,
   fetchTasks,
+  fetchTravelInspirations,
   fetchWatchlist,
+  generateTravelItinerary,
   saveNote,
   exchangePlaidPublicToken,
   syncPlaidFinance,
@@ -2046,6 +2050,14 @@ function TravelHubPanel() {
   const [duration, setDuration] = useState(5);
   const [budget, setBudget] = useState(5000);
   const [selectedId, setSelectedId] = useState(travelCandidates[0]?.id ?? "");
+  const [inspirations, setInspirations] = useState<TravelInspiration[]>([]);
+  const [inspirationUrl, setInspirationUrl] = useState("");
+  const [inspirationTitle, setInspirationTitle] = useState("");
+  const [inspirationLocation, setInspirationLocation] = useState("");
+  const [inspirationNotes, setInspirationNotes] = useState("");
+  const [itinerary, setItinerary] = useState<TravelItineraryResult | null>(null);
+  const [travelBusy, setTravelBusy] = useState(false);
+  const [travelMessage, setTravelMessage] = useState("");
 
   const rankedTrips = useMemo(() => {
     return travelCandidates
@@ -2054,7 +2066,58 @@ function TravelHubPanel() {
   }, [budget, duration, tripType]);
 
   const selected = rankedTrips.find(({ trip }) => trip.id === selectedId)?.trip ?? rankedTrips[0]?.trip;
-  const dealTrips = [...travelCandidates].sort((a, b) => b.deal - a.deal).slice(0, 3);
+
+  useEffect(() => {
+    fetchTravelInspirations()
+      .then(setInspirations)
+      .catch(() => setTravelMessage("Saved Instagram ideas could not load."));
+  }, []);
+
+  async function saveInspiration() {
+    if (!inspirationUrl.trim() || !inspirationTitle.trim()) {
+      setTravelMessage("Add a link and short title first.");
+      return;
+    }
+    setTravelBusy(true);
+    try {
+      const item = await createTravelInspiration({
+        url: inspirationUrl.trim(),
+        title: inspirationTitle.trim(),
+        location: inspirationLocation.trim() || undefined,
+        notes: inspirationNotes.trim() || undefined,
+        tags: inspirationLocation.trim() ? [inspirationLocation.trim()] : []
+      });
+      setInspirations((current) => [item, ...current.filter((entry) => entry.id !== item.id)]);
+      setInspirationUrl("");
+      setInspirationTitle("");
+      setInspirationLocation("");
+      setInspirationNotes("");
+      setTravelMessage("Saved to travel ideas.");
+    } catch {
+      setTravelMessage("That travel idea could not be saved.");
+    } finally {
+      setTravelBusy(false);
+    }
+  }
+
+  async function removeInspiration(id: number) {
+    await deleteTravelInspiration(id);
+    setInspirations((current) => current.filter((entry) => entry.id !== id));
+  }
+
+  async function buildItinerary() {
+    setTravelBusy(true);
+    setTravelMessage("Building itinerary from saved ideas...");
+    try {
+      const nextItinerary = await generateTravelItinerary();
+      setItinerary(nextItinerary);
+      setTravelMessage(nextItinerary.provider === "openai" ? "AI itinerary ready." : "Draft itinerary ready.");
+    } catch {
+      setTravelMessage("The itinerary could not be generated.");
+    } finally {
+      setTravelBusy(false);
+    }
+  }
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[290px_minmax(0,1fr)] gap-4 overflow-hidden">
@@ -2096,7 +2159,7 @@ function TravelHubPanel() {
         <div className="mt-auto grid gap-3">
           <TravelStat label="days off" value="62" />
           <TravelStat label="primary airport" value="BOS" />
-          <TravelStat label="saved ideas" value="0" />
+          <TravelStat label="saved ideas" value={inspirations.length.toString()} />
         </div>
       </aside>
 
@@ -2119,9 +2182,9 @@ function TravelHubPanel() {
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">Build trip candidates</h3>
               <p className="mt-1 text-xl font-semibold text-slate-500 dark:text-slate-400">Ranked by ease, family fit, timing, budget, and deal strength.</p>
             </div>
-            <button type="button" className="touch-button bg-teal-700 px-8 text-white">
+            <button type="button" onClick={buildItinerary} disabled={travelBusy} className="touch-button bg-teal-700 px-8 text-white disabled:opacity-60">
               <Sparkles className="mr-2 h-7 w-7" />
-              Generate
+              {travelBusy ? "Working" : "Generate"}
             </button>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
@@ -2182,29 +2245,79 @@ function TravelHubPanel() {
             )}
           </div>
 
-          <div className="grid min-h-0 gap-4 overflow-hidden">
-            <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Deal finder</h3>
-              <div className="mt-4 grid gap-3">
-                {dealTrips.map((trip) => (
-                  <button key={trip.id} type="button" onClick={() => setSelectedId(trip.id)} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 text-left active:scale-[0.98] dark:bg-slate-800">
-                    <div>
-                      <p className="text-xl font-black text-slate-900 dark:text-white">{trip.name}</p>
-                      <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
-                    </div>
-                    <span className="rounded-full bg-amber-100 px-4 py-2 text-xl font-black text-amber-800">{trip.deal}%</span>
-                  </button>
-                ))}
+          <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 overflow-hidden">
+            <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">Instagram ideas</h3>
+                {travelMessage && <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-black text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">{travelMessage}</span>}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <input value={inspirationUrl} onChange={(event) => setInspirationUrl(event.target.value)} placeholder="Reel or post URL" className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
+                <input value={inspirationTitle} onChange={(event) => setInspirationTitle(event.target.value)} placeholder="Short title" className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
+                <input value={inspirationLocation} onChange={(event) => setInspirationLocation(event.target.value)} placeholder="Place or city" className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
+                <button type="button" onClick={saveInspiration} disabled={travelBusy} className="h-12 rounded-2xl bg-teal-700 px-4 text-base font-black text-white active:scale-[0.98] disabled:opacity-60">
+                  Save idea
+                </button>
+                <input value={inspirationNotes} onChange={(event) => setInspirationNotes(event.target.value)} placeholder="Notes from the video" className="col-span-2 h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
+              </div>
+              <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+                {inspirations.length ? (
+                  <div className="grid gap-2">
+                    {inspirations.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-800">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-lg font-black text-slate-900 dark:text-white">{item.title}</p>
+                          <p className="truncate text-base font-bold text-slate-500 dark:text-slate-400">{item.location || "Location pending"}</p>
+                        </div>
+                        <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")} className="h-11 rounded-xl bg-white px-3 text-sm font-black text-teal-800 shadow-sm dark:bg-slate-700 dark:text-teal-200">
+                          Open
+                        </button>
+                        <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid h-full place-items-center rounded-2xl bg-slate-50 p-4 text-center text-lg font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    Save Instagram travel links here, then generate a route from the collection.
+                  </div>
+                )}
               </div>
             </div>
-            <div className="min-h-0 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Leave rhythm</h3>
-              <div className="mt-4 grid grid-cols-7 gap-2">
-                {Array.from({ length: 28 }, (_, index) => (
-                  <span key={index} className={`h-12 rounded-xl ${index % 9 === 1 ? "bg-teal-600" : index % 7 === 5 ? "bg-amber-300" : "bg-slate-100 dark:bg-slate-800"}`} />
-                ))}
+            <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">AI itinerary</h3>
+                <button type="button" onClick={buildItinerary} disabled={travelBusy} className="h-12 rounded-2xl bg-slate-900 px-4 text-base font-black text-white active:scale-[0.98] disabled:opacity-60 dark:bg-white dark:text-slate-900">
+                  <Sparkles className="mr-2 inline h-5 w-5" />
+                  Build
+                </button>
               </div>
-              <p className="mt-4 text-xl font-bold text-slate-500 dark:text-slate-400">Space bigger trips apart and keep recovery weekends visible.</p>
+              <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+                {itinerary ? (
+                  <div className="grid gap-3">
+                    <div className="rounded-2xl bg-teal-50 p-4 dark:bg-teal-500/15">
+                      <p className="text-xl font-black text-slate-900 dark:text-white">{itinerary.title}</p>
+                      <p className="mt-1 text-base font-bold text-slate-600 dark:text-slate-300">{itinerary.summary}</p>
+                    </div>
+                    {itinerary.days.map((day) => (
+                      <div key={day.day} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                        <p className="text-lg font-black text-slate-900 dark:text-white">Day {day.day}: {day.title}</p>
+                        <p className="mt-1 text-base font-bold text-slate-500 dark:text-slate-400">{day.notes}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {day.stops.map((stop) => (
+                            <span key={stop} className="rounded-full bg-white px-3 py-1 text-sm font-black text-slate-700 shadow-sm dark:bg-slate-700 dark:text-slate-200">{stop}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid h-full place-items-center rounded-2xl bg-slate-50 p-4 text-center text-lg font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    Generate an itinerary after saving a few creator posts.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

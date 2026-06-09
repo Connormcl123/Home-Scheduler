@@ -1,4 +1,4 @@
-import type { DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
+import type { DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -124,4 +124,24 @@ export function updateGroceryItem(id: number, input: Partial<{ name: string; qua
 
 export function deleteGroceryItem(id: number) {
   return request<void>(`/api/grocery/${id}`, { method: "DELETE" });
+}
+
+export function fetchTravelInspirations() {
+  return request<TravelInspiration[]>("/api/travel/inspirations");
+}
+
+export function createTravelInspiration(input: { url: string; title: string; location?: string; notes?: string; tags?: string[] }) {
+  return request<TravelInspiration>("/api/travel/inspirations", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateTravelInspiration(id: number, input: Partial<{ url: string; title: string; location: string | null; notes: string | null; tags: string[] }>) {
+  return request<TravelInspiration>(`/api/travel/inspirations/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function deleteTravelInspiration(id: number) {
+  return request<void>(`/api/travel/inspirations/${id}`, { method: "DELETE" });
+}
+
+export function generateTravelItinerary() {
+  return request<TravelItineraryResult>("/api/travel/itinerary", { method: "POST" });
 }

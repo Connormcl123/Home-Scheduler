@@ -127,6 +127,18 @@ export async function initializeSchema(database: Database) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS travel_inspirations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL DEFAULT 'instagram',
+      url TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      location TEXT,
+      notes TEXT,
+      tags TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   await ensureColumn(database, "finance_accounts", "provider_item_id", "TEXT");

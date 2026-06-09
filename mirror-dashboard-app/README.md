@@ -52,7 +52,8 @@ Important settings:
 - `PERSONAL_FINANCE_PROVIDER`: currently `local-demo`, which seeds SQLite with accounts, budgets, and transactions for the Monarch-style dashboard.
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
 - `PLAID_CLIENT_NAME`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_USER_ID`: Plaid Link settings. The first implementation uses the Transactions product.
-- `OPENAI_API_KEY`, `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
+- `OPENAI_API_KEY`, `OPENAI_MODEL`: optional AI itinerary generation for the Travel tab. Without a key, the app uses a local draft generator.
+- `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
 
 All Phase 3 providers fall back to mock data when a feed, network call, or quote lookup fails.
 
@@ -98,6 +99,11 @@ Implemented endpoints:
 - `POST /api/grocery`
 - `PATCH /api/grocery/:id`
 - `DELETE /api/grocery/:id`
+- `GET /api/travel/inspirations`
+- `POST /api/travel/inspirations`
+- `PATCH /api/travel/inspirations/:id`
+- `DELETE /api/travel/inspirations/:id`
+- `POST /api/travel/itinerary`
 
 ## Local Storage Examples
 
@@ -140,6 +146,26 @@ curl -X POST http://localhost:4174/api/grocery \
   -H "Content-Type: application/json" \
   -d '{"name":"Milk","quantity":"1 gallon","category":"Dairy","supplier":"Grocery store","status":"low"}'
 ```
+
+Add an Instagram travel inspiration:
+
+```bash
+curl -X POST http://localhost:4174/api/travel/inspirations \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.instagram.com/reel/example","title":"Cape Cod beach cafe","location":"Cape Cod","notes":"Creator mentioned easy parking and a walkable beach nearby."}'
+```
+
+Generate a draft itinerary from saved travel ideas:
+
+```bash
+curl -X POST http://localhost:4174/api/travel/itinerary
+```
+
+## Travel Inspirations
+
+The Travel tab stores creator post/Reel links, titles, locations, and notes in SQLite. Instagram personal Saved folders are not pulled directly because the public Meta Instagram APIs do not expose a normal endpoint for reading a user's private saved collections. For v1, share or paste the post/Reel URL into the dashboard and add the useful context from the video.
+
+If `OPENAI_API_KEY` is set, the server uses `OPENAI_MODEL` to generate a structured itinerary from the saved links and notes. If the key is missing or the request fails, the app generates a local draft grouped by location.
 
 ## Phase 2 Touchscreen Features
 

@@ -39,5 +39,9 @@ export const config = {
     products: (process.env.PLAID_PRODUCTS || "transactions").split(",").map((product) => product.trim()).filter(Boolean),
     countryCodes: (process.env.PLAID_COUNTRY_CODES || "US").split(",").map((country) => country.trim()).filter(Boolean),
     userId: process.env.PLAID_USER_ID || "home-scheduler-local-user"
+  },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY || "",
+    model: process.env.OPENAI_MODEL || "gpt-4.1-mini"
   }
 };

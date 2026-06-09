@@ -16,6 +16,7 @@ import { createPlaidLinkToken, exchangePlaidPublicToken, getPlaidStatus, syncAll
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.js";
+import { createTravelInspiration, deleteTravelInspiration, generateTravelItinerary, listTravelInspirations, updateTravelInspiration } from "./services/travelInspirations.js";
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
 
@@ -351,6 +352,50 @@ app.delete("/api/grocery/:id", async (req, res, next) => {
   try {
     await deleteGroceryItem(Number(req.params.id));
     res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/travel/inspirations", async (_req, res, next) => {
+  try {
+    res.json(await listTravelInspirations());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/travel/inspirations", async (req, res, next) => {
+  try {
+    if (!req.body?.url?.trim() || !req.body?.title?.trim()) return res.status(400).json({ error: "Travel inspiration URL and title are required." });
+    res.status(201).json(await createTravelInspiration(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/travel/inspirations/:id", async (req, res, next) => {
+  try {
+    const item = await updateTravelInspiration(Number(req.params.id), req.body);
+    if (!item) return res.status(404).json({ error: "Travel inspiration not found." });
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/travel/inspirations/:id", async (req, res, next) => {
+  try {
+    await deleteTravelInspiration(Number(req.params.id));
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/travel/itinerary", async (_req, res, next) => {
+  try {
+    res.json(await generateTravelItinerary());
   } catch (error) {
     next(error);
   }
