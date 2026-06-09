@@ -535,6 +535,43 @@ function DashboardApp() {
     return () => document.removeEventListener("focusin", onFocus);
   }, []);
 
+  useEffect(() => {
+    let activeScroll: { pointerId: number; lastY: number; element: HTMLElement } | null = null;
+
+    function onPointerDown(event: PointerEvent) {
+      if (event.pointerType !== "touch") return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || shouldSkipTouchScroll(target)) return;
+      const element = findScrollableParent(target);
+      if (!element) return;
+      activeScroll = { pointerId: event.pointerId, lastY: event.clientY, element };
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      if (!activeScroll || event.pointerId !== activeScroll.pointerId) return;
+      const deltaY = event.clientY - activeScroll.lastY;
+      if (Math.abs(deltaY) < 1) return;
+      activeScroll.element.scrollTop -= deltaY;
+      activeScroll.lastY = event.clientY;
+      event.preventDefault();
+    }
+
+    function endScroll(event: PointerEvent) {
+      if (activeScroll?.pointerId === event.pointerId) activeScroll = null;
+    }
+
+    document.addEventListener("pointerdown", onPointerDown, { passive: true });
+    document.addEventListener("pointermove", onPointerMove, { passive: false });
+    document.addEventListener("pointerup", endScroll, { passive: true });
+    document.addEventListener("pointercancel", endScroll, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", endScroll);
+      document.removeEventListener("pointercancel", endScroll);
+    };
+  }, []);
+
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
     if (view === "grocery") return <GroceryPanel />;
@@ -2510,6 +2547,34 @@ function moveNavView(order: View[], draggedView: View, targetView: View) {
   const [moved] = next.splice(fromIndex, 1);
   next.splice(toIndex, 0, moved);
   return next;
+}
+
+function shouldSkipTouchScroll(target: HTMLElement) {
+  return Boolean(target.closest([
+    "button",
+    "a",
+    "input",
+    "select",
+    "textarea",
+    "[role='button']",
+    ".nav-app-button",
+    ".cursor-grab",
+    ".cursor-ns-resize",
+    "[data-no-touch-scroll]"
+  ].join(",")));
+}
+
+function findScrollableParent(target: HTMLElement) {
+  let current: HTMLElement | null = target;
+  while (current && current !== document.body) {
+    const style = window.getComputedStyle(current);
+    const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight + 2;
+    if (canScrollY) return current;
+    current = current.parentElement;
+  }
+  const documentElement = document.scrollingElement as HTMLElement | null;
+  if (documentElement && documentElement.scrollHeight > documentElement.clientHeight + 2) return documentElement;
+  return null;
 }
 
 function today() {
