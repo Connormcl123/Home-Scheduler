@@ -26,6 +26,29 @@ textarea {
   touch-action: manipulation;
 }
 
+.nav-app-button {
+  touch-action: none;
+}
+
+.nav-app-edit {
+  animation: nav-app-wiggle 0.28s ease-in-out infinite alternate;
+}
+
+.nav-app-dragging {
+  animation: none;
+  transform: scale(1.12) rotate(0deg);
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.24);
+}
+
+@keyframes nav-app-wiggle {
+  from {
+    transform: rotate(-1.3deg) translateY(-1px);
+  }
+  to {
+    transform: rotate(1.3deg) translateY(1px);
+  }
+}
+
 @layer components {
   .touch-input {
     @apply h-20 rounded-2xl border border-mirror-line bg-white/85 px-5 text-2xl font-semibold text-slate-800 outline-none focus:ring-4 focus:ring-sky-200 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-sky-700;

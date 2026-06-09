@@ -1,4 +1,4 @@
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, CheckCircle2, CloudSun, CreditCard, Home, Landmark, MapPinned, Moon, PieChart, Plane, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff } from "lucide-react";
 import {
@@ -148,6 +148,8 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "travel", label: "Travel", icon: Plane },
   { view: "settings", label: "Settings", icon: Settings }
 ];
+
+const defaultNavOrder = navItems.map((item) => item.view);
 
 const burnInOffsets = [
   { x: 0, y: 0 },
@@ -456,7 +458,12 @@ function DashboardApp() {
   const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-theme") === "dark");
   const [burnInStep, setBurnInStep] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
+  const [navEditMode, setNavEditMode] = useState(false);
+  const [draggingView, setDraggingView] = useState<View | null>(null);
   const keyboardTargetRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const ignoreNextClickRef = useRef(false);
 
   const refreshDashboard = () => {
     fetchDashboard()
@@ -506,6 +513,10 @@ function DashboardApp() {
   }, [darkMode]);
 
   useEffect(() => {
+    safeStorageSet("mirror-dashboard-nav-order", JSON.stringify(navOrder));
+  }, [navOrder]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => setBurnInStep((step) => (step + 1) % 8), 10 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -534,6 +545,60 @@ function DashboardApp() {
   }, [dashboard, now, view]);
 
   const shift = burnInOffsets[burnInStep];
+  const orderedNavItems = useMemo(() => {
+    return navOrder
+      .map((navView) => navItems.find((item) => item.view === navView))
+      .filter((item): item is (typeof navItems)[number] => Boolean(item));
+  }, [navOrder]);
+
+  function beginNavPress(event: ReactPointerEvent<HTMLButtonElement>, navView: View) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    clearNavLongPress();
+    if (navEditMode) {
+      ignoreNextClickRef.current = true;
+      setDraggingView(navView);
+      return;
+    }
+    longPressTimerRef.current = window.setTimeout(() => {
+      ignoreNextClickRef.current = true;
+      setNavEditMode(true);
+      setDraggingView(navView);
+    }, 520);
+  }
+
+  function moveNavPress(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!navEditMode || !draggingView) return;
+    const targetView = getNavViewAtPoint(event.clientX, event.clientY);
+    if (!targetView || targetView === draggingView) return;
+    setNavOrder((current) => moveNavView(current, draggingView, targetView));
+  }
+
+  function finishNavPress() {
+    clearNavLongPress();
+    if (draggingView) {
+      window.setTimeout(() => {
+        ignoreNextClickRef.current = false;
+      }, 80);
+    }
+    setDraggingView(null);
+  }
+
+  function clickNavItem(event: ReactMouseEvent<HTMLButtonElement>, navView: View) {
+    if (ignoreNextClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      ignoreNextClickRef.current = false;
+      return;
+    }
+    if (!navEditMode) setView(navView);
+  }
+
+  function clearNavLongPress() {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
 
   return (
     <main className={`min-h-screen overflow-hidden transition-colors duration-700 ${darkMode ? "dark bg-slate-950 text-slate-100" : "bg-[radial-gradient(circle_at_top_left,#e7f3ff_0,#f9fbfe_36%,#eef5ef_100%)] text-mirror-ink"}`}>
@@ -551,15 +616,23 @@ function DashboardApp() {
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
           </button>
           <div className="h-px w-14 bg-mirror-line" />
-          {navItems.map((item) => {
+          {orderedNavItems.map((item) => {
             const Icon = item.icon;
             const active = view === item.view;
+            const dragging = draggingView === item.view;
             return (
               <button
                 key={item.view}
-                onClick={() => setView(item.view)}
-                className={`flex h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold transition active:scale-95 ${
+                data-nav-view={item.view}
+                onPointerDown={(event) => beginNavPress(event, item.view)}
+                onPointerMove={moveNavPress}
+                onPointerUp={finishNavPress}
+                onPointerCancel={finishNavPress}
+                onClick={(event) => clickNavItem(event, item.view)}
+                className={`nav-app-button flex h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold transition active:scale-95 ${
                   active ? "bg-sky-600 text-white shadow-lg shadow-sky-300/40" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
+                } ${navEditMode ? "nav-app-edit cursor-grab shadow-xl" : ""} ${dragging ? "nav-app-dragging z-10" : ""} ${
+                  navEditMode && !dragging ? "scale-[1.03]" : ""
                 }`}
                 aria-label={item.label}
               >
@@ -568,6 +641,17 @@ function DashboardApp() {
               </button>
             );
           })}
+          {navEditMode && (
+            <button
+              onClick={() => {
+                setNavEditMode(false);
+                setDraggingView(null);
+              }}
+              className="mt-auto min-h-14 rounded-2xl bg-slate-900 px-3 text-base font-black text-white active:scale-95 dark:bg-slate-100 dark:text-slate-900"
+            >
+              Done
+            </button>
+          )}
         </aside>
         <section className="flex min-w-0 flex-1 flex-col gap-5">
           <header className="flex items-center justify-between rounded-[24px] border border-white/70 bg-white/80 px-7 py-4 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
@@ -2305,6 +2389,45 @@ function parseGroceryDocumentSections(lines: string[]) {
   });
 
   return sections.length ? sections : [{ heading: "Items", items: ["No active grocery items yet."] }];
+}
+
+function readNavOrder(): View[] {
+  const saved = safeStorageGet("mirror-dashboard-nav-order");
+  if (!saved) return defaultNavOrder;
+  try {
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return defaultNavOrder;
+    return normalizeNavOrder(parsed);
+  } catch {
+    return defaultNavOrder;
+  }
+}
+
+function normalizeNavOrder(order: unknown[]): View[] {
+  const knownViews = new Set(defaultNavOrder);
+  const ordered = order.filter((view): view is View => typeof view === "string" && knownViews.has(view as View));
+  const missing = defaultNavOrder.filter((view) => !ordered.includes(view));
+  return [...ordered, ...missing];
+}
+
+function getNavViewAtPoint(clientX: number, clientY: number): View | null {
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-nav-view]"));
+  const target = buttons.find((button) => {
+    const rect = button.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  });
+  const view = target?.dataset.navView;
+  return defaultNavOrder.includes(view as View) ? view as View : null;
+}
+
+function moveNavView(order: View[], draggedView: View, targetView: View) {
+  const next = [...order];
+  const fromIndex = next.indexOf(draggedView);
+  const toIndex = next.indexOf(targetView);
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return order;
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
 }
 
 function today() {
