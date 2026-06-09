@@ -139,6 +139,17 @@ export async function initializeSchema(database: Database) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS local_calendar_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      start TEXT NOT NULL,
+      end TEXT,
+      location TEXT,
+      source TEXT NOT NULL DEFAULT 'local',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   await ensureColumn(database, "finance_accounts", "provider_item_id", "TEXT");

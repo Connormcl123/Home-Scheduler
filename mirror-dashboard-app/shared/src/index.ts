@@ -7,7 +7,7 @@ export interface CalendarEvent {
   start: string;
   end?: string;
   location?: string;
-  source: "ical" | "google" | "demo";
+  source: "ical" | "google" | "demo" | "local" | "voice";
 }
 
 export interface Task {

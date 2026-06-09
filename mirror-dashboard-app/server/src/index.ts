@@ -19,6 +19,7 @@ import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.
 import { createTravelInspiration, deleteTravelInspiration, generateTravelItinerary, listTravelInspirations, updateTravelInspiration } from "./services/travelInspirations.js";
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
+import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
 
 const app = express();
 
@@ -401,6 +402,26 @@ app.post("/api/travel/itinerary", async (_req, res, next) => {
   }
 });
 
+app.post("/api/voice/task", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    const task = await createTaskFromVoice(req.body || {});
+    res.status(201).json({ ok: true, message: `Added task: ${task.title}`, task });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/voice/calendar-event", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    const event = await createCalendarEventFromVoice(req.body || {});
+    res.status(201).json({ ok: true, message: `Added calendar event: ${event.title}`, event });
+  } catch (error) {
+    next(error);
+  }
+});
+
 if (fs.existsSync(config.clientDistPath)) {
   app.use(express.static(config.clientDistPath));
   app.use((req, res, next) => {
@@ -410,6 +431,7 @@ if (fs.existsSync(config.clientDistPath)) {
 }
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (error instanceof VoiceCommandError) return res.status(error.status).json({ error: error.message });
   console.error(error);
   res.status(500).json({ error: "Unexpected server error." });
 });
@@ -418,3 +440,11 @@ app.listen(config.port, async () => {
   await getDb();
   console.log(`Mirror dashboard server listening on http://localhost:${config.port}`);
 });
+
+function isVoiceRequestAllowed(req: express.Request) {
+  if (!config.voice.webhookToken) return false;
+  const authorization = req.get("authorization") || "";
+  const headerToken = req.get("x-alexa-token") || "";
+  const bearerToken = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7) : "";
+  return [headerToken, bearerToken].some((token) => token && token === config.voice.webhookToken);
+}

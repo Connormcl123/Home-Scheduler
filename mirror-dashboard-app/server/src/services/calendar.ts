@@ -1,17 +1,20 @@
 import ical from "ical";
 import type { CalendarEvent } from "@mirror-dashboard/shared";
 import { addDays } from "../utils/dates.js";
+import { listLocalCalendarEvents } from "./localCalendar.js";
 import { getSettings } from "./settings.js";
 
 export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const settings = await getSettings();
   const feedUrls = settings.calendarFeedUrls.length ? settings.calendarFeedUrls : settings.calendarFeedUrl ? [settings.calendarFeedUrl] : [];
-  if (!feedUrls.length) return mockCalendarEvents();
 
   const now = new Date();
   const horizon = addDays(now, 45);
-  const eventGroups = await Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index, now, horizon)));
-  const events = eventGroups.flat().sort((a, b) => a.start.localeCompare(b.start));
+  const [localEvents, eventGroups] = await Promise.all([
+    listLocalCalendarEvents({ from: addDays(now, -1), to: horizon }),
+    Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index, now, horizon)))
+  ]);
+  const events = [...localEvents, ...eventGroups.flat()].sort((a, b) => a.start.localeCompare(b.start));
 
   return events.length ? events : mockCalendarEvents();
 }

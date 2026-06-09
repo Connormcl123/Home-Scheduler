@@ -1,0 +1,64 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "home scheduler",
+      "intents": [
+        {
+          "name": "CreateTaskIntent",
+          "slots": [
+            {
+              "name": "taskTitle",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "create task {taskTitle}",
+            "add task {taskTitle}",
+            "make a task {taskTitle}",
+            "remind us to {taskTitle}"
+          ]
+        },
+        {
+          "name": "CreateCalendarEventIntent",
+          "slots": [
+            {
+              "name": "eventTitle",
+              "type": "AMAZON.SearchQuery"
+            },
+            {
+              "name": "eventDate",
+              "type": "AMAZON.DATE"
+            },
+            {
+              "name": "eventTime",
+              "type": "AMAZON.TIME"
+            },
+            {
+              "name": "eventDuration",
+              "type": "AMAZON.DURATION"
+            }
+          ],
+          "samples": [
+            "add calendar event {eventTitle} on {eventDate} at {eventTime}",
+            "create event {eventTitle} on {eventDate} at {eventTime}",
+            "add {eventTitle} to the calendar on {eventDate} at {eventTime}",
+            "schedule {eventTitle} on {eventDate} at {eventTime} for {eventDuration}"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        }
+      ],
+      "types": []
+    }
+  }
+}

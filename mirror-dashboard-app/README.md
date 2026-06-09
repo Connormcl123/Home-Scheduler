@@ -104,6 +104,8 @@ Implemented endpoints:
 - `PATCH /api/travel/inspirations/:id`
 - `DELETE /api/travel/inspirations/:id`
 - `POST /api/travel/itinerary`
+- `POST /api/voice/task`
+- `POST /api/voice/calendar-event`
 
 ## Local Storage Examples
 
@@ -166,6 +168,41 @@ curl -X POST http://localhost:4174/api/travel/itinerary
 The Travel tab stores creator post/Reel links, titles, locations, and notes in SQLite. Instagram personal Saved folders are not pulled directly because the public Meta Instagram APIs do not expose a normal endpoint for reading a user's private saved collections. For v1, share or paste the post/Reel URL into the dashboard and add the useful context from the video.
 
 If `OPENAI_API_KEY` is set, the server uses `OPENAI_MODEL` to generate a structured itinerary from the saved links and notes. If the key is missing or the request fails, the app generates a local draft grouped by location.
+
+## Alexa Voice Commands
+
+Voice command webhooks are available for tasks and local calendar events:
+
+```bash
+curl -X POST http://localhost:4174/api/voice/task \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_long_random_token" \
+  -d '{"title":"sign the papers"}'
+
+curl -X POST http://localhost:4174/api/voice/calendar-event \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_long_random_token" \
+  -d '{"title":"dentist","date":"2026-06-12","time":"2:00 pm","durationMinutes":60}'
+```
+
+On the Pi, set `ALEXA_WEBHOOK_TOKEN` in `.env` to a long random value. Alexa cannot call `localhost` on the Pi directly; the skill must call an HTTPS URL. Use an HTTPS reverse proxy, Cloudflare Tunnel, Tailscale Funnel, ngrok, or an AWS Lambda relay that can reach your dashboard URL.
+
+Starter Alexa files are in `alexa-skill/`:
+
+- `alexa-skill/interaction-model.json`: intents for creating tasks and calendar events.
+- `alexa-skill/lambda/index.mjs`: a minimal Lambda bridge that forwards Alexa intents to the dashboard webhooks.
+
+Set these Lambda environment variables:
+
+```bash
+HOME_SCHEDULER_BASE_URL=https://your-public-dashboard-url
+HOME_SCHEDULER_VOICE_TOKEN=the_same_value_as_ALEXA_WEBHOOK_TOKEN
+```
+
+Example phrases after the skill is enabled:
+
+- "Alexa, open Home Scheduler and create task sign the papers."
+- "Alexa, open Home Scheduler and add calendar event dentist on Friday at 2 PM."
 
 ## Phase 2 Touchscreen Features
 
