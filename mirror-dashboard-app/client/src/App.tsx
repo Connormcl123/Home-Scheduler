@@ -536,15 +536,16 @@ function DashboardApp() {
   }, []);
 
   useEffect(() => {
-    let activeScroll: { pointerId: number; lastY: number; element: HTMLElement } | null = null;
+    let activeScroll: { pointerId: number; lastY: number; startY: number; element: HTMLElement; moved: boolean } | null = null;
+    let suppressNextClick = false;
 
     function onPointerDown(event: PointerEvent) {
-      if (event.pointerType !== "touch") return;
+      if (!event.isPrimary || event.pointerType === "mouse") return;
       const target = event.target;
       if (!(target instanceof HTMLElement) || shouldSkipTouchScroll(target)) return;
       const element = findScrollableParent(target);
       if (!element) return;
-      activeScroll = { pointerId: event.pointerId, lastY: event.clientY, element };
+      activeScroll = { pointerId: event.pointerId, lastY: event.clientY, startY: event.clientY, element, moved: false };
     }
 
     function onPointerMove(event: PointerEvent) {
@@ -553,22 +554,41 @@ function DashboardApp() {
       if (Math.abs(deltaY) < 1) return;
       activeScroll.element.scrollTop -= deltaY;
       activeScroll.lastY = event.clientY;
-      event.preventDefault();
+      if (Math.abs(event.clientY - activeScroll.startY) > 6) {
+        activeScroll.moved = true;
+        event.preventDefault();
+      }
     }
 
     function endScroll(event: PointerEvent) {
-      if (activeScroll?.pointerId === event.pointerId) activeScroll = null;
+      if (activeScroll?.pointerId !== event.pointerId) return;
+      if (activeScroll.moved) {
+        suppressNextClick = true;
+        window.setTimeout(() => {
+          suppressNextClick = false;
+        }, 120);
+      }
+      activeScroll = null;
+    }
+
+    function onClick(event: MouseEvent) {
+      if (!suppressNextClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressNextClick = false;
     }
 
     document.addEventListener("pointerdown", onPointerDown, { passive: true });
     document.addEventListener("pointermove", onPointerMove, { passive: false });
     document.addEventListener("pointerup", endScroll, { passive: true });
     document.addEventListener("pointercancel", endScroll, { passive: true });
+    document.addEventListener("click", onClick, true);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", endScroll);
       document.removeEventListener("pointercancel", endScroll);
+      document.removeEventListener("click", onClick, true);
     };
   }, []);
 
@@ -2551,12 +2571,9 @@ function moveNavView(order: View[], draggedView: View, targetView: View) {
 
 function shouldSkipTouchScroll(target: HTMLElement) {
   return Boolean(target.closest([
-    "button",
-    "a",
     "input",
     "select",
     "textarea",
-    "[role='button']",
     ".nav-app-button",
     ".cursor-grab",
     ".cursor-ns-resize",

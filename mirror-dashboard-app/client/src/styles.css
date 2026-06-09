@@ -4,6 +4,9 @@
 
 * {
   box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 html,
@@ -24,6 +27,13 @@ button,
 a,
 textarea {
   touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .overflow-y-auto,
