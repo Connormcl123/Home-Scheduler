@@ -554,19 +554,24 @@ function DashboardApp() {
   }, [navOrder]);
 
   function beginNavPress(event: ReactPointerEvent<HTMLButtonElement>, navView: View) {
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some kiosk touch drivers can reject pointer capture during rapid taps.
+    }
     clearNavLongPress();
+    const initialDrag = getNavDragState(event);
     if (navEditMode) {
       ignoreNextClickRef.current = true;
       setDraggingView(navView);
-      setNavDrag(getNavDragState(event));
+      setNavDrag(initialDrag);
       return;
     }
     longPressTimerRef.current = window.setTimeout(() => {
       ignoreNextClickRef.current = true;
       setNavEditMode(true);
       setDraggingView(navView);
-      setNavDrag(getNavDragState(event));
+      setNavDrag(initialDrag);
     }, 520);
   }
 
