@@ -721,8 +721,8 @@ function DashboardApp() {
           </div>
         )}
       </div>
-      <div className={`mx-auto flex min-h-screen max-w-[1920px] gap-5 px-6 py-5 transition-transform duration-700 ${keyboardVisible ? "pb-80" : ""}`} style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
-        <aside className="flex w-32 flex-col items-center gap-3 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+      <div className={`mx-auto flex h-screen max-h-screen max-w-[1920px] gap-4 overflow-hidden px-5 py-4 transition-transform duration-700 ${keyboardVisible ? "pb-80" : ""}`} style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
+        <aside className="flex w-32 shrink-0 flex-col items-center gap-2 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
           <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full bg-amber-100 text-amber-700 dark:bg-slate-800 dark:text-sky-200" aria-label="Toggle dark mode">
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
           </button>
@@ -741,14 +741,14 @@ function DashboardApp() {
                 onPointerCancel={(event) => finishNavPress(event, item.view)}
                 onClick={(event) => clickNavItem(event, item.view)}
                 onDoubleClick={doubleClickNavItem}
-                className={`nav-app-button flex h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold transition active:scale-95 ${
+                className={`nav-app-button flex h-20 w-full flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold transition active:scale-95 ${
                   active ? "bg-sky-600 text-white shadow-lg shadow-sky-300/40" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
                 } ${navEditMode ? "nav-app-edit cursor-grab shadow-xl" : ""} ${dragging ? "nav-app-dragging z-10" : ""} ${
                   navEditMode && !dragging ? "scale-[1.03]" : ""
                 }`}
                 aria-label={item.label}
               >
-                <Icon className="h-8 w-8" />
+                <Icon className="h-7 w-7" />
                 <span>{item.label}</span>
               </button>
             );
@@ -769,11 +769,11 @@ function DashboardApp() {
             />
           )}
         </aside>
-        <section className="flex min-w-0 flex-1 flex-col gap-5">
-          <header className="flex items-center justify-between rounded-[24px] border border-white/70 bg-white/80 px-7 py-4 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+          <header className="flex shrink-0 items-center justify-between rounded-[24px] border border-white/70 bg-white/80 px-6 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
             <div>
               <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
-              <h1 className="text-5xl font-bold tracking-normal">{now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</h1>
+              <h1 className="text-4xl font-bold tracking-normal">{now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</h1>
             </div>
             <div className="flex items-center gap-4 text-right">
               <button onClick={refreshDashboard} className="touch-button w-20 bg-white/80 text-slate-600 dark:bg-slate-800 dark:text-slate-200" aria-label="Refresh dashboard"><RefreshCw className="h-7 w-7" /></button>
@@ -784,7 +784,9 @@ function DashboardApp() {
               </div>
             </div>
           </header>
-          {content}
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {content}
+          </div>
         </section>
       </div>
       <OnScreenKeyboard
@@ -1305,7 +1307,7 @@ function GroceryPanel() {
   }
 
   return (
-    <Card className="flex-1 overflow-hidden">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between">
         <SectionTitle icon={ShoppingBasket} title="Grocery Tracker" />
         <div className="flex items-center gap-3">
@@ -1318,7 +1320,7 @@ function GroceryPanel() {
           <p className="rounded-full bg-amber-100 px-5 py-3 text-xl font-bold text-amber-800">{activeItems.length} to buy this week</p>
         </div>
       </div>
-      <div className="mt-6 grid grid-cols-[1.2fr_0.7fr_0.8fr_0.8fr_180px_100px] gap-3">
+      <div className="mt-4 grid shrink-0 grid-cols-[1.2fr_0.7fr_0.8fr_0.8fr_150px_90px] gap-3">
         <input value={name} onChange={(event) => setName(event.target.value)} className="touch-input" placeholder="Food or supply" />
         <input value={quantity} onChange={(event) => setQuantity(event.target.value)} className="touch-input" placeholder="Qty" />
         <input value={category} onChange={(event) => setCategory(event.target.value)} className="touch-input" placeholder="Category" />
@@ -1331,7 +1333,7 @@ function GroceryPanel() {
         <button onClick={addItem} className="touch-button bg-emerald-600 text-white"><Plus className="h-7 w-7" /></button>
       </div>
 
-      <div className="mt-6 grid h-[58vh] grid-cols-[1fr_340px] gap-5">
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-[1fr_320px] gap-4">
         <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
           <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
           <div className="space-y-3">
@@ -1604,9 +1606,9 @@ function TaskPanel({ initialTasks, onChanged }: { initialTasks: Task[]; onChange
   }
 
   return (
-    <Card className="flex-1">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <SectionTitle icon={CheckCircle2} title="Tasks" />
-      <div className="mt-6 grid grid-cols-[1fr_220px_180px_120px] gap-3">
+      <div className="mt-4 grid shrink-0 grid-cols-[1fr_210px_170px_110px] gap-3">
         <input value={title} onChange={(event) => setTitle(event.target.value)} className="touch-input" placeholder="New task" />
         <input value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="touch-input" type="date" />
         <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)} className="touch-input">
@@ -1616,7 +1618,7 @@ function TaskPanel({ initialTasks, onChanged }: { initialTasks: Task[]; onChange
         </select>
         <button onClick={addTask} disabled={busy} className="touch-button bg-sky-600 text-white"><Plus className="h-6 w-6" /></button>
       </div>
-      <div className="mt-6 space-y-3">
+      <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
         {tasks.map((task) => (
           <div key={task.id} className="grid grid-cols-[72px_1fr_170px_90px] items-center gap-3 rounded-2xl bg-white/75 p-4">
             <button onClick={() => updateTask(task.id, { completed: !task.completed }).then(reload)} className={`h-14 rounded-2xl ${task.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>
@@ -1668,15 +1670,15 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
-    <Card className="flex-1">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <SectionTitle icon={StickyNote} title="Notes" />
-      <div className="mt-6 grid grid-cols-[260px_120px_120px] gap-3">
+      <div className="mt-4 grid shrink-0 grid-cols-[260px_120px_120px] gap-3">
         <input value={date} onChange={(event) => { setDate(event.target.value); load(event.target.value).catch(() => undefined); }} className="touch-input" type="date" />
         <button onClick={save} className="touch-button bg-sky-600 text-white"><Save className="h-6 w-6" /></button>
         <button onClick={remove} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
       </div>
-      <textarea className="mt-6 h-[44vh] w-full resize-none rounded-2xl border border-mirror-line bg-white/70 p-6 text-3xl leading-relaxed outline-none focus:ring-4 focus:ring-sky-200" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write today's note..." />
-      <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+      <textarea className="mt-4 min-h-0 flex-1 w-full resize-none rounded-2xl border border-mirror-line bg-white/70 p-5 text-3xl leading-relaxed outline-none focus:ring-4 focus:ring-sky-200" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write today's note..." />
+      <div className="mt-4 flex shrink-0 gap-3 overflow-x-auto pb-2">
         {notes.map((note) => (
           <button key={note.id} onClick={() => { setDate(note.date); setBody(note.body); }} className="min-w-48 rounded-2xl bg-white/75 p-4 text-left">
             <p className="font-bold">{note.date}</p>
@@ -1794,8 +1796,8 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
     .at(-1);
 
   return (
-    <Card className="flex-1 overflow-y-auto bg-gradient-to-br from-white via-emerald-50 to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
-      <div className="flex items-start justify-between gap-4">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden bg-gradient-to-br from-white via-emerald-50 to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
+      <div className="flex shrink-0 items-start justify-between gap-4">
         <div>
           <SectionTitle icon={Landmark} title="Finance" />
           <p className="mt-2 text-xl font-semibold text-slate-500">Family money dashboard - {summary.monthLabel}</p>
@@ -1806,7 +1808,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-[1fr_170px_170px_190px] items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-sm dark:bg-slate-900">
+      <div className="mt-3 grid shrink-0 grid-cols-[1fr_150px_150px_170px] items-center gap-3 rounded-3xl bg-white/70 p-3 shadow-sm dark:bg-slate-900">
         <div>
           <p className="text-xl font-black">Bank connections</p>
           <p className="text-lg font-semibold text-slate-500">
@@ -1820,26 +1822,26 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
         <button onClick={() => syncPlaid(true)} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button bg-indigo-100 px-5 text-indigo-700">Full Refresh</button>
       </div>
 
-      <div className="mt-6 grid grid-cols-4 gap-4">
+      <div className="mt-3 grid shrink-0 grid-cols-4 gap-3">
         <FinanceMetric icon={Wallet} label="Cash" value={money(summary.totalCash)} tone="emerald" />
         <FinanceMetric icon={CreditCard} label="Debt" value={money(summary.totalDebt)} tone="rose" />
         <FinanceMetric icon={ArrowUpRight} label="Income" value={money(summary.monthlyIncome)} tone="sky" />
         <FinanceMetric icon={ArrowDownRight} label="Spending" value={money(summary.monthlySpending)} tone="amber" />
       </div>
 
-      <div className="mt-5 grid grid-cols-[360px_1fr_1.15fr] gap-5">
-        <div className="rounded-3xl bg-white/80 p-6 text-center shadow-sm dark:bg-slate-900">
+      <div className="mt-3 grid min-h-0 flex-1 grid-cols-[300px_1fr_1.15fr] gap-4">
+        <div className="rounded-3xl bg-white/80 p-4 text-center shadow-sm dark:bg-slate-900">
           <BudgetCircle percent={budgetPercent} spent={summary.budgetSpent} limit={summary.budgetLimit} />
           <p className="mt-4 text-xl font-bold text-slate-500">Monthly Budget</p>
           <p className={`text-3xl font-black ${summary.cashFlow >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{money(summary.cashFlow)} cash flow</p>
         </div>
 
-        <div className="overflow-hidden rounded-3xl bg-white/80 p-5 shadow-sm dark:bg-slate-900">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white/80 p-4 shadow-sm dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-black">Budget Checks</h3>
             <p className="rounded-full bg-slate-100 px-4 py-2 text-lg font-bold text-slate-600">{summary.budgets.length} groups</p>
           </div>
-          <div className="mt-4 max-h-[360px] space-y-4 overflow-y-auto pr-2">
+          <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {summary.budgets.map((budget) => {
               const percent = budget.limitAmount ? Math.min(100, Math.round((budget.spentAmount / budget.limitAmount) * 100)) : 0;
               return (
@@ -1858,7 +1860,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl bg-white/80 p-5 shadow-sm dark:bg-slate-900">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white/80 p-4 shadow-sm dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-2xl font-black">Transactions</h3>
@@ -1866,7 +1868,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
             </div>
             <button onClick={() => syncPlaid(false)} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button h-16 bg-sky-600 px-5 text-white">Sync</button>
           </div>
-          <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">
+          <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {summary.recentTransactions.map((transaction) => (
               <FinanceTransactionRow
                 key={transaction.id}
@@ -1880,10 +1882,10 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-[1fr_1fr_1fr] gap-5">
-        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+      <div className="mt-3 grid h-44 shrink-0 grid-cols-[1fr_1fr_1fr] gap-4">
+        <div className="overflow-hidden rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
           <h3 className="text-2xl font-black">Accounts</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-2 grid max-h-28 grid-cols-2 gap-2 overflow-y-auto pr-1">
             {summary.accounts.slice(0, 6).map((account) => (
               <div key={account.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
                 <p className="truncate text-lg font-bold text-slate-500">{account.institution}</p>
@@ -1894,13 +1896,13 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-          <div className="rounded-3xl bg-slate-950 p-5 text-white shadow-sm dark:bg-black/40">
+        <div className="overflow-hidden rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
+          <div className="h-full rounded-3xl bg-slate-950 p-4 text-white shadow-sm dark:bg-black/40">
             <div className="flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-emerald-300" />
               <h3 className="text-2xl font-black">AI Money Review</h3>
             </div>
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 max-h-24 space-y-2 overflow-y-auto pr-1">
               {summary.insights.slice(0, 3).map((insight) => (
                 <p key={insight} className="rounded-2xl bg-white/10 px-4 py-2 text-lg font-semibold">{insight}</p>
               ))}
@@ -1908,15 +1910,15 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
+        <div className="overflow-hidden rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
           <h3 className="text-2xl font-black">Rules & Markets</h3>
-          <div className="mt-3 space-y-2">
+          <div className="mt-2 max-h-20 space-y-2 overflow-y-auto pr-1">
             {summary.categoryRules.slice(0, 4).map((rule) => (
               <p key={rule.id} className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold dark:bg-slate-800">{rule.matchText} to {rule.category}</p>
             ))}
             {!summary.categoryRules.length && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold text-slate-500 dark:bg-slate-800">No custom rules yet.</p>}
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             {quotes.slice(0, 4).map((quote) => (
               <div key={quote.symbol} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
                 <p className="text-xl font-black">{quote.symbol}</p>
@@ -1959,12 +1961,12 @@ function FinanceMetric({ icon: Icon, label, value, tone }: { icon: LucideIcon; l
     amber: "bg-amber-100 text-amber-700"
   };
   return (
-    <div className="rounded-3xl bg-white/75 p-5 shadow-sm dark:bg-slate-900">
-      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${tones[tone]}`}>
-        <Icon className="h-8 w-8" />
+    <div className="rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
+      <div className={`mb-2 flex h-11 w-11 items-center justify-center rounded-2xl ${tones[tone]}`}>
+        <Icon className="h-6 w-6" />
       </div>
-      <p className="text-lg font-bold text-slate-500">{label}</p>
-      <p className="mt-1 text-4xl font-black">{value}</p>
+      <p className="text-base font-bold text-slate-500">{label}</p>
+      <p className="mt-1 text-3xl font-black">{value}</p>
     </div>
   );
 }
@@ -1987,11 +1989,11 @@ function BudgetCircle({ percent, spent, limit }: { percent: number; spent: numbe
   const clamped = Math.min(100, Math.max(0, percent));
   const color = clamped >= 90 ? "#e11d48" : clamped >= 75 ? "#f59e0b" : "#10b981";
   return (
-    <div className="mx-auto flex h-64 w-64 items-center justify-center rounded-full p-4" style={{ background: `conic-gradient(${color} ${clamped * 3.6}deg, #e2e8f0 0deg)` }}>
+    <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-full p-3" style={{ background: `conic-gradient(${color} ${clamped * 3.6}deg, #e2e8f0 0deg)` }}>
       <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white shadow-inner dark:bg-slate-900">
-        <p className="text-6xl font-black" style={{ color }}>{clamped}%</p>
+        <p className="text-5xl font-black" style={{ color }}>{clamped}%</p>
         <p className="mt-1 text-lg font-bold text-slate-500">used</p>
-        <p className="mt-3 text-2xl font-black">{money(spent)}</p>
+        <p className="mt-2 text-xl font-black">{money(spent)}</p>
         <p className="text-base font-bold text-slate-500">of {money(limit)}</p>
       </div>
     </div>
@@ -2055,8 +2057,8 @@ function TravelHubPanel() {
   const dealTrips = [...travelCandidates].sort((a, b) => b.deal - a.deal).slice(0, 3);
 
   return (
-    <div className="grid flex-1 grid-cols-[310px_minmax(0,1fr)] gap-5 overflow-hidden">
-      <aside className="flex min-h-0 flex-col gap-5 rounded-[24px] border border-teal-100 bg-white/90 p-5 shadow-sm dark:border-teal-500/20 dark:bg-slate-900/90">
+    <div className="grid min-h-0 flex-1 grid-cols-[290px_minmax(0,1fr)] gap-4 overflow-hidden">
+      <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] border border-teal-100 bg-white/90 p-4 shadow-sm dark:border-teal-500/20 dark:bg-slate-900/90">
         <div className="flex items-center gap-4">
           <span className="grid h-16 w-16 place-items-center rounded-2xl bg-teal-700 text-2xl font-black text-white">TH</span>
           <div>
@@ -2098,11 +2100,11 @@ function TravelHubPanel() {
         </div>
       </aside>
 
-      <section className="min-h-0 overflow-y-auto rounded-[24px] border border-white/75 bg-[#f8faf7]/95 p-5 shadow-sm dark:border-white/10 dark:bg-slate-950/90">
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/75 bg-[#f8faf7]/95 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/90">
         <div className="flex items-end justify-between gap-5">
           <div>
             <p className="text-lg font-black uppercase tracking-normal text-teal-700 dark:text-teal-300">June 15 - August 15, 2026</p>
-            <h2 className="mt-1 text-5xl font-black text-slate-950 dark:text-white">Planned Trip Builder</h2>
+            <h2 className="mt-1 text-4xl font-black text-slate-950 dark:text-white">Planned Trip Builder</h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <TravelMetric label="best fit" value={`${rankedTrips[0]?.score ?? 0}%`} />
@@ -2111,7 +2113,7 @@ function TravelHubPanel() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-[20px] border border-teal-100 bg-white p-5 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
+        <div className="mt-4 shrink-0 rounded-[20px] border border-teal-100 bg-white p-4 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">Build trip candidates</h3>
@@ -2122,7 +2124,7 @@ function TravelHubPanel() {
               Generate
             </button>
           </div>
-          <div className="mt-5 grid grid-cols-3 gap-4">
+          <div className="mt-4 grid grid-cols-3 gap-3">
             {rankedTrips.slice(0, 6).map(({ trip, score }) => (
               <button
                 key={trip.id}
@@ -2132,14 +2134,14 @@ function TravelHubPanel() {
                   selected?.id === trip.id ? "border-teal-500 ring-4 ring-teal-200 dark:ring-teal-500/30" : "border-slate-200 dark:border-slate-700"
                 }`}
               >
-                <div className="h-24 p-4 text-white" style={{ background: trip.visual }}>
+                <div className="h-20 p-4 text-white" style={{ background: trip.visual }}>
                   <div className="flex items-start justify-between">
                     <MapPinned className="h-8 w-8" />
                     <span className="rounded-full bg-white/20 px-3 py-1 text-lg font-black">{score}%</span>
                   </div>
                 </div>
                 <div className="p-4">
-                  <p className="text-2xl font-black text-slate-900 dark:text-white">{trip.name}</p>
+                  <p className="text-xl font-black text-slate-900 dark:text-white">{trip.name}</p>
                   <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
                   <p className="mt-3 line-clamp-2 text-lg font-semibold text-slate-600 dark:text-slate-300">{trip.summary}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -2153,8 +2155,8 @@ function TravelHubPanel() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] gap-5">
-          <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mt-4 grid min-h-0 flex-1 grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] gap-4">
+          <div className="min-h-0 overflow-y-auto rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <h3 className="text-3xl font-black text-slate-900 dark:text-white">Selected idea</h3>
             {selected && (
               <div className="mt-4 grid gap-4">
@@ -2180,8 +2182,8 @@ function TravelHubPanel() {
             )}
           </div>
 
-          <div className="grid gap-5">
-            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="grid min-h-0 gap-4 overflow-hidden">
+            <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">Deal finder</h3>
               <div className="mt-4 grid gap-3">
                 {dealTrips.map((trip) => (
@@ -2195,7 +2197,7 @@ function TravelHubPanel() {
                 ))}
               </div>
             </div>
-            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="min-h-0 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">Leave rhythm</h3>
               <div className="mt-4 grid grid-cols-7 gap-2">
                 {Array.from({ length: 28 }, (_, index) => (
@@ -2269,17 +2271,17 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
-    <Card className="flex-1">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <SectionTitle icon={Settings} title="Settings" />
-      <div className="mt-6 grid grid-cols-2 gap-5">
-        <div className="rounded-3xl bg-white/70 p-5">
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-2 gap-4">
+        <div className="flex min-h-0 flex-col rounded-3xl bg-white/70 p-4">
           <h3 className="text-2xl font-bold">RSS Feeds</h3>
           <div className="mt-4 grid grid-cols-[1fr_1fr_90px] gap-3">
             <input value={feedTitle} onChange={(event) => setFeedTitle(event.target.value)} className="touch-input text-xl" placeholder="Title" />
             <input value={feedUrl} onChange={(event) => setFeedUrl(event.target.value)} className="touch-input text-xl" placeholder="Feed URL" />
             <button onClick={addFeed} className="touch-button bg-sky-600 text-white"><Plus className="h-6 w-6" /></button>
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {feeds.map((feed) => (
               <div key={feed.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-white/75 p-3">
                 <div>
@@ -2292,13 +2294,13 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
             ))}
           </div>
         </div>
-        <div className="rounded-3xl bg-white/70 p-5">
+        <div className="flex min-h-0 flex-col rounded-3xl bg-white/70 p-4">
           <h3 className="text-2xl font-bold">Finance Watchlist</h3>
           <div className="mt-4 grid grid-cols-[1fr_90px] gap-3">
             <input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} className="touch-input text-xl" placeholder="Symbol" />
             <button onClick={addSymbol} className="touch-button bg-sky-600 text-white"><Plus className="h-6 w-6" /></button>
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {watchlist.map((item) => (
               <div key={item.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-white/75 p-3">
                 <p className="text-3xl font-bold">{item.symbol}</p>
@@ -2452,7 +2454,7 @@ function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-[24px] border border-white/75 bg-mirror-card p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${className}`}>{children}</section>;
+  return <section className={`min-h-0 rounded-[24px] border border-white/75 bg-mirror-card p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${className}`}>{children}</section>;
 }
 
 function formatEventTime(value: string) {
