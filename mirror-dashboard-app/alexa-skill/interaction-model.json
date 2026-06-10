@@ -23,7 +23,7 @@
           "slots": [
             {
               "name": "eventTitle",
-              "type": "AMAZON.SearchQuery"
+              "type": "SCHEDULER_EVENT_TITLE"
             },
             {
               "name": "eventDate",
@@ -58,7 +58,58 @@
           "samples": []
         }
       ],
-      "types": []
+      "types": [
+        {
+          "name": "SCHEDULER_EVENT_TITLE",
+          "values": [
+            {
+              "name": {
+                "value": "dentist"
+              }
+            },
+            {
+              "name": {
+                "value": "doctor appointment"
+              }
+            },
+            {
+              "name": {
+                "value": "school pickup"
+              }
+            },
+            {
+              "name": {
+                "value": "practice"
+              }
+            },
+            {
+              "name": {
+                "value": "family dinner"
+              }
+            },
+            {
+              "name": {
+                "value": "work meeting"
+              }
+            },
+            {
+              "name": {
+                "value": "birthday party"
+              }
+            },
+            {
+              "name": {
+                "value": "grocery pickup"
+              }
+            },
+            {
+              "name": {
+                "value": "appointment"
+              }
+            }
+          ]
+        }
+      ]
     }
   }
 }
