@@ -1,6 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUpRight, BedDouble, CalendarDays, CheckCircle2, CloudSun, CreditCard, ExternalLink, Home, Landmark, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Wallet, WifiOff, X } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BedDouble, CalendarDays, Car, CheckCircle2, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -2309,6 +2309,15 @@ function TravelHubPanel() {
   );
 }
 
+function TripBadge({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+      <span className="text-teal-700 dark:text-teal-300">{icon}</span>
+      {label}
+    </span>
+  );
+}
+
 function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItineraryResult; onClose: () => void }) {
   const lodgingLinks = itinerary.lodgingLinks || [];
   const travelLinks = itinerary.travelLinks || [];
@@ -2325,6 +2334,11 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{itinerary.destination || "Trip breakdown"}</p>
             <h3 className="mt-1 text-4xl font-black leading-tight text-slate-950 dark:text-white">{itinerary.title}</h3>
             <p className="mt-2 max-w-4xl text-lg font-bold text-slate-600 dark:text-slate-300">{itinerary.summary}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <TripBadge icon={<MapPinned className="h-5 w-5" />} label={itinerary.destination || "Destination"} />
+              <TripBadge icon={<CalendarDays className="h-5 w-5" />} label={`${itinerary.days.length} day plan`} />
+              <TripBadge icon={<Sparkles className="h-5 w-5" />} label={itinerary.provider === "openai" ? "ChatGPT planned" : "Draft planned"} />
+            </div>
           </div>
           <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close itinerary details">
             <X className="h-7 w-7" />
@@ -2332,20 +2346,20 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)]">
             <div className="grid gap-5">
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+              <div className="overflow-hidden rounded-3xl border border-teal-100 bg-slate-50 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
                   <div>
-                    <p className="text-2xl font-black text-slate-950 dark:text-white">Trip map</p>
-                    <p className="text-base font-bold text-slate-500 dark:text-slate-400">Map points are generated from the saved post title, caption, and itinerary stops.</p>
+                    <p className="text-2xl font-black text-slate-950 dark:text-white">Interactive trip map</p>
+                    <p className="text-base font-bold text-slate-500 dark:text-slate-400">Tap a day card to refocus the map inside the app.</p>
                   </div>
                   <button type="button" onClick={() => setActiveMapQuery(initialMapQuery)} className="h-12 rounded-2xl bg-teal-700 px-4 text-base font-black text-white active:scale-[0.98]">
                     <MapPinned className="mr-2 inline h-5 w-5" />
                     Reset
                   </button>
                 </div>
-                <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="h-[360px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="h-[430px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                 <div className="border-t border-slate-200 p-3 text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
                   Showing: {activeMapQuery}
                 </div>
@@ -2353,26 +2367,37 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
 
               <div className="grid gap-3">
                 {itinerary.days.map((day) => (
-                  <div key={day.day} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">Day {day.day}</p>
-                        <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{day.title}</h4>
-                      </div>
-                      {(day.mapQuery || day.mapUrl) && (
-                        <button type="button" onClick={() => setActiveMapQuery(day.mapQuery || `${itinerary.destination || itinerary.title} ${day.stops.join(" ")}`)} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-teal-800 active:scale-95 dark:bg-slate-800 dark:text-teal-200" aria-label={`Show Day ${day.day} on map`}>
+                  <button
+                    key={day.day}
+                    type="button"
+                    onClick={() => setActiveMapQuery(day.mapQuery || `${itinerary.destination || itinerary.title} ${day.stops.join(" ")}`)}
+                    className="group grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[96px_minmax(0,1fr)]"
+                  >
+                    <div className="grid min-h-24 place-items-center rounded-3xl bg-gradient-to-br from-teal-600 to-sky-500 p-3 text-white shadow-sm">
+                      <span className="text-sm font-black uppercase tracking-wide">Day</span>
+                      <span className="text-5xl font-black leading-none">{day.day}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="text-2xl font-black text-slate-950 dark:text-white">{day.title}</h4>
+                          <p className="mt-1 text-base font-bold text-slate-600 dark:text-slate-300">{day.notes}</p>
+                        </div>
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-800 group-active:scale-95 dark:bg-teal-500/15 dark:text-teal-200">
                           <MapPinned className="h-5 w-5" />
-                        </button>
-                      )}
+                        </span>
+                      </div>
+                      {day.details && <p className="mt-3 line-clamp-3 text-sm font-semibold leading-relaxed text-slate-500 dark:text-slate-400">{day.details}</p>}
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {day.stops.slice(0, 4).map((stop, index) => (
+                          <span key={`${day.day}-${stop}`} className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs text-teal-700 shadow-sm dark:bg-slate-700 dark:text-teal-200">{index + 1}</span>
+                            <span className="truncate">{stop}</span>
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <p className="mt-2 text-lg font-bold text-slate-600 dark:text-slate-300">{day.notes}</p>
-                    {day.details && <p className="mt-3 text-base font-semibold leading-relaxed text-slate-500 dark:text-slate-400">{day.details}</p>}
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {day.stops.map((stop) => (
-                        <span key={`${day.day}-${stop}`} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">{stop}</span>
-                      ))}
-                    </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -2408,29 +2433,44 @@ function ItineraryPlanningPanel({ planning }: { planning: NonNullable<TravelItin
         </div>
       </div>
       <div className="mt-4 grid gap-4">
-        <ItineraryOptionGroup title="Getting there" options={planning.travelOptions} />
-        <ItineraryOptionGroup title="Where to stay" options={planning.lodgingOptions} />
-        <ItineraryOptionGroup title="Food and stops" options={planning.foodAndStops} />
-        <ItineraryNoteGroup title="Family notes" notes={planning.familyNotes} />
-        <ItineraryNoteGroup title="Packing notes" notes={planning.packingNotes} />
+        <ItineraryOptionGroup title="Getting there" icon={<Car className="h-5 w-5" />} tone="from-sky-500 to-teal-500" options={planning.travelOptions} />
+        <ItineraryOptionGroup title="Where to stay" icon={<BedDouble className="h-5 w-5" />} tone="from-violet-500 to-sky-500" options={planning.lodgingOptions} />
+        <ItineraryOptionGroup title="Food and stops" icon={<Utensils className="h-5 w-5" />} tone="from-amber-500 to-rose-500" options={planning.foodAndStops} />
+        <ItineraryNoteGroup title="Family notes" icon={<CheckCircle2 className="h-5 w-5" />} notes={planning.familyNotes} />
+        <ItineraryNoteGroup title="Packing notes" icon={<Luggage className="h-5 w-5" />} notes={planning.packingNotes} />
       </div>
     </div>
   );
 }
 
-function ItineraryOptionGroup({ title, options }: { title: string; options: NonNullable<TravelItineraryResult["planning"]>["travelOptions"] }) {
+function ItineraryOptionGroup({ title, icon, tone, options }: { title: string; icon: ReactNode; tone: string; options: NonNullable<TravelItineraryResult["planning"]>["travelOptions"] }) {
   return (
-    <div>
-      <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
-      <div className="mt-2 grid gap-2">
+    <div className="rounded-3xl bg-white p-3 shadow-sm dark:bg-slate-900">
+      <div className="flex items-center gap-2">
+        <span className={`grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-sm`}>{icon}</span>
+        <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+      </div>
+      <div className="mt-3 grid gap-2">
         {options.map((option) => (
-          <div key={`${title}-${option.title}`} className="rounded-2xl bg-white p-3 shadow-sm dark:bg-slate-900">
-            <p className="text-base font-black text-slate-900 dark:text-white">{option.title}</p>
-            <p className="mt-1 text-sm font-bold leading-snug text-slate-600 dark:text-slate-300">{option.recommendation}</p>
-            <div className="mt-2 grid gap-1 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {option.timing && <span>{option.timing}</span>}
-              {option.estimatedCost && <span>{option.estimatedCost}</span>}
-              {option.bookingNotes && <span>{option.bookingNotes}</span>}
+          <div key={`${title}-${option.title}`} className="rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-base font-black text-slate-900 dark:text-white">{option.title}</p>
+              {option.timing && <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black uppercase text-teal-700 shadow-sm dark:bg-slate-700 dark:text-teal-200">{option.timing}</span>}
+            </div>
+            <p className="mt-2 line-clamp-3 text-sm font-bold leading-snug text-slate-600 dark:text-slate-300">{option.recommendation}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {option.estimatedCost && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-black text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">
+                  <DollarSign className="h-3 w-3" />
+                  {option.estimatedCost}
+                </span>
+              )}
+              {option.bookingNotes && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-black text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">
+                  <Clock3 className="h-3 w-3" />
+                  {option.bookingNotes}
+                </span>
+              )}
             </div>
           </div>
         ))}
@@ -2439,13 +2479,16 @@ function ItineraryOptionGroup({ title, options }: { title: string; options: NonN
   );
 }
 
-function ItineraryNoteGroup({ title, notes }: { title: string; notes: string[] }) {
+function ItineraryNoteGroup({ title, icon, notes }: { title: string; icon: ReactNode; notes: string[] }) {
   return (
-    <div>
-      <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+    <div className="rounded-3xl bg-white p-3 shadow-sm dark:bg-slate-900">
+      <div className="flex items-center gap-2">
+        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-teal-800 dark:bg-slate-800 dark:text-teal-200">{icon}</span>
+        <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+      </div>
       <div className="mt-2 grid gap-2">
         {notes.map((note) => (
-          <p key={`${title}-${note}`} className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">{note}</p>
+          <p key={`${title}-${note}`} className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{note}</p>
         ))}
       </div>
     </div>
