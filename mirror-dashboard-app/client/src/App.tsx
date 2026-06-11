@@ -2328,16 +2328,25 @@ function TripBadge({ icon, label }: { icon: ReactNode; label: string }) {
 function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItineraryResult; onClose: () => void }) {
   const lodgingLinks = itinerary.lodgingLinks || [];
   const travelLinks = itinerary.travelLinks || [];
-  const initialMapQuery = itinerary.mapQuery || itinerary.destination || itinerary.title;
+  const firstDay = itinerary.days[0];
+  const [selectedDayNumber, setSelectedDayNumber] = useState(firstDay?.day || 1);
+  const selectedDay = itinerary.days.find((day) => day.day === selectedDayNumber) || firstDay;
+  const initialMapQuery = selectedDay?.mapQuery || itinerary.mapQuery || itinerary.destination || itinerary.title;
   const [activeMapQuery, setActiveMapQuery] = useState(initialMapQuery);
   const [selectedDetail, setSelectedDetail] = useState<ItinerarySelectedDetail>({
-    title: itinerary.days[0]?.title || itinerary.title,
-    eyebrow: itinerary.destination || "Overview",
-    body: itinerary.days[0]?.details || itinerary.summary,
-    chips: itinerary.days[0]?.stops || []
+    title: selectedDay?.title || itinerary.title,
+    eyebrow: selectedDay ? `Day ${selectedDay.day}` : itinerary.destination || "Overview",
+    body: selectedDay?.details || itinerary.summary,
+    chips: selectedDay?.stops || []
   });
   const [optionsOpen, setOptionsOpen] = useState(false);
   const activeMapEmbedUrl = googleMapsClientEmbedUrl(activeMapQuery);
+
+  function selectDay(day: TravelItineraryResult["days"][number]) {
+    setSelectedDayNumber(day.day);
+    setActiveMapQuery(day.mapQuery || `${itinerary.destination || itinerary.title} ${day.stops.join(" ")}`);
+    setSelectedDetail({ title: day.title, eyebrow: `Day ${day.day}`, body: day.details || day.notes, chips: day.stops });
+  }
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
@@ -2358,36 +2367,59 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           </button>
         </div>
 
+        <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {itinerary.days.map((day) => (
+              <button
+                key={`tab-${day.day}`}
+                type="button"
+                onClick={() => selectDay(day)}
+                className={`h-12 shrink-0 rounded-2xl px-4 text-sm font-black active:scale-[0.98] ${
+                  selectedDayNumber === day.day
+                    ? "bg-teal-700 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                }`}
+              >
+                Day {day.day}
+              </button>
+            ))}
+            {itinerary.planning && (
+              <button type="button" onClick={() => setOptionsOpen(true)} className="h-12 shrink-0 rounded-2xl bg-teal-50 px-4 text-sm font-black text-teal-800 active:scale-[0.98] dark:bg-teal-500/15 dark:text-teal-200">
+                Trip Options
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
-          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.5fr)]">
-            <div className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4">
+          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,0.8fr)]">
+            <div className="grid content-start gap-4">
               <div className="overflow-hidden rounded-3xl border border-teal-100 bg-slate-50 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-3 dark:border-slate-800">
                   <div>
-                    <p className="text-xl font-black text-slate-950 dark:text-white">Trip map</p>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Tap cards to refocus.</p>
+                    <p className="text-xl font-black text-slate-950 dark:text-white">{selectedDay ? `Day ${selectedDay.day} map` : "Trip map"}</p>
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Tap a stop to refocus the map.</p>
                   </div>
                   <button type="button" onClick={() => setActiveMapQuery(initialMapQuery)} className="h-11 rounded-2xl bg-teal-700 px-4 text-sm font-black text-white active:scale-[0.98]">
                     <MapPinned className="mr-2 inline h-5 w-5" />
                     Reset
                   </button>
                 </div>
-                <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="h-[255px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="h-[355px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                 <div className="truncate border-t border-slate-200 p-2 text-xs font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
                   Showing: {activeMapQuery}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {itinerary.days.map((day) => (
                   <button
                     key={day.day}
                     type="button"
-                    onClick={() => {
-                      setActiveMapQuery(day.mapQuery || `${itinerary.destination || itinerary.title} ${day.stops.join(" ")}`);
-                      setSelectedDetail({ title: day.title, eyebrow: `Day ${day.day}`, body: day.details || day.notes, chips: day.stops });
-                    }}
-                    className="group overflow-hidden rounded-3xl border border-slate-200 bg-white text-left shadow-sm transition active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900"
+                    onClick={() => selectDay(day)}
+                    className={`group overflow-hidden rounded-3xl border bg-white text-left shadow-sm transition active:scale-[0.99] dark:bg-slate-900 ${
+                      selectedDayNumber === day.day ? "border-teal-500 ring-4 ring-teal-100 dark:ring-teal-500/20" : "border-slate-200 dark:border-slate-800"
+                    }`}
                   >
                     <div className="flex items-center justify-between bg-gradient-to-br from-teal-600 to-sky-500 p-3 text-white">
                       <div>
@@ -2408,22 +2440,44 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                   </button>
                 ))}
               </div>
-
-              <SelectedItineraryDetail detail={selectedDetail} />
             </div>
 
-            <aside className="grid content-start gap-4">
-              {itinerary.planning && (
-                <button type="button" onClick={() => setOptionsOpen(true)} className="flex min-h-24 items-center justify-between gap-3 rounded-3xl border border-teal-100 bg-teal-50 p-4 text-left shadow-sm active:scale-[0.99] dark:border-teal-500/20 dark:bg-teal-500/10">
-                  <span>
-                    <span className="block text-2xl font-black text-slate-950 dark:text-white">Trip Options</span>
-                    <span className="mt-1 block text-sm font-bold text-slate-600 dark:text-slate-300">Travel, stays, food, family notes, and packing.</span>
-                  </span>
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-teal-800 shadow-sm dark:bg-slate-900 dark:text-teal-200">
-                    <Sparkles className="h-6 w-6" />
-                  </span>
-                </button>
-              )}
+            <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-4">
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{selectedDay ? `Day ${selectedDay.day}` : "Route"}</p>
+                <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{selectedDay?.title || itinerary.title}</h4>
+                <p className="mt-2 line-clamp-2 text-sm font-bold text-slate-500 dark:text-slate-400">{selectedDay?.notes || itinerary.summary}</p>
+              </div>
+
+              <div className="min-h-0 touch-pan-y overflow-y-auto overscroll-contain rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="grid gap-2">
+                  {(selectedDay?.stops || []).map((stop, index) => (
+                    <button
+                      key={`${selectedDay?.day}-${stop}-${index}`}
+                      type="button"
+                      onClick={() => {
+                        setActiveMapQuery(`${itinerary.destination || itinerary.title} ${stop}`);
+                        setSelectedDetail({
+                          title: stop,
+                          eyebrow: `Stop ${index + 1}`,
+                          body: index === 0 ? selectedDay?.details || selectedDay?.notes || "" : `Use this stop as part of ${selectedDay?.title || "the day route"}.`,
+                          chips: [selectedDay?.title || "", itinerary.destination || ""].filter(Boolean)
+                        });
+                      }}
+                      className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left active:scale-[0.99] dark:bg-slate-800"
+                    >
+                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-teal-700 text-lg font-black text-white">{index + 1}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-base font-black text-slate-900 dark:text-white">{stop}</span>
+                        <span className="mt-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Tap to focus map and details</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <SelectedItineraryDetail detail={selectedDetail} />
+
               <div className="grid grid-cols-2 gap-3">
                 <CompactLinkPanel icon={<Route className="h-5 w-5" />} title="Travel" links={travelLinks} />
                 <CompactLinkPanel icon={<BedDouble className="h-5 w-5" />} title="Stays" links={lodgingLinks} />
