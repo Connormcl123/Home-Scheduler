@@ -310,7 +310,7 @@ If touch still feels laggy, run the built production app instead of Vite dev mod
 
 ```bash
 npm run build
-npm run start
+npm run start:pi
 ./scripts/start-kiosk.sh
 ```
 
@@ -324,6 +324,14 @@ npm run start
 ```
 
 The Express server serves the built React client from `client/dist`.
+
+On the Raspberry Pi, use this command when you also want the ngrok tunnel to start:
+
+```bash
+npm run start:pi
+```
+
+`start:pi` runs `scripts/start-server-with-ngrok.sh`, which starts `ngrok http 4174` in the background if it is not already running, then starts the Express server.
 
 ## Raspberry Pi Deployment
 
@@ -343,7 +351,7 @@ cd mirror-dashboard-app
 npm install
 cp .env.example .env
 npm run build
-npm run start
+npm run start:pi
 ```
 
 Then open Chromium on the Pi:

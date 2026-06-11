@@ -11,6 +11,7 @@
     "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
     "start": "npm run start -w server",
+    "start:pi": "bash scripts/start-server-with-ngrok.sh",
     "db:init": "npm run db:init -w server",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client"
   },

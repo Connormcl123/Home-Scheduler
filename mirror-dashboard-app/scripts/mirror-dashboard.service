@@ -5,13 +5,13 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/pi/Home-Scheduler/mirror-dashboard-app
+WorkingDirectory=/home/connor/Home-Scheduler/mirror-dashboard-app
 Environment=NODE_ENV=production
 Environment=PORT=4174
-ExecStart=/usr/bin/npm run start
+ExecStart=/usr/bin/npm run start:pi
 Restart=always
 RestartSec=10
-User=pi
+User=connor
 
 [Install]
 WantedBy=multi-user.target
