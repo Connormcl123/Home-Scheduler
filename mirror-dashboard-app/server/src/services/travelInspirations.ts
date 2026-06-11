@@ -17,10 +17,23 @@ type TravelRow = {
 type TravelInput = {
   source?: "instagram" | "manual";
   url: string;
-  title: string;
+  title?: string;
   location?: string | null;
   notes?: string | null;
   tags?: string[] | string;
+};
+
+type TravelMetadata = {
+  title?: string;
+  description?: string;
+  siteName?: string;
+};
+
+type TravelEnrichment = {
+  title: string;
+  location?: string | null;
+  notes?: string | null;
+  tags?: string[];
 };
 
 function toTravelInspiration(row: TravelRow): TravelInspiration {
@@ -51,6 +64,7 @@ export async function listTravelInspirations(): Promise<TravelInspiration[]> {
 export async function createTravelInspiration(input: TravelInput): Promise<TravelInspiration> {
   const db = await getDb();
   const now = new Date().toISOString();
+  const title = meaningfulText(input.title, ["title", "instagram travel idea"]) || "Instagram travel idea";
   const result = await db.run(
     `INSERT INTO travel_inspirations (source, url, title, location, notes, tags, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -63,7 +77,7 @@ export async function createTravelInspiration(input: TravelInput): Promise<Trave
       updated_at = excluded.updated_at`,
     input.source || "instagram",
     input.url.trim(),
-    input.title.trim(),
+    title,
     input.location?.trim() || null,
     input.notes?.trim() || null,
     normalizeTags(input.tags),
@@ -72,6 +86,34 @@ export async function createTravelInspiration(input: TravelInput): Promise<Trave
   );
   const id = result.lastID || (await db.get<{ id: number }>("SELECT id FROM travel_inspirations WHERE url = ?", input.url.trim()))?.id;
   return getTravelInspiration(id || 0) as Promise<TravelInspiration>;
+}
+
+export async function createEnrichedTravelInspiration(input: TravelInput): Promise<TravelInspiration> {
+  const url = input.url.trim();
+  const hasUsefulDetails = Boolean(
+    meaningfulText(input.title, ["title", "instagram travel idea"]) ||
+    meaningfulText(input.location, ["location"]) ||
+    meaningfulText(input.notes, ["notes"])
+  );
+
+  if (hasUsefulDetails) return createTravelInspiration(input);
+
+  const metadata = await fetchTravelMetadata(url);
+  const enrichment = config.openai.apiKey
+    ? await enrichWithOpenAI(url, metadata).catch((error) => {
+        console.warn("OpenAI travel inspiration enrichment failed, using metadata fallback.", error);
+        return enrichFromMetadata(url, metadata);
+      })
+    : enrichFromMetadata(url, metadata);
+
+  return createTravelInspiration({
+    ...input,
+    url,
+    title: enrichment.title,
+    location: enrichment.location,
+    notes: enrichment.notes,
+    tags: enrichment.tags
+  });
 }
 
 export async function updateTravelInspiration(id: number, input: Partial<TravelInput>): Promise<TravelInspiration | null> {
@@ -193,6 +235,153 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
     days: Array.isArray(parsed.days) ? parsed.days : [],
     sourceCount: inspirations.length
   };
+}
+
+
+async function fetchTravelMetadata(url: string): Promise<TravelMetadata> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 HomeSchedulerBot/1.0"
+      }
+    });
+    if (!response.ok) return {};
+    const html = await response.text();
+    return {
+      title: firstMetaContent(html, ["og:title", "twitter:title"]) || firstTitle(html),
+      description: firstMetaContent(html, ["og:description", "description", "twitter:description"]),
+      siteName: firstMetaContent(html, ["og:site_name"])
+    };
+  } catch {
+    return {};
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function enrichWithOpenAI(url: string, metadata: TravelMetadata): Promise<TravelEnrichment> {
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.openai.apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: config.openai.model,
+      input: [
+        {
+          role: "system",
+          content: "Extract a concise travel inspiration card from public URL metadata. Do not claim to have watched a video. Use only the supplied URL, title, description, and site name. If a location is unclear, leave location empty."
+        },
+        {
+          role: "user",
+          content: JSON.stringify({ url, metadata }, null, 2)
+        }
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "travel_inspiration_enrichment",
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "location", "notes", "tags"],
+            properties: {
+              title: { type: "string" },
+              location: { type: "string" },
+              notes: { type: "string" },
+              tags: { type: "array", items: { type: "string" } }
+            }
+          },
+          strict: true
+        }
+      }
+    })
+  });
+  if (!response.ok) throw new Error(`OpenAI enrichment request failed: ${response.status}`);
+  const payload = await response.json() as { output_text?: string };
+  const parsed = JSON.parse(payload.output_text || "{}") as TravelEnrichment;
+  const fallback = enrichFromMetadata(url, metadata);
+  return {
+    title: meaningfulText(parsed.title, ["instagram", "instagram travel idea"]) || fallback.title,
+    location: meaningfulText(parsed.location, ["unknown", "unclear"]) || null,
+    notes: meaningfulText(parsed.notes, [""]) || fallback.notes,
+    tags: Array.isArray(parsed.tags) ? parsed.tags.map((tag) => tag.trim()).filter(Boolean).slice(0, 6) : fallback.tags
+  };
+}
+
+function enrichFromMetadata(url: string, metadata: TravelMetadata): TravelEnrichment {
+  const title = meaningfulText(cleanInstagramText(metadata.title), ["instagram"]) || titleFromUrl(url);
+  const description = cleanInstagramText(metadata.description);
+  return {
+    title,
+    location: inferLocation(`${title} ${description}`),
+    notes: description || "Saved from Instagram. Add details later if the post metadata was private or unavailable.",
+    tags: ["instagram"]
+  };
+}
+
+function meaningfulText(value: string | null | undefined, placeholders: string[]) {
+  const text = value?.trim();
+  if (!text) return "";
+  const normalized = text.toLowerCase();
+  if (placeholders.some((placeholder) => normalized === placeholder.toLowerCase())) return "";
+  return text;
+}
+
+function firstMetaContent(html: string, names: string[]) {
+  for (const name of names) {
+    const pattern = new RegExp(`<meta\\s+[^>]*(?:property|name)=["']${escapeRegex(name)}["'][^>]*content=["']([^"']*)["'][^>]*>`, "i");
+    const reversePattern = new RegExp(`<meta\\s+[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']${escapeRegex(name)}["'][^>]*>`, "i");
+    const match = html.match(pattern) || html.match(reversePattern);
+    if (match?.[1]) return decodeHtml(match[1]);
+  }
+  return "";
+}
+
+function firstTitle(html: string) {
+  const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  return match?.[1] ? decodeHtml(match[1]) : "";
+}
+
+function cleanInstagramText(value: string | undefined) {
+  return (value || "")
+    .replace(/\s*?\s*Instagram\s*photos and videos\s*/i, "")
+    .replace(/\s*on Instagram:?\s*/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function titleFromUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const id = parsed.pathname.split("/").filter(Boolean).pop();
+    return id ? `Instagram idea ${id}` : "Instagram travel idea";
+  } catch {
+    return "Instagram travel idea";
+  }
+}
+
+function inferLocation(text: string) {
+  const hashtag = text.match(/#([A-Z][A-Za-z]+(?:Travel|Trip|Beach|City|Italy|France|Spain|Greece|Japan|Mexico|Hawaii|CapeCod|Boston|Paris|Rome|London|Tokyo|Miami|Orlando))/);
+  if (hashtag?.[1]) return hashtag[1].replace(/([a-z])([A-Z])/g, "$1 $2");
+  return null;
+}
+
+function decodeHtml(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function generateLocalItinerary(inspirations: TravelInspiration[]): TravelItineraryResult {

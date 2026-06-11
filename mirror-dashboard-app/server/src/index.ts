@@ -16,7 +16,7 @@ import { createPlaidLinkToken, exchangePlaidPublicToken, getPlaidStatus, syncAll
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.js";
-import { createTravelInspiration, deleteTravelInspiration, generateTravelItinerary, listTravelInspirations, updateTravelInspiration } from "./services/travelInspirations.js";
+import { createEnrichedTravelInspiration, deleteTravelInspiration, generateTravelItinerary, listTravelInspirations, updateTravelInspiration } from "./services/travelInspirations.js";
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
 import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
@@ -370,7 +370,7 @@ app.post("/api/travel/inspirations", async (req, res, next) => {
   try {
     const url = firstText(req.body, ["url", "URL", "link", "Link", "postUrl", "Post URL"]);
     if (!url) return res.status(400).json({ error: "Travel inspiration URL is required." });
-    res.status(201).json(await createTravelInspiration({
+    res.status(201).json(await createEnrichedTravelInspiration({
       ...req.body,
       url,
       title: firstText(req.body, ["title", "Title", "name", "Name"]) || "Instagram travel idea",
