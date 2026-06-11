@@ -202,7 +202,7 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
         },
         {
           role: "user",
-          content: `Build a practical 3-day itinerary from these saved Instagram inspirations. For one saved item, focus the whole itinerary on that post's destination. Return JSON with keys title, summary, and days. Each day needs day, title, stops array, and notes. Include travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit.\n\n${JSON.stringify(travelSignals, null, 2)}`
+          content: `Build a practical 3-day itinerary from these saved Instagram inspirations. For one saved item, focus the whole itinerary on that post's destination. Return JSON with keys title, summary, destination, mapQuery, lodgingLinks, travelLinks, and days. Each day needs day, title, stops array, notes, details, and mapQuery. lodgingLinks and travelLinks should each be arrays of { label, url }. Use direct Google Maps, Google Hotels, Airbnb search, and Google Flights/search URLs when helpful. Include travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit.\n\n${JSON.stringify(travelSignals, null, 2)}`
         }
       ],
       text: {
@@ -212,21 +212,49 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["title", "summary", "days"],
+            required: ["title", "summary", "destination", "mapQuery", "lodgingLinks", "travelLinks", "days"],
             properties: {
               title: { type: "string" },
               summary: { type: "string" },
+              destination: { type: "string" },
+              mapQuery: { type: "string" },
+              lodgingLinks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["label", "url"],
+                  properties: {
+                    label: { type: "string" },
+                    url: { type: "string" }
+                  }
+                }
+              },
+              travelLinks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["label", "url"],
+                  properties: {
+                    label: { type: "string" },
+                    url: { type: "string" }
+                  }
+                }
+              },
               days: {
                 type: "array",
                 items: {
                   type: "object",
                   additionalProperties: false,
-                  required: ["day", "title", "stops", "notes"],
+                  required: ["day", "title", "stops", "notes", "details", "mapQuery"],
                   properties: {
                     day: { type: "number" },
                     title: { type: "string" },
                     stops: { type: "array", items: { type: "string" } },
-                    notes: { type: "string" }
+                    notes: { type: "string" },
+                    details: { type: "string" },
+                    mapQuery: { type: "string" }
                   }
                 }
               }
@@ -240,13 +268,28 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
 
   if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
   const payload = await response.json() as { output_text?: string };
-  const parsed = JSON.parse(payload.output_text || "{}") as Omit<TravelItineraryResult, "provider" | "generatedAt" | "sourceCount">;
+  const parsed = JSON.parse(payload.output_text || "{}") as Omit<TravelItineraryResult, "provider" | "generatedAt" | "sourceCount" | "mapUrl" | "mapEmbedUrl"> & { days?: Array<TravelItineraryResult["days"][number] & { mapQuery?: string }> };
+  const destination = parsed.destination || parsed.mapQuery || inferDestination(inspirations[0]) || "Saved Destination";
+  const mapQuery = parsed.mapQuery || destination;
   return {
     provider: "openai",
     generatedAt: new Date().toISOString(),
     title: parsed.title || "Instagram Ideas Itinerary",
     summary: parsed.summary || "Generated from your saved travel inspirations.",
-    days: Array.isArray(parsed.days) ? parsed.days : [],
+    destination,
+    mapQuery,
+    mapUrl: googleMapsUrl(mapQuery),
+    mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
+    lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(destination)),
+    travelLinks: sanitizeLinks(parsed.travelLinks, buildTravelLinks(destination)),
+    days: Array.isArray(parsed.days) ? parsed.days.map((day) => ({
+      day: day.day,
+      title: day.title,
+      stops: day.stops,
+      notes: day.notes,
+      details: day.details,
+      mapUrl: googleMapsUrl(day.mapQuery || [destination, ...day.stops].join(" "))
+    })) : [],
     sourceCount: inspirations.length
   };
 }
@@ -433,30 +476,45 @@ function generateSingleInspirationItinerary(item: TravelInspiration): TravelItin
   const theme = inferTripTheme(item);
   const anchorStops = places.length ? places : [destination];
   const foodStops = extractFoodSignals(item);
+  const lodgingLinks = buildLodgingLinks(destination);
+  const travelLinks = buildTravelLinks(destination);
+  const mapQuery = [destination, ...anchorStops.slice(0, 4)].join(" ");
 
   return {
     provider: "local",
     generatedAt: new Date().toISOString(),
     title: `${destination} Trip From Saved Post`,
     summary: `Built from the saved Instagram title/caption for ${destination}. The app cannot inspect private video frames yet, so this uses the post metadata, caption text, hashtags, and visible travel clues.`,
+    destination,
+    mapQuery,
+    mapUrl: googleMapsUrl(mapQuery),
+    mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
+    lodgingLinks,
+    travelLinks,
     days: [
       {
         day: 1,
         title: `Arrive and get oriented in ${destination}`,
         stops: uniqueStrings([destination, ...anchorStops.slice(0, 3)]),
-        notes: `Use this first day for arrival, an easy walk, and the most obvious place cues from the post. Trip style: ${theme}.`
+        notes: `Use this first day for arrival, an easy walk, and the most obvious place cues from the post. Trip style: ${theme}.`,
+        details: `Travel into ${destination}, check into a nearby stay, and keep the first outing simple. Use the saved post as the anchor: walk the main area, note photo spots, and save dinner for a local seafood or casual restaurant if the post points toward coastal food.`,
+        mapUrl: googleMapsUrl([destination, ...anchorStops.slice(0, 3)].join(" "))
       },
       {
         day: 2,
         title: "Main creator-inspired day",
         stops: uniqueStrings([...anchorStops, ...foodStops]).slice(0, 6),
-        notes: `Follow the saved post as the anchor for the day. Prioritize named places, caption clues, and food references such as ${foodStops.join(", ") || "local restaurants or cafes from the post"}.`
+        notes: `Follow the saved post as the anchor for the day. Prioritize named places, caption clues, and food references such as ${foodStops.join(", ") || "local restaurants or cafes from the post"}.`,
+        details: `Make this the fullest day. Start with the most recognizable stop from the creator post, build lunch around ${foodStops[0] || "a local food stop"}, and leave time for nearby shops, beach/coastal views, or a scenic walk. Add more saved posts to turn this into a precise route.`,
+        mapUrl: googleMapsUrl(uniqueStrings([...anchorStops, ...foodStops]).join(" "))
       },
       {
         day: 3,
         title: "Flexible add-ons and return",
         stops: uniqueStrings([`${destination} scenic stop`, `${destination} local shops`, "Photo stop", "Return travel"]).slice(0, 5),
-        notes: "Keep the last day lighter: one nearby scenic stop, one meal, then travel home. Add more saved posts to make this itinerary more specific."
+        notes: "Keep the last day lighter: one nearby scenic stop, one meal, then travel home. Add more saved posts to make this itinerary more specific.",
+        details: `Use the final morning for a relaxed breakfast, one scenic stop, and any missed photos. Keep the map route short so checkout and return travel do not feel rushed.`,
+        mapUrl: googleMapsUrl(`${destination} scenic stop local shops`)
       }
     ],
     sourceCount: 1
@@ -551,4 +609,37 @@ function uniqueStrings(values: string[]) {
     seen.add(key);
     return true;
   });
+}
+
+function googleMapsUrl(query: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function googleMapsEmbedUrl(query: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+}
+
+function buildLodgingLinks(destination: string) {
+  const encoded = encodeURIComponent(destination);
+  return [
+    { label: `Hotels near ${destination}`, url: `https://www.google.com/travel/hotels/${encoded}` },
+    { label: `Airbnb stays in ${destination}`, url: `https://www.airbnb.com/s/${encoded}/homes` },
+    { label: `Family-friendly stays`, url: `https://www.google.com/search?q=${encodeURIComponent(`${destination} family friendly hotel vacation rental`)}` }
+  ];
+}
+
+function buildTravelLinks(destination: string) {
+  return [
+    { label: `Directions to ${destination}`, url: googleMapsUrl(destination) },
+    { label: `Flights and airports`, url: `https://www.google.com/travel/flights/search?tfs=${encodeURIComponent(destination)}` },
+    { label: `Road trip planning`, url: `https://www.google.com/search?q=${encodeURIComponent(`best way to travel to ${destination} road trip parking`)}` }
+  ];
+}
+
+function sanitizeLinks(links: TravelItineraryResult["lodgingLinks"], fallback: NonNullable<TravelItineraryResult["lodgingLinks"]>) {
+  if (!Array.isArray(links) || !links.length) return fallback;
+  return links
+    .filter((link) => link?.label && link?.url)
+    .map((link) => ({ label: link.label, url: link.url }))
+    .slice(0, 6);
 }

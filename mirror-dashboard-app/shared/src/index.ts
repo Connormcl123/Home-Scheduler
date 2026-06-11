@@ -182,6 +182,13 @@ export interface TravelItineraryDay {
   title: string;
   stops: string[];
   notes: string;
+  details?: string;
+  mapUrl?: string;
+}
+
+export interface TravelItineraryLink {
+  label: string;
+  url: string;
 }
 
 export interface TravelItineraryResult {
@@ -189,6 +196,12 @@ export interface TravelItineraryResult {
   generatedAt: string;
   title: string;
   summary: string;
+  destination?: string;
+  mapQuery?: string;
+  mapUrl?: string;
+  mapEmbedUrl?: string;
+  lodgingLinks?: TravelItineraryLink[];
+  travelLinks?: TravelItineraryLink[];
   days: TravelItineraryDay[];
   sourceCount: number;
 }
