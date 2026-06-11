@@ -195,10 +195,25 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
     },
     body: JSON.stringify({
       model: config.openai.model,
+      ...(config.openai.travelWebSearch ? {
+        tools: [{ type: "web_search", search_context_size: "medium" }]
+      } : {}),
       input: [
         {
           role: "system",
-          content: "Create concise, family-friendly travel itineraries from saved Instagram travel posts. Treat the title, caption/notes, hashtags, URL metadata, and inferredPlaces as the source material. Identify the place or places being discussed, then build a realistic trip itinerary to visit them. Do not claim to have watched private video content. If the video itself is not accessible, say the plan is based on the post metadata/caption."
+          content: `Create concise, family-friendly travel trip packages from saved Instagram travel posts.
+
+Treat the title, caption/notes, hashtags, URL metadata, and inferredPlaces as the source material. Identify the place or places being discussed.
+
+When web search is available, research concrete current options for:
+- neighborhoods or areas to stay
+- hotels or vacation-rental style stays
+- restaurants and food stops
+- activities and scenic stops
+- drive/fly/train logistics
+- rough price ranges and timing
+
+Do not fabricate exact availability or guaranteed prices. Use language like "estimated", "typically", "check before booking", or "current search result suggests" when appropriate. Do not claim to have booked anything. Do not claim to have watched private video content. If the video itself is not accessible, say the plan is based on public post metadata/caption plus web research.`
         },
         {
           role: "user",
@@ -207,15 +222,17 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
 Return JSON with keys title, summary, destination, mapQuery, lodgingLinks, travelLinks, planning, and days.
 
 The planning object is the most important part. Brainstorm and organize actual options the family can compare before clicking anything:
-- travelOptions: 3 realistic ways to get there, including drive/fly/train when relevant, rough timing, pros/cons, booking notes, and rough cost language when possible.
-- lodgingOptions: 3 stay styles or neighborhoods/areas to consider, with why each works and booking notes. Include hotel/Airbnb style recommendations, not just generic links.
-- foodAndStops: specific food, attraction, and scenic stop ideas inferred from the post/caption.
+- travelOptions: 3 realistic ways to get there, including drive/fly/train when relevant, rough timing, pros/cons, booking notes, and rough cost language when possible. If web search is available, make these realistic for the destination and likely origin if inferable; otherwise say what must be checked.
+- lodgingOptions: 3 concrete stay options or stay areas. If web search is available, include named hotels/inns/rental areas when available, rough nightly price language, walkability/parking notes, and booking cautions.
+- foodAndStops: specific restaurants, food stops, attractions, scenic stops, beaches, parks, walks, or activities. If web search is available, include named options and rough timing/pricing where possible.
 - familyNotes: practical family/touchscreen command-center notes.
 - packingNotes: destination-specific packing reminders.
 
 Each day needs day, title, stops array, notes, details, and mapQuery. lodgingLinks and travelLinks should each be arrays of { label, url }. Use direct Google Maps, Google Hotels, Airbnb search, and Google Flights/search URLs when helpful, but do not make links the main answer. The main answer should be organized information already brainstormed for the user.
 
-Use travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit. If you cannot access private video frames, be clear that the plan is based on the public post metadata/caption.\n\n${JSON.stringify(travelSignals, null, 2)}`
+The end goal is a trip that can later become bookable with buttons. For now, return a researched trip package with enough detail for the UI to show likely stays, restaurants, activities, rough costs, route/time guidance, and next booking actions.
+
+Use travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit. If you cannot access private video frames, be clear that the plan is based on the public post metadata/caption${config.openai.travelWebSearch ? " and web research" : ""}.\n\n${JSON.stringify(travelSignals, null, 2)}`
         }
       ],
       text: {

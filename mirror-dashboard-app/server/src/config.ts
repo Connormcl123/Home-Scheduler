@@ -42,7 +42,8 @@ export const config = {
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY || "",
-    model: process.env.OPENAI_MODEL || "gpt-4.1-mini"
+    model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+    travelWebSearch: process.env.OPENAI_TRAVEL_WEB_SEARCH === "true"
   },
   voice: {
     webhookToken: process.env.ALEXA_WEBHOOK_TOKEN || ""

@@ -53,6 +53,7 @@ Important settings:
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
 - `PLAID_CLIENT_NAME`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_USER_ID`: Plaid Link settings. The first implementation uses the Transactions product.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`: optional AI itinerary generation for the Travel tab. Without a key, the app uses a local draft generator.
+- `OPENAI_TRAVEL_WEB_SEARCH`: set to `true` to let OpenAI research current travel options while generating trip packages. This can add API cost and should be used with real keys only.
 - `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
 
 All Phase 3 providers fall back to mock data when a feed, network call, or quote lookup fails.
@@ -167,7 +168,28 @@ curl -X POST http://localhost:4174/api/travel/itinerary
 
 The Travel tab stores creator post/Reel links, titles, locations, and notes in SQLite. Instagram personal Saved folders are not pulled directly because the public Meta Instagram APIs do not expose a normal endpoint for reading a user's private saved collections. For v1, share or paste the post/Reel URL into the dashboard and add the useful context from the video.
 
-If `OPENAI_API_KEY` is set, the server uses `OPENAI_MODEL` to generate a structured itinerary from the saved links and notes. If the key is missing or the request fails, the app generates a local draft grouped by location.
+If `OPENAI_API_KEY` is set, the server uses `OPENAI_MODEL` to generate a structured itinerary from the saved links and notes. If `OPENAI_TRAVEL_WEB_SEARCH=true`, the itinerary generator also asks OpenAI to research current restaurants, activities, stay areas, travel options, rough prices, and logistics before returning the trip package. If the key is missing or the request fails, the app generates a local draft grouped by location.
+
+For the researched trip-package mode on the Pi:
+
+```bash
+cd ~/Home-Scheduler/mirror-dashboard-app
+nano .env
+```
+
+Add:
+
+```bash
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_TRAVEL_WEB_SEARCH=true
+```
+
+Then restart:
+
+```bash
+sudo systemctl restart mirror-dashboard
+```
 
 ## Alexa Voice Commands
 
