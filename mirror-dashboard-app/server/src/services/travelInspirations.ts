@@ -268,7 +268,18 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
 
   if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
   const payload = await response.json() as { output_text?: string };
-  const parsed = JSON.parse(payload.output_text || "{}") as Omit<TravelItineraryResult, "provider" | "generatedAt" | "sourceCount" | "mapUrl" | "mapEmbedUrl"> & { days?: Array<TravelItineraryResult["days"][number] & { mapQuery?: string }> };
+  type OpenAIItineraryDay = {
+    day: number;
+    title: string;
+    stops: string[];
+    notes: string;
+    details: string;
+    mapQuery: string;
+  };
+  type OpenAIItinerary = Omit<TravelItineraryResult, "provider" | "generatedAt" | "sourceCount" | "mapUrl" | "mapEmbedUrl" | "days"> & {
+    days?: OpenAIItineraryDay[];
+  };
+  const parsed = JSON.parse(payload.output_text || "{}") as OpenAIItinerary;
   const destination = parsed.destination || parsed.mapQuery || inferDestination(inspirations[0]) || "Saved Destination";
   const mapQuery = parsed.mapQuery || destination;
   return {
