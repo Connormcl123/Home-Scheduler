@@ -202,7 +202,20 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
         },
         {
           role: "user",
-          content: `Build a practical 3-day itinerary from these saved Instagram inspirations. For one saved item, focus the whole itinerary on that post's destination. Return JSON with keys title, summary, destination, mapQuery, lodgingLinks, travelLinks, and days. Each day needs day, title, stops array, notes, details, and mapQuery. lodgingLinks and travelLinks should each be arrays of { label, url }. Use direct Google Maps, Google Hotels, Airbnb search, and Google Flights/search URLs when helpful. Include travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit.\n\n${JSON.stringify(travelSignals, null, 2)}`
+          content: `Build a practical 3-day itinerary from these saved Instagram inspirations. For one saved item, focus the whole itinerary on that post's destination.
+
+Return JSON with keys title, summary, destination, mapQuery, lodgingLinks, travelLinks, planning, and days.
+
+The planning object is the most important part. Brainstorm and organize actual options the family can compare before clicking anything:
+- travelOptions: 3 realistic ways to get there, including drive/fly/train when relevant, rough timing, pros/cons, booking notes, and rough cost language when possible.
+- lodgingOptions: 3 stay styles or neighborhoods/areas to consider, with why each works and booking notes. Include hotel/Airbnb style recommendations, not just generic links.
+- foodAndStops: specific food, attraction, and scenic stop ideas inferred from the post/caption.
+- familyNotes: practical family/touchscreen command-center notes.
+- packingNotes: destination-specific packing reminders.
+
+Each day needs day, title, stops array, notes, details, and mapQuery. lodgingLinks and travelLinks should each be arrays of { label, url }. Use direct Google Maps, Google Hotels, Airbnb search, and Google Flights/search URLs when helpful, but do not make links the main answer. The main answer should be organized information already brainstormed for the user.
+
+Use travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit. If you cannot access private video frames, be clear that the plan is based on the public post metadata/caption.\n\n${JSON.stringify(travelSignals, null, 2)}`
         }
       ],
       text: {
@@ -212,7 +225,7 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["title", "summary", "destination", "mapQuery", "lodgingLinks", "travelLinks", "days"],
+            required: ["title", "summary", "destination", "mapQuery", "lodgingLinks", "travelLinks", "planning", "days"],
             properties: {
               title: { type: "string" },
               summary: { type: "string" },
@@ -240,6 +253,60 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
                     label: { type: "string" },
                     url: { type: "string" }
                   }
+                }
+              },
+              planning: {
+                type: "object",
+                additionalProperties: false,
+                required: ["travelOptions", "lodgingOptions", "foodAndStops", "familyNotes", "packingNotes"],
+                properties: {
+                  travelOptions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["title", "recommendation", "estimatedCost", "timing", "bookingNotes"],
+                      properties: {
+                        title: { type: "string" },
+                        recommendation: { type: "string" },
+                        estimatedCost: { type: "string" },
+                        timing: { type: "string" },
+                        bookingNotes: { type: "string" }
+                      }
+                    }
+                  },
+                  lodgingOptions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["title", "recommendation", "estimatedCost", "timing", "bookingNotes"],
+                      properties: {
+                        title: { type: "string" },
+                        recommendation: { type: "string" },
+                        estimatedCost: { type: "string" },
+                        timing: { type: "string" },
+                        bookingNotes: { type: "string" }
+                      }
+                    }
+                  },
+                  foodAndStops: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["title", "recommendation", "estimatedCost", "timing", "bookingNotes"],
+                      properties: {
+                        title: { type: "string" },
+                        recommendation: { type: "string" },
+                        estimatedCost: { type: "string" },
+                        timing: { type: "string" },
+                        bookingNotes: { type: "string" }
+                      }
+                    }
+                  },
+                  familyNotes: { type: "array", items: { type: "string" } },
+                  packingNotes: { type: "array", items: { type: "string" } }
                 }
               },
               days: {
@@ -293,6 +360,7 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
     mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
     lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(destination)),
     travelLinks: sanitizeLinks(parsed.travelLinks, buildTravelLinks(destination)),
+    planning: parsed.planning || buildLocalPlanning(destination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0])),
     days: Array.isArray(parsed.days) ? parsed.days.map((day) => ({
       day: day.day,
       title: day.title,
@@ -491,6 +559,7 @@ function generateSingleInspirationItinerary(item: TravelInspiration): TravelItin
   const lodgingLinks = buildLodgingLinks(destination);
   const travelLinks = buildTravelLinks(destination);
   const mapQuery = [destination, ...anchorStops.slice(0, 4)].join(" ");
+  const planning = buildLocalPlanning(destination, anchorStops, foodStops, theme);
 
   return {
     provider: "local",
@@ -503,6 +572,7 @@ function generateSingleInspirationItinerary(item: TravelInspiration): TravelItin
     mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
     lodgingLinks,
     travelLinks,
+    planning,
     days: [
       {
         day: 1,
@@ -649,6 +719,91 @@ function buildTravelLinks(destination: string) {
     { label: `Flights and airports`, url: `https://www.google.com/travel/flights/search?tfs=${encodeURIComponent(destination)}` },
     { label: `Road trip planning`, url: `https://www.google.com/search?q=${encodeURIComponent(`best way to travel to ${destination} road trip parking`)}` }
   ];
+}
+
+function buildLocalPlanning(destination: string, places: string[], foodStops: string[], theme: string): NonNullable<TravelItineraryResult["planning"]> {
+  const foodIdea = foodStops[0] || "a local food stop from the creator post";
+  return {
+    travelOptions: [
+      {
+        title: `Drive to ${destination}`,
+        recommendation: `Best if this is reachable as a regional trip. It gives you flexibility for beach/coastal stops, stroller gear, groceries, and timing around naps or weather.`,
+        estimatedCost: "Fuel, tolls, parking, and one flexible meal stop.",
+        timing: "Use this for a long weekend or road-trip style visit.",
+        bookingNotes: "Check parking near the main area before choosing lodging; a stay with included parking is worth prioritizing."
+      },
+      {
+        title: `Fly near ${destination}`,
+        recommendation: `Best if drive time is too long. Fly into the closest practical airport, then rent a car so the saved-post stops are easy to reach.`,
+        estimatedCost: "Flights plus rental car; usually higher than driving but faster for longer distances.",
+        timing: "Works best for 4+ days so travel time does not dominate the trip.",
+        bookingNotes: "Compare nearby airports and choose arrival times that leave enough daylight for check-in."
+      },
+      {
+        title: "Hybrid train or city connection",
+        recommendation: `Good if ${destination} is near a larger city or rail corridor. Use public transit for the long leg and a rental/car service for the last stretch.`,
+        estimatedCost: "Train or bus fares plus short rental/car-share segments.",
+        timing: "Best for adults-only or lighter-packing versions of the trip.",
+        bookingNotes: "Only choose this if lodging is walkable to the main stops."
+      }
+    ],
+    lodgingOptions: [
+      {
+        title: `Central stay in ${destination}`,
+        recommendation: `Pick a hotel or rental close to the main walkable area so the itinerary feels easy and you can return midday.`,
+        estimatedCost: "Usually mid to high depending on season and walkability.",
+        timing: "Best for a 2-3 night first visit.",
+        bookingNotes: "Filter for parking, kitchenette/fridge, and flexible cancellation."
+      },
+      {
+        title: "Airbnb or vacation rental",
+        recommendation: `Best if you want more space, laundry, and easier breakfasts. This works well for a family command-center style trip plan.`,
+        estimatedCost: "Can be better value for 3+ nights, but watch cleaning fees.",
+        timing: "Best for slower trips or when traveling with family.",
+        bookingNotes: "Prioritize recent reviews, driveway/parking clarity, and distance to the main stops."
+      },
+      {
+        title: "Nearby budget base",
+        recommendation: `Stay just outside ${destination} if central prices are high, then drive in for the creator-inspired day.`,
+        estimatedCost: "Often lower nightly cost but adds parking/drive time.",
+        timing: "Best if you are comfortable using the car daily.",
+        bookingNotes: "Check parking costs and whether the savings beat the added friction."
+      }
+    ],
+    foodAndStops: [
+      {
+        title: foodIdea,
+        recommendation: `Make this the anchor meal because it came directly from the saved-post clues. Build the day around it instead of treating it as an afterthought.`,
+        estimatedCost: "Casual meal budget unless the post points to a specific upscale spot.",
+        timing: "Put it on the main exploration day.",
+        bookingNotes: "Search the exact food and destination together before leaving."
+      },
+      {
+        title: places.slice(0, 3).join(", ") || destination,
+        recommendation: `Use these as the first map cluster. Keep stops close together so the trip feels polished rather than scattered.`,
+        estimatedCost: "Mostly activity, parking, snacks, and meal costs.",
+        timing: "Best in the morning through early afternoon.",
+        bookingNotes: "Save all stops into a Google Maps list before the trip."
+      },
+      {
+        title: `${destination} scenic buffer`,
+        recommendation: `Leave room for one unplanned scenic stop, photo stop, or local shop. Creator-post trips work best with some breathing room.`,
+        estimatedCost: "Low cost unless it becomes a shopping stop.",
+        timing: "Use as a late afternoon flex block.",
+        bookingNotes: "Keep this optional so weather or tiredness does not derail the plan."
+      }
+    ],
+    familyNotes: [
+      `Trip theme: ${theme}.`,
+      "Keep the first and last days lighter than the main creator-inspired day.",
+      "Choose lodging based on parking, walkability, and easy return breaks."
+    ],
+    packingNotes: [
+      "Portable charger and saved offline map area.",
+      "Layers for changing weather and comfortable walking shoes.",
+      "Small day bag for snacks, water, and quick beach/scenic stops."
+    ]
+  };
 }
 
 function sanitizeLinks(links: TravelItineraryResult["lodgingLinks"], fallback: NonNullable<TravelItineraryResult["lodgingLinks"]>) {

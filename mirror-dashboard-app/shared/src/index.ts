@@ -192,6 +192,22 @@ export interface TravelItineraryLink {
   url: string;
 }
 
+export interface TravelItineraryOption {
+  title: string;
+  recommendation: string;
+  estimatedCost?: string;
+  timing?: string;
+  bookingNotes?: string;
+}
+
+export interface TravelItineraryPlanning {
+  travelOptions: TravelItineraryOption[];
+  lodgingOptions: TravelItineraryOption[];
+  foodAndStops: TravelItineraryOption[];
+  familyNotes: string[];
+  packingNotes: string[];
+}
+
 export interface TravelItineraryResult {
   provider: "openai" | "local";
   generatedAt: string;
@@ -203,6 +219,7 @@ export interface TravelItineraryResult {
   mapEmbedUrl?: string;
   lodgingLinks?: TravelItineraryLink[];
   travelLinks?: TravelItineraryLink[];
+  planning?: TravelItineraryPlanning;
   days: TravelItineraryDay[];
   sourceCount: number;
 }

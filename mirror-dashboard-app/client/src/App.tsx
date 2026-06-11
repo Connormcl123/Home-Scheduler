@@ -2378,6 +2378,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
             </div>
 
             <aside className="grid content-start gap-4">
+              {itinerary.planning && <ItineraryPlanningPanel planning={itinerary.planning} />}
               <ItineraryLinkPanel icon={<Route className="h-6 w-6" />} title="Travel arrangements" links={travelLinks} />
               <ItineraryLinkPanel icon={<BedDouble className="h-6 w-6" />} title="Stays and lodging" links={lodgingLinks} />
               <div className="rounded-3xl border border-teal-100 bg-teal-50 p-4 dark:border-teal-500/20 dark:bg-teal-500/10">
@@ -2389,6 +2390,63 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
             </aside>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ItineraryPlanningPanel({ planning }: { planning: NonNullable<TravelItineraryResult["planning"]> }) {
+  return (
+    <div className="rounded-3xl border border-teal-100 bg-teal-50 p-4 shadow-sm dark:border-teal-500/20 dark:bg-teal-500/10">
+      <div className="flex items-center gap-3">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-teal-800 shadow-sm dark:bg-slate-900 dark:text-teal-200">
+          <Sparkles className="h-6 w-6" />
+        </span>
+        <div>
+          <p className="text-2xl font-black text-slate-950 dark:text-white">AI trip options</p>
+          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Organized before you click links</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-4">
+        <ItineraryOptionGroup title="Getting there" options={planning.travelOptions} />
+        <ItineraryOptionGroup title="Where to stay" options={planning.lodgingOptions} />
+        <ItineraryOptionGroup title="Food and stops" options={planning.foodAndStops} />
+        <ItineraryNoteGroup title="Family notes" notes={planning.familyNotes} />
+        <ItineraryNoteGroup title="Packing notes" notes={planning.packingNotes} />
+      </div>
+    </div>
+  );
+}
+
+function ItineraryOptionGroup({ title, options }: { title: string; options: NonNullable<TravelItineraryResult["planning"]>["travelOptions"] }) {
+  return (
+    <div>
+      <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+      <div className="mt-2 grid gap-2">
+        {options.map((option) => (
+          <div key={`${title}-${option.title}`} className="rounded-2xl bg-white p-3 shadow-sm dark:bg-slate-900">
+            <p className="text-base font-black text-slate-900 dark:text-white">{option.title}</p>
+            <p className="mt-1 text-sm font-bold leading-snug text-slate-600 dark:text-slate-300">{option.recommendation}</p>
+            <div className="mt-2 grid gap-1 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {option.timing && <span>{option.timing}</span>}
+              {option.estimatedCost && <span>{option.estimatedCost}</span>}
+              {option.bookingNotes && <span>{option.bookingNotes}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ItineraryNoteGroup({ title, notes }: { title: string; notes: string[] }) {
+  return (
+    <div>
+      <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+      <div className="mt-2 grid gap-2">
+        {notes.map((note) => (
+          <p key={`${title}-${note}`} className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">{note}</p>
+        ))}
       </div>
     </div>
   );
