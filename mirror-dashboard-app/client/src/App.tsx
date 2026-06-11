@@ -2357,9 +2357,9 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+    <div className="presentation-backdrop fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
+      <div className="presentation-window flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+        <div className="presentation-header flex items-start justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
           <div className="min-w-0">
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{itinerary.destination || "Trip breakdown"}</p>
             <h3 className="mt-1 text-3xl font-black leading-tight text-slate-950 dark:text-white">{itinerary.title}</h3>
@@ -2375,7 +2375,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           </button>
         </div>
 
-        <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div className="presentation-tabs border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {displayDays.map((day) => (
               <button
@@ -2406,14 +2406,15 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(440px,0.9fr)]">
             <div className="grid content-start gap-4">
               <div className="grid gap-3">
-                {displayDays.map((day) => (
+                {displayDays.map((day, index) => (
                   <button
                     key={day.day}
                     type="button"
                     onClick={() => selectDay(day)}
+                    style={{ animationDelay: `${index * 80 + 120}ms` }}
                     className={`group overflow-hidden rounded-3xl border bg-white text-left shadow-sm transition active:scale-[0.99] dark:bg-slate-900 ${
                       selectedDayNumber === day.day ? "border-teal-500 ring-4 ring-teal-100 dark:ring-teal-500/20" : "border-slate-200 dark:border-slate-800"
-                    }`}
+                    } presentation-card`}
                   >
                     <div className="flex items-center justify-between bg-gradient-to-br from-teal-600 to-sky-500 p-4 text-white">
                       <div>
@@ -2449,6 +2450,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                     <button
                       key={`${selectedDay?.day}-${stop}-${index}`}
                       type="button"
+                      style={{ animationDelay: `${index * 55 + 180}ms` }}
                       onClick={() => {
                         setActiveMapQuery(`${itinerary.destination || itinerary.title} ${stop}`);
                         setSelectedDetail({
@@ -2458,7 +2460,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                           chips: [selectedDay?.title || "", itinerary.destination || ""].filter(Boolean)
                         });
                       }}
-                      className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left active:scale-[0.99] dark:bg-slate-800"
+                      className="presentation-route grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left active:scale-[0.99] dark:bg-slate-800"
                     >
                       <span className="grid h-11 w-11 place-items-center rounded-2xl bg-teal-700 text-lg font-black text-white">{index + 1}</span>
                       <span className="min-w-0">
@@ -2470,7 +2472,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                 </div>
               </div>
 
-              <SelectedItineraryDetail detail={selectedDetail} />
+              <SelectedItineraryDetail key={`${selectedDetail.eyebrow}-${selectedDetail.title}`} detail={selectedDetail} />
             </aside>
           </div>
         </div>
@@ -2500,7 +2502,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
 
 function SelectedItineraryDetail({ detail }: { detail: ItinerarySelectedDetail }) {
   return (
-    <div className="min-h-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="presentation-detail min-h-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{detail.eyebrow}</p>
       <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{detail.title}</h4>
       <p className="mt-2 line-clamp-4 text-base font-bold leading-relaxed text-slate-600 dark:text-slate-300">{detail.body}</p>
@@ -2540,8 +2542,8 @@ function ItineraryPlanningPanel({ planning, onSelect }: { planning: NonNullable<
 
 function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullable<TravelItineraryResult["planning"]>; onClose: () => void; onSelect: (detail: ItinerarySelectedDetail) => void }) {
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+    <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
+      <div className="presentation-window flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">AI planning</p>
@@ -2561,8 +2563,8 @@ function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullab
 
 function TripMapModal({ title, activeMapQuery, activeMapEmbedUrl, onClose, onReset }: { title: string; activeMapQuery: string; activeMapEmbedUrl: string; onClose: () => void; onReset: () => void }) {
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="flex h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+    <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
+      <div className="presentation-window flex h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">Embedded Google Map</p>
@@ -2594,17 +2596,18 @@ function ItineraryOptionGroup({ title, icon, tone, options, onSelect }: { title:
         <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
       </div>
       <div className="mt-3 grid gap-2">
-        {options.map((option) => (
+        {options.map((option, index) => (
           <button
             key={`${title}-${option.title}`}
             type="button"
+            style={{ animationDelay: `${index * 55 + 80}ms` }}
             onClick={() => onSelect({
               title: option.title,
               eyebrow: title,
               body: option.recommendation,
               chips: [option.timing, option.estimatedCost, option.bookingNotes].filter(Boolean) as string[]
             })}
-            className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left active:scale-[0.99] dark:border-slate-800 dark:bg-slate-800"
+            className="presentation-option presentation-route rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left shadow-sm active:scale-[0.99] dark:border-slate-800 dark:bg-slate-800"
           >
             <div className="flex items-start justify-between gap-3">
               <p className="text-base font-black text-slate-900 dark:text-white">{option.title}</p>
@@ -2640,12 +2643,13 @@ function ItineraryNoteGroup({ title, icon, notes, onSelect }: { title: string; i
         <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
       </div>
       <div className="mt-2 grid gap-2">
-        {notes.map((note) => (
+        {notes.map((note, index) => (
           <button
             key={`${title}-${note}`}
             type="button"
+            style={{ animationDelay: `${index * 45 + 80}ms` }}
             onClick={() => onSelect({ title, eyebrow: "Note", body: note })}
-            className="rounded-2xl bg-slate-50 p-3 text-left text-sm font-bold text-slate-600 active:scale-[0.99] dark:bg-slate-800 dark:text-slate-300"
+            className="presentation-route rounded-2xl bg-slate-50 p-3 text-left text-sm font-bold text-slate-600 active:scale-[0.99] dark:bg-slate-800 dark:text-slate-300"
           >
             {note}
           </button>
