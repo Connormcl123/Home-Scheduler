@@ -60,6 +60,18 @@ function extractOpenAIText(payload: OpenAIResponsePayload) {
     .trim();
 }
 
+function parseOpenAIJson<T>(payload: OpenAIResponsePayload): T {
+  const text = extractOpenAIText(payload);
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1)) as T;
+    throw new Error(`OpenAI returned incomplete JSON (${text.length} chars).`);
+  }
+}
+
 function toTravelInspiration(row: TravelRow): TravelInspiration {
   return {
     id: row.id,
@@ -218,6 +230,7 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
     },
     body: JSON.stringify({
       model: config.openai.model,
+      max_output_tokens: 8000,
       ...(config.openai.travelWebSearch ? {
         tools: [{ type: "web_search", search_context_size: "medium" }]
       } : {}),
@@ -433,7 +446,7 @@ ${JSON.stringify(placeResearch, null, 2)}`
   type OpenAIItinerary = Omit<TravelItineraryResult, "provider" | "generatedAt" | "sourceCount" | "mapUrl" | "mapEmbedUrl" | "days"> & {
     days?: OpenAIItineraryDay[];
   };
-  const parsed = JSON.parse(extractOpenAIText(payload) || "{}") as OpenAIItinerary;
+  const parsed = parseOpenAIJson<OpenAIItinerary>(payload);
   const parsedDestination = parsed.destination || parsed.mapQuery || destination || "Saved Destination";
   const mapQuery = parsed.mapQuery || parsedDestination;
   const planning = parsed.planning || buildLocalPlanning(parsedDestination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0]), placeResearch);
@@ -500,6 +513,7 @@ async function enrichWithOpenAI(url: string, metadata: TravelMetadata): Promise<
     },
     body: JSON.stringify({
       model: config.openai.model,
+      max_output_tokens: 1200,
       input: [
         {
           role: "system",
@@ -532,7 +546,7 @@ async function enrichWithOpenAI(url: string, metadata: TravelMetadata): Promise<
   });
   if (!response.ok) throw new Error(`OpenAI enrichment request failed: ${response.status}`);
   const payload = await response.json() as OpenAIResponsePayload;
-  const parsed = JSON.parse(extractOpenAIText(payload) || "{}") as TravelEnrichment;
+  const parsed = parseOpenAIJson<TravelEnrichment>(payload);
   const fallback = enrichFromMetadata(url, metadata);
   return {
     title: meaningfulText(parsed.title, ["instagram", "instagram travel idea"]) || fallback.title,
