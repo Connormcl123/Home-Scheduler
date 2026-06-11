@@ -2340,6 +2340,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
     chips: selectedDay?.stops || []
   });
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const activeMapEmbedUrl = googleMapsClientEmbedUrl(activeMapQuery);
 
   function selectDay(day: TravelItineraryResult["days"][number]) {
@@ -2388,30 +2389,16 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                 Trip Options
               </button>
             )}
+            <button type="button" onClick={() => setMapOpen(true)} className="h-12 shrink-0 rounded-2xl bg-sky-50 px-4 text-sm font-black text-sky-800 active:scale-[0.98] dark:bg-sky-500/15 dark:text-sky-200">
+              Map
+            </button>
           </div>
         </div>
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
-          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,0.8fr)]">
+          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(440px,0.9fr)]">
             <div className="grid content-start gap-4">
-              <div className="overflow-hidden rounded-3xl border border-teal-100 bg-slate-50 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
-                <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-3 dark:border-slate-800">
-                  <div>
-                    <p className="text-xl font-black text-slate-950 dark:text-white">{selectedDay ? `Day ${selectedDay.day} map` : "Trip map"}</p>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Tap a stop to refocus the map.</p>
-                  </div>
-                  <button type="button" onClick={() => setActiveMapQuery(initialMapQuery)} className="h-11 rounded-2xl bg-teal-700 px-4 text-sm font-black text-white active:scale-[0.98]">
-                    <MapPinned className="mr-2 inline h-5 w-5" />
-                    Reset
-                  </button>
-                </div>
-                <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="h-[355px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-                <div className="truncate border-t border-slate-200 p-2 text-xs font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  Showing: {activeMapQuery}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-3">
                 {itinerary.days.map((day) => (
                   <button
                     key={day.day}
@@ -2421,18 +2408,18 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                       selectedDayNumber === day.day ? "border-teal-500 ring-4 ring-teal-100 dark:ring-teal-500/20" : "border-slate-200 dark:border-slate-800"
                     }`}
                   >
-                    <div className="flex items-center justify-between bg-gradient-to-br from-teal-600 to-sky-500 p-3 text-white">
+                    <div className="flex items-center justify-between bg-gradient-to-br from-teal-600 to-sky-500 p-4 text-white">
                       <div>
                         <span className="text-xs font-black uppercase tracking-wide">Day</span>
                         <span className="block text-4xl font-black leading-none">{day.day}</span>
                       </div>
-                      <MapPinned className="h-6 w-6" />
+                      <CalendarDays className="h-7 w-7" />
                     </div>
-                    <div className="p-3">
-                      <h4 className="line-clamp-2 min-h-12 text-lg font-black leading-tight text-slate-950 dark:text-white">{day.title}</h4>
+                    <div className="p-4">
+                      <h4 className="line-clamp-2 text-xl font-black leading-tight text-slate-950 dark:text-white">{day.title}</h4>
                       <p className="mt-2 line-clamp-2 text-sm font-bold text-slate-500 dark:text-slate-400">{day.notes}</p>
                       <div className="mt-3 flex flex-wrap gap-1">
-                        {day.stops.slice(0, 2).map((stop) => (
+                        {day.stops.slice(0, 3).map((stop) => (
                           <span key={`${day.day}-${stop}`} className="max-w-full truncate rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">{stop}</span>
                         ))}
                       </div>
@@ -2496,6 +2483,15 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           }}
         />
       )}
+      {mapOpen && (
+        <TripMapModal
+          title={selectedDay ? `Day ${selectedDay.day} Map` : "Trip Map"}
+          activeMapQuery={activeMapQuery}
+          activeMapEmbedUrl={activeMapEmbedUrl}
+          onClose={() => setMapOpen(false)}
+          onReset={() => setActiveMapQuery(initialMapQuery)}
+        />
+      )}
     </div>
   );
 }
@@ -2555,6 +2551,33 @@ function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullab
         </div>
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
           <ItineraryPlanningPanel planning={planning} onSelect={onSelect} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TripMapModal({ title, activeMapQuery, activeMapEmbedUrl, onClose, onReset }: { title: string; activeMapQuery: string; activeMapEmbedUrl: string; onClose: () => void; onReset: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
+      <div className="flex h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+          <div>
+            <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">Embedded Google Map</p>
+            <h3 className="text-3xl font-black text-slate-950 dark:text-white">{title}</h3>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={onReset} className="h-14 rounded-2xl bg-teal-700 px-5 text-base font-black text-white active:scale-[0.98]">
+              Reset
+            </button>
+            <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close map">
+              <X className="h-7 w-7" />
+            </button>
+          </div>
+        </div>
+        <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="min-h-0 flex-1 border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        <div className="truncate border-t border-slate-200 p-3 text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          Showing: {activeMapQuery}
         </div>
       </div>
     </div>
