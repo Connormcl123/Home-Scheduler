@@ -368,8 +368,15 @@ app.get("/api/travel/inspirations", async (_req, res, next) => {
 
 app.post("/api/travel/inspirations", async (req, res, next) => {
   try {
-    if (!req.body?.url?.trim() || !req.body?.title?.trim()) return res.status(400).json({ error: "Travel inspiration URL and title are required." });
-    res.status(201).json(await createTravelInspiration(req.body));
+    const url = firstText(req.body, ["url", "URL", "link", "Link", "postUrl", "Post URL"]);
+    if (!url) return res.status(400).json({ error: "Travel inspiration URL is required." });
+    res.status(201).json(await createTravelInspiration({
+      ...req.body,
+      url,
+      title: firstText(req.body, ["title", "Title", "name", "Name"]) || "Instagram travel idea",
+      location: firstText(req.body, ["location", "Location", "place", "Place"]) || req.body?.location,
+      notes: firstText(req.body, ["notes", "Notes", "note", "Note"]) || req.body?.notes
+    }));
   } catch (error) {
     next(error);
   }
@@ -447,4 +454,14 @@ function isVoiceRequestAllowed(req: express.Request) {
   const headerToken = req.get("x-alexa-token") || "";
   const bearerToken = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7) : "";
   return [headerToken, bearerToken].some((token) => token && token === config.voice.webhookToken);
+}
+
+function firstText(body: unknown, keys: string[]) {
+  if (!body || typeof body !== "object") return "";
+  const record = body as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
 }
