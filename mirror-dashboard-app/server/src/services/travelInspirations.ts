@@ -40,6 +40,26 @@ type TravelEnrichment = {
   tags?: string[];
 };
 
+type OpenAIResponsePayload = {
+  output_text?: string;
+  output?: Array<{
+    content?: Array<{
+      text?: string;
+      type?: string;
+    }>;
+  }>;
+};
+
+function extractOpenAIText(payload: OpenAIResponsePayload) {
+  if (payload.output_text) return payload.output_text;
+  return (payload.output || [])
+    .flatMap((item) => item.content || [])
+    .map((content) => content.text || "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
 function toTravelInspiration(row: TravelRow): TravelInspiration {
   return {
     id: row.id,
@@ -362,7 +382,7 @@ ${JSON.stringify(placeResearch, null, 2)}`
   });
 
   if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
-  const payload = await response.json() as { output_text?: string };
+  const payload = await response.json() as OpenAIResponsePayload;
   type OpenAIItineraryDay = {
     day: number;
     title: string;
@@ -374,7 +394,7 @@ ${JSON.stringify(placeResearch, null, 2)}`
   type OpenAIItinerary = Omit<TravelItineraryResult, "provider" | "generatedAt" | "sourceCount" | "mapUrl" | "mapEmbedUrl" | "days"> & {
     days?: OpenAIItineraryDay[];
   };
-  const parsed = JSON.parse(payload.output_text || "{}") as OpenAIItinerary;
+  const parsed = JSON.parse(extractOpenAIText(payload) || "{}") as OpenAIItinerary;
   const parsedDestination = parsed.destination || parsed.mapQuery || destination || "Saved Destination";
   const mapQuery = parsed.mapQuery || parsedDestination;
   return {
@@ -468,8 +488,8 @@ async function enrichWithOpenAI(url: string, metadata: TravelMetadata): Promise<
     })
   });
   if (!response.ok) throw new Error(`OpenAI enrichment request failed: ${response.status}`);
-  const payload = await response.json() as { output_text?: string };
-  const parsed = JSON.parse(payload.output_text || "{}") as TravelEnrichment;
+  const payload = await response.json() as OpenAIResponsePayload;
+  const parsed = JSON.parse(extractOpenAIText(payload) || "{}") as TravelEnrichment;
   const fallback = enrichFromMetadata(url, metadata);
   return {
     title: meaningfulText(parsed.title, ["instagram", "instagram travel idea"]) || fallback.title,

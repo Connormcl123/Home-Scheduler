@@ -2327,11 +2327,17 @@ function TripBadge({ icon, label }: { icon: ReactNode; label: string }) {
 }
 
 function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItineraryResult; onClose: () => void }) {
-  const lodgingLinks = itinerary.lodgingLinks || [];
-  const travelLinks = itinerary.travelLinks || [];
+  const displayDays = itinerary.days.length ? itinerary.days : [{
+    day: 1,
+    title: itinerary.destination || itinerary.title,
+    stops: [itinerary.destination || itinerary.title],
+    notes: itinerary.summary,
+    details: itinerary.summary,
+    mapQuery: itinerary.mapQuery || itinerary.destination || itinerary.title
+  }];
   const firstDay = itinerary.days[0];
   const [selectedDayNumber, setSelectedDayNumber] = useState(firstDay?.day || 1);
-  const selectedDay = itinerary.days.find((day) => day.day === selectedDayNumber) || firstDay;
+  const selectedDay = displayDays.find((day) => day.day === selectedDayNumber) || displayDays[0];
   const initialMapQuery = selectedDay?.mapQuery || itinerary.mapQuery || itinerary.destination || itinerary.title;
   const [activeMapQuery, setActiveMapQuery] = useState(initialMapQuery);
   const [selectedDetail, setSelectedDetail] = useState<ItinerarySelectedDetail>({
@@ -2360,7 +2366,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
             <p className="mt-1 line-clamp-2 max-w-4xl text-base font-bold text-slate-600 dark:text-slate-300">{itinerary.summary}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <TripBadge icon={<MapPinned className="h-5 w-5" />} label={itinerary.destination || "Destination"} />
-              <TripBadge icon={<CalendarDays className="h-5 w-5" />} label={`${itinerary.days.length} day plan`} />
+              <TripBadge icon={<CalendarDays className="h-5 w-5" />} label={`${displayDays.length} day plan`} />
               <TripBadge icon={<Sparkles className="h-5 w-5" />} label={itinerary.provider === "openai" ? "ChatGPT planned" : "Draft planned"} />
             </div>
           </div>
@@ -2371,7 +2377,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
 
         <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {itinerary.days.map((day) => (
+            {displayDays.map((day) => (
               <button
                 key={`tab-${day.day}`}
                 type="button"
@@ -2400,7 +2406,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(440px,0.9fr)]">
             <div className="grid content-start gap-4">
               <div className="grid gap-3">
-                {itinerary.days.map((day) => (
+                {displayDays.map((day) => (
                   <button
                     key={day.day}
                     type="button"
@@ -2430,7 +2436,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
               </div>
             </div>
 
-            <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-4">
+            <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
               <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{selectedDay ? `Day ${selectedDay.day}` : "Route"}</p>
                 <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{selectedDay?.title || itinerary.title}</h4>
@@ -2465,11 +2471,6 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
               </div>
 
               <SelectedItineraryDetail detail={selectedDetail} />
-
-              <div className="grid grid-cols-2 gap-3">
-                <CompactLinkPanel icon={<Route className="h-5 w-5" />} title="Travel" links={travelLinks} />
-                <CompactLinkPanel icon={<BedDouble className="h-5 w-5" />} title="Stays" links={lodgingLinks} />
-              </div>
             </aside>
           </div>
         </div>
