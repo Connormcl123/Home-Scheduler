@@ -1,6 +1,7 @@
 import type { TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { config } from "../config.js";
 import { getDb } from "../db.js";
+import { researchTravelPlaces, type TravelPlaceResearch } from "./travelPlaces.js";
 
 type TravelRow = {
   id: number;
@@ -181,6 +182,8 @@ async function getTravelInspiration(id: number): Promise<TravelInspiration | nul
 }
 
 async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<TravelItineraryResult> {
+  const destination = inferDestination(inspirations[0]) || inspirations[0]?.location || "Saved Destination";
+  const placeResearch = await researchTravelPlaces(destination);
   const travelSignals = inspirations.map((item) => ({
     ...item,
     inferredPlaces: extractPlaceCandidates(item),
@@ -232,7 +235,15 @@ Each day needs day, title, stops array, notes, details, and mapQuery. lodgingLin
 
 The end goal is a trip that can later become bookable with buttons. For now, return a researched trip package with enough detail for the UI to show likely stays, restaurants, activities, rough costs, route/time guidance, and next booking actions.
 
-Use travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit. If you cannot access private video frames, be clear that the plan is based on the public post metadata/caption${config.openai.travelWebSearch ? " and web research" : ""}.\n\n${JSON.stringify(travelSignals, null, 2)}`
+Use travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit. If you cannot access private video frames, be clear that the plan is based on the public post metadata/caption${config.openai.travelWebSearch ? " and web research" : ""}.
+
+App-provided place research from Google Places, if available, should be preferred for named restaurants, lodging, activities, ratings, and Google Maps links. If no place research is available, use web search if enabled or clearly mark estimates as needing verification.
+
+Saved inspiration signals:
+${JSON.stringify(travelSignals, null, 2)}
+
+App place research:
+${JSON.stringify(placeResearch, null, 2)}`
         }
       ],
       text: {
@@ -364,20 +375,20 @@ Use travel context such as the destination, best-fit trip style, food/landmark i
     days?: OpenAIItineraryDay[];
   };
   const parsed = JSON.parse(payload.output_text || "{}") as OpenAIItinerary;
-  const destination = parsed.destination || parsed.mapQuery || inferDestination(inspirations[0]) || "Saved Destination";
-  const mapQuery = parsed.mapQuery || destination;
+  const parsedDestination = parsed.destination || parsed.mapQuery || destination || "Saved Destination";
+  const mapQuery = parsed.mapQuery || parsedDestination;
   return {
     provider: "openai",
     generatedAt: new Date().toISOString(),
     title: parsed.title || "Instagram Ideas Itinerary",
     summary: parsed.summary || "Generated from your saved travel inspirations.",
-    destination,
+    destination: parsedDestination,
     mapQuery,
     mapUrl: googleMapsUrl(mapQuery),
     mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
-    lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(destination)),
-    travelLinks: sanitizeLinks(parsed.travelLinks, buildTravelLinks(destination)),
-    planning: parsed.planning || buildLocalPlanning(destination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0])),
+    lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(parsedDestination, placeResearch)),
+    travelLinks: sanitizeLinks(parsed.travelLinks, buildTravelLinks(parsedDestination)),
+    planning: parsed.planning || buildLocalPlanning(parsedDestination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0]), placeResearch),
     days: Array.isArray(parsed.days) ? parsed.days.map((day) => ({
       day: day.day,
       title: day.title,
@@ -539,7 +550,7 @@ function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function generateLocalItinerary(inspirations: TravelInspiration[]): TravelItineraryResult {
+async function generateLocalItinerary(inspirations: TravelInspiration[]): Promise<TravelItineraryResult> {
   if (inspirations.length === 1) {
     return generateSingleInspirationItinerary(inspirations[0]);
   }
@@ -567,16 +578,17 @@ function generateLocalItinerary(inspirations: TravelInspiration[]): TravelItiner
   };
 }
 
-function generateSingleInspirationItinerary(item: TravelInspiration): TravelItineraryResult {
+async function generateSingleInspirationItinerary(item: TravelInspiration): Promise<TravelItineraryResult> {
   const destination = item.location?.trim() || inferDestination(item) || "Saved Destination";
+  const placeResearch = await researchTravelPlaces(destination);
   const places = extractPlaceCandidates(item);
   const theme = inferTripTheme(item);
   const anchorStops = places.length ? places : [destination];
   const foodStops = extractFoodSignals(item);
-  const lodgingLinks = buildLodgingLinks(destination);
+  const lodgingLinks = buildLodgingLinks(destination, placeResearch);
   const travelLinks = buildTravelLinks(destination);
   const mapQuery = [destination, ...anchorStops.slice(0, 4)].join(" ");
-  const planning = buildLocalPlanning(destination, anchorStops, foodStops, theme);
+  const planning = buildLocalPlanning(destination, anchorStops, foodStops, theme, placeResearch);
 
   return {
     provider: "local",
@@ -721,13 +733,21 @@ function googleMapsEmbedUrl(query: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }
 
-function buildLodgingLinks(destination: string) {
+function buildLodgingLinks(destination: string, research?: TravelPlaceResearch) {
   const encoded = encodeURIComponent(destination);
+  const researchedLinks = (research?.lodging || [])
+    .filter((place) => place.googleMapsUri || place.websiteUri)
+    .slice(0, 3)
+    .map((place) => ({
+      label: place.name,
+      url: place.websiteUri || place.googleMapsUri || googleMapsUrl(`${place.name} ${destination}`)
+    }));
   return [
+    ...researchedLinks,
     { label: `Hotels near ${destination}`, url: `https://www.google.com/travel/hotels/${encoded}` },
     { label: `Airbnb stays in ${destination}`, url: `https://www.airbnb.com/s/${encoded}/homes` },
     { label: `Family-friendly stays`, url: `https://www.google.com/search?q=${encodeURIComponent(`${destination} family friendly hotel vacation rental`)}` }
-  ];
+  ].slice(0, 6);
 }
 
 function buildTravelLinks(destination: string) {
@@ -738,8 +758,26 @@ function buildTravelLinks(destination: string) {
   ];
 }
 
-function buildLocalPlanning(destination: string, places: string[], foodStops: string[], theme: string): NonNullable<TravelItineraryResult["planning"]> {
+function buildLocalPlanning(destination: string, places: string[], foodStops: string[], theme: string, research?: TravelPlaceResearch): NonNullable<TravelItineraryResult["planning"]> {
   const foodIdea = foodStops[0] || "a local food stop from the creator post";
+  const researchedLodging = (research?.lodging || []).slice(0, 3).map((place) => ({
+    title: place.name,
+    recommendation: `${place.address || destination}${place.rating ? `, rated ${place.rating}/5` : ""}. Use this as a candidate stay and confirm availability, cancellation policy, parking, and final nightly rate before booking.`,
+    estimatedCost: place.priceLevel ? priceLevelText(place.priceLevel) : "Check current nightly rates.",
+    timing: "Compare for your travel dates.",
+    bookingNotes: place.googleMapsUri || place.websiteUri ? "Open the linked listing/maps result to verify current details." : "Search directly before booking."
+  }));
+  const researchedFoodAndStops = [
+    ...(research?.restaurants || []).slice(0, 3),
+    ...(research?.activities || []).slice(0, 3)
+  ].map((place) => ({
+    title: place.name,
+    recommendation: `${place.address || destination}${place.rating ? `, rated ${place.rating}/5` : ""}. Add this as a candidate stop and verify hours/reservations before the trip.`,
+    estimatedCost: place.priceLevel ? priceLevelText(place.priceLevel) : "Check current menu/ticket pricing.",
+    timing: "Place into the route based on opening hours.",
+    bookingNotes: place.googleMapsUri || place.websiteUri ? "Use the linked result to check current hours and reviews." : "Verify details before going."
+  }));
+
   return {
     travelOptions: [
       {
@@ -764,7 +802,7 @@ function buildLocalPlanning(destination: string, places: string[], foodStops: st
         bookingNotes: "Only choose this if lodging is walkable to the main stops."
       }
     ],
-    lodgingOptions: [
+    lodgingOptions: researchedLodging.length ? researchedLodging : [
       {
         title: `Central stay in ${destination}`,
         recommendation: `Pick a hotel or rental close to the main walkable area so the itinerary feels easy and you can return midday.`,
@@ -787,7 +825,7 @@ function buildLocalPlanning(destination: string, places: string[], foodStops: st
         bookingNotes: "Check parking costs and whether the savings beat the added friction."
       }
     ],
-    foodAndStops: [
+    foodAndStops: researchedFoodAndStops.length ? researchedFoodAndStops : [
       {
         title: foodIdea,
         recommendation: `Make this the anchor meal because it came directly from the saved-post clues. Build the day around it instead of treating it as an afterthought.`,
@@ -821,6 +859,17 @@ function buildLocalPlanning(destination: string, places: string[], foodStops: st
       "Small day bag for snacks, water, and quick beach/scenic stops."
     ]
   };
+}
+
+function priceLevelText(priceLevel: string) {
+  const labels: Record<string, string> = {
+    PRICE_LEVEL_FREE: "Free",
+    PRICE_LEVEL_INEXPENSIVE: "$",
+    PRICE_LEVEL_MODERATE: "$$",
+    PRICE_LEVEL_EXPENSIVE: "$$$",
+    PRICE_LEVEL_VERY_EXPENSIVE: "$$$$"
+  };
+  return labels[priceLevel] || "Check current pricing.";
 }
 
 function sanitizeLinks(links: TravelItineraryResult["lodgingLinks"], fallback: NonNullable<TravelItineraryResult["lodgingLinks"]>) {

@@ -52,6 +52,7 @@ Important settings:
 - `PERSONAL_FINANCE_PROVIDER`: currently `local-demo`, which seeds SQLite with accounts, budgets, and transactions for the Monarch-style dashboard.
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
 - `PLAID_CLIENT_NAME`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_USER_ID`: Plaid Link settings. The first implementation uses the Transactions product.
+- `GOOGLE_MAPS_API_KEY`: optional Google Maps Platform key for Places API travel research. Enable Places API (New) in Google Cloud.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`: optional AI itinerary generation for the Travel tab. Without a key, the app uses a local draft generator.
 - `OPENAI_TRAVEL_WEB_SEARCH`: set to `true` to let OpenAI research current travel options while generating trip packages. This can add API cost and should be used with real keys only.
 - `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
@@ -180,6 +181,7 @@ nano .env
 Add:
 
 ```bash
+GOOGLE_MAPS_API_KEY=your_google_maps_platform_key_here
 OPENAI_API_KEY=your_api_key_here
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_TRAVEL_WEB_SEARCH=true

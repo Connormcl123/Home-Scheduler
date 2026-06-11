@@ -40,6 +40,9 @@ export const config = {
     countryCodes: (process.env.PLAID_COUNTRY_CODES || "US").split(",").map((country) => country.trim()).filter(Boolean),
     userId: process.env.PLAID_USER_ID || "home-scheduler-local-user"
   },
+  google: {
+    mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ""
+  },
   openai: {
     apiKey: process.env.OPENAI_API_KEY || "",
     model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
