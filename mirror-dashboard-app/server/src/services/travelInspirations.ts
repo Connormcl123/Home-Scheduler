@@ -6,6 +6,7 @@ type TravelRow = {
   id: number;
   source: "instagram" | "manual";
   url: string;
+  thumbnail_url: string | null;
   title: string;
   location: string | null;
   notes: string | null;
@@ -17,6 +18,7 @@ type TravelRow = {
 type TravelInput = {
   source?: "instagram" | "manual";
   url: string;
+  thumbnailUrl?: string | null;
   title?: string;
   location?: string | null;
   notes?: string | null;
@@ -27,6 +29,7 @@ type TravelMetadata = {
   title?: string;
   description?: string;
   siteName?: string;
+  image?: string;
 };
 
 type TravelEnrichment = {
@@ -41,6 +44,7 @@ function toTravelInspiration(row: TravelRow): TravelInspiration {
     id: row.id,
     source: row.source,
     url: row.url,
+    thumbnailUrl: row.thumbnail_url,
     title: row.title,
     location: row.location,
     notes: row.notes,
@@ -66,10 +70,11 @@ export async function createTravelInspiration(input: TravelInput): Promise<Trave
   const now = new Date().toISOString();
   const title = meaningfulText(input.title, ["title", "instagram travel idea"]) || "Instagram travel idea";
   const result = await db.run(
-    `INSERT INTO travel_inspirations (source, url, title, location, notes, tags, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO travel_inspirations (source, url, thumbnail_url, title, location, notes, tags, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(url) DO UPDATE SET
       source = excluded.source,
+      thumbnail_url = COALESCE(excluded.thumbnail_url, travel_inspirations.thumbnail_url),
       title = excluded.title,
       location = excluded.location,
       notes = excluded.notes,
@@ -77,6 +82,7 @@ export async function createTravelInspiration(input: TravelInput): Promise<Trave
       updated_at = excluded.updated_at`,
     input.source || "instagram",
     input.url.trim(),
+    input.thumbnailUrl?.trim() || null,
     title,
     input.location?.trim() || null,
     input.notes?.trim() || null,
@@ -109,6 +115,7 @@ export async function createEnrichedTravelInspiration(input: TravelInput): Promi
   return createTravelInspiration({
     ...input,
     url,
+    thumbnailUrl: metadata.image,
     title: enrichment.title,
     location: enrichment.location,
     notes: enrichment.notes,
@@ -123,10 +130,11 @@ export async function updateTravelInspiration(id: number, input: Partial<TravelI
   const db = await getDb();
   await db.run(
     `UPDATE travel_inspirations
-     SET source = ?, url = ?, title = ?, location = ?, notes = ?, tags = ?, updated_at = ?
+     SET source = ?, url = ?, thumbnail_url = ?, title = ?, location = ?, notes = ?, tags = ?, updated_at = ?
      WHERE id = ?`,
     input.source || existing.source,
     input.url?.trim() || existing.url,
+    input.thumbnailUrl === undefined ? existing.thumbnailUrl : input.thumbnailUrl?.trim() || null,
     input.title?.trim() || existing.title,
     input.location === undefined ? existing.location : input.location?.trim() || null,
     input.notes === undefined ? existing.notes : input.notes?.trim() || null,
@@ -253,7 +261,8 @@ async function fetchTravelMetadata(url: string): Promise<TravelMetadata> {
     return {
       title: firstMetaContent(html, ["og:title", "twitter:title"]) || firstTitle(html),
       description: firstMetaContent(html, ["og:description", "description", "twitter:description"]),
-      siteName: firstMetaContent(html, ["og:site_name"])
+      siteName: firstMetaContent(html, ["og:site_name"]),
+      image: firstMetaContent(html, ["og:image", "twitter:image"])
     };
   } catch {
     return {};

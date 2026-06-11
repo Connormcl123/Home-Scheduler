@@ -2220,23 +2220,32 @@ function TravelHubPanel() {
             </div>
             <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
               {inspirations.length ? (
-                <div className="grid gap-3">
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
                   {inspirations.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
-                      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-100">
-                        <MapPinned className="h-7 w-7" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-2xl font-black text-slate-900 dark:text-white">{item.title}</p>
-                        <p className="truncate text-lg font-bold text-slate-500 dark:text-slate-400">{item.location || "Location pending"}</p>
-                        {item.notes && <p className="mt-1 line-clamp-2 text-base font-semibold text-slate-500 dark:text-slate-400">{item.notes}</p>}
-                      </div>
-                      <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")} className="h-12 rounded-xl bg-white px-4 text-base font-black text-teal-800 shadow-sm dark:bg-slate-700 dark:text-teal-200">
-                        Open
+                    <div key={item.id} className="group overflow-hidden rounded-2xl bg-slate-50 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                      <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")} className="block w-full text-left active:scale-[0.99]">
+                        <div className="relative aspect-[4/3] overflow-hidden bg-teal-50 dark:bg-slate-700">
+                          {item.thumbnailUrl ? (
+                            <img src={item.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="grid h-full place-items-center text-teal-700 dark:text-teal-200">
+                              <MapPinned className="h-12 w-12" />
+                            </div>
+                          )}
+                          <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-700 shadow-sm dark:bg-slate-950/80 dark:text-slate-200">
+                            Instagram
+                          </span>
+                        </div>
+                        <div className="p-3">
+                          <p className="line-clamp-2 min-h-[3.5rem] text-lg font-black leading-tight text-slate-900 dark:text-white">{item.title}</p>
+                        </div>
                       </button>
-                      <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-12 w-12 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
-                        <Trash2 className="h-5 w-5" />
-                      </button>
+                      <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
+                        <span className="truncate text-sm font-bold text-slate-500 dark:text-slate-400">{item.location || "Saved idea"}</span>
+                        <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

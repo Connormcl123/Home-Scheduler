@@ -168,6 +168,7 @@ export interface TravelInspiration {
   id: number;
   source: "instagram" | "manual";
   url: string;
+  thumbnailUrl?: string | null;
   title: string;
   location?: string | null;
   notes?: string | null;
