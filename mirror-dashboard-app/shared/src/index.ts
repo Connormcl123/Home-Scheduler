@@ -208,6 +208,27 @@ export interface TravelItineraryPlanning {
   packingNotes: string[];
 }
 
+export type TravelAddOnCategory = "stays" | "food" | "activities";
+
+export interface TravelAddOn {
+  id: string;
+  category: TravelAddOnCategory;
+  title: string;
+  description: string;
+  estimatedLow: number | null;
+  estimatedHigh: number | null;
+  priceLabel: string;
+  unit: string;
+  confidence: "researched" | "estimated" | "needs_quote";
+}
+
+export interface TravelPriceSummary {
+  currency: string;
+  estimatedLow: number | null;
+  estimatedHigh: number | null;
+  pricingNotes: string[];
+}
+
 export interface TravelItineraryResult {
   provider: "openai" | "local";
   generatedAt: string;
@@ -220,6 +241,8 @@ export interface TravelItineraryResult {
   lodgingLinks?: TravelItineraryLink[];
   travelLinks?: TravelItineraryLink[];
   planning?: TravelItineraryPlanning;
+  addOns?: TravelAddOn[];
+  priceSummary?: TravelPriceSummary;
   days: TravelItineraryDay[];
   sourceCount: number;
 }

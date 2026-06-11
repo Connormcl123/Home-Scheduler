@@ -2347,8 +2347,11 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
     chips: selectedDay?.stops || []
   });
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [addOnsOpen, setAddOnsOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const activeMapEmbedUrl = googleMapsClientEmbedUrl(activeMapQuery);
+  const priceSummary = itinerary.priceSummary;
+  const addOns = itinerary.addOns || [];
 
   function selectDay(day: TravelItineraryResult["days"][number]) {
     setSelectedDayNumber(day.day);
@@ -2368,6 +2371,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
               <TripBadge icon={<MapPinned className="h-5 w-5" />} label={itinerary.destination || "Destination"} />
               <TripBadge icon={<CalendarDays className="h-5 w-5" />} label={`${displayDays.length} day plan`} />
               <TripBadge icon={<Sparkles className="h-5 w-5" />} label={itinerary.provider === "openai" ? "ChatGPT planned" : "Draft planned"} />
+              {priceSummary && <TripBadge icon={<DollarSign className="h-5 w-5" />} label={formatTripPriceRange(priceSummary)} />}
             </div>
           </div>
           <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close itinerary details">
@@ -2394,6 +2398,11 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
             {itinerary.planning && (
               <button type="button" onClick={() => setOptionsOpen(true)} className="h-12 shrink-0 rounded-2xl bg-teal-50 px-4 text-sm font-black text-teal-800 active:scale-[0.98] dark:bg-teal-500/15 dark:text-teal-200">
                 Trip Options
+              </button>
+            )}
+            {addOns.length > 0 && (
+              <button type="button" onClick={() => setAddOnsOpen(true)} className="h-12 shrink-0 rounded-2xl bg-amber-50 px-4 text-sm font-black text-amber-800 active:scale-[0.98] dark:bg-amber-500/15 dark:text-amber-200">
+                Add-ons
               </button>
             )}
             <button type="button" onClick={() => setMapOpen(true)} className="h-12 shrink-0 rounded-2xl bg-sky-50 px-4 text-sm font-black text-sky-800 active:scale-[0.98] dark:bg-sky-500/15 dark:text-sky-200">
@@ -2487,6 +2496,17 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           }}
         />
       )}
+      {addOnsOpen && (
+        <TripAddOnsModal
+          addOns={addOns}
+          priceSummary={priceSummary}
+          onClose={() => setAddOnsOpen(false)}
+          onSelect={(detail) => {
+            setSelectedDetail(detail);
+            setAddOnsOpen(false);
+          }}
+        />
+      )}
       {mapOpen && (
         <TripMapModal
           title={selectedDay ? `Day ${selectedDay.day} Map` : "Trip Map"}
@@ -2555,6 +2575,87 @@ function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullab
         </div>
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
           <ItineraryPlanningPanel planning={planning} onSelect={onSelect} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TripAddOnsModal({ addOns, priceSummary, onClose, onSelect }: { addOns: NonNullable<TravelItineraryResult["addOns"]>; priceSummary?: TravelItineraryResult["priceSummary"]; onClose: () => void; onSelect: (detail: ItinerarySelectedDetail) => void }) {
+  const groups = [
+    { key: "stays", title: "Stays", icon: <BedDouble className="h-5 w-5" />, tone: "from-violet-500 to-sky-500" },
+    { key: "food", title: "Food", icon: <Utensils className="h-5 w-5" />, tone: "from-amber-500 to-rose-500" },
+    { key: "activities", title: "Activities", icon: <MapPinned className="h-5 w-5" />, tone: "from-teal-500 to-emerald-500" }
+  ] as const;
+
+  return (
+    <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
+      <div className="presentation-window flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+          <div>
+            <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Trip package pricing</p>
+            <h3 className="text-3xl font-black text-slate-950 dark:text-white">Add-ons</h3>
+            <p className="mt-1 text-base font-bold text-slate-500 dark:text-slate-400">{priceSummary ? formatTripPriceRange(priceSummary) : "Pricing estimates"} across selected trip options.</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close trip add-ons">
+            <X className="h-7 w-7" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
+          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="presentation-card rounded-3xl border border-amber-100 bg-amber-50 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
+              <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Estimate</p>
+              <p className="mt-2 text-4xl font-black text-slate-950 dark:text-white">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
+              <div className="mt-4 grid gap-2">
+                {(priceSummary?.pricingNotes || ["Estimates are planning numbers, not confirmed quotes."]).slice(0, 4).map((note, index) => (
+                  <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900/80 dark:text-slate-300">{note}</p>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-3">
+              {groups.map((group, groupIndex) => {
+                const items = addOns.filter((item) => item.category === group.key);
+                return (
+                  <div key={group.key} style={{ animationDelay: `${groupIndex * 80 + 120}ms` }} className="presentation-card rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className={`grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br ${group.tone} text-white shadow-sm`}>{group.icon}</span>
+                      <div>
+                        <p className="text-xl font-black text-slate-950 dark:text-white">{group.title}</p>
+                        <p className="text-xs font-black uppercase text-slate-400">{items.length} option{items.length === 1 ? "" : "s"}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2">
+                      {items.length ? items.map((item, index) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          style={{ animationDelay: `${index * 55 + 180}ms` }}
+                          onClick={() => onSelect({
+                            title: item.title,
+                            eyebrow: group.title,
+                            body: item.description,
+                            chips: [formatAddOnPrice(item), item.unit, addOnConfidenceLabel(item.confidence)]
+                          })}
+                          className="presentation-option presentation-route rounded-2xl bg-slate-50 p-3 text-left shadow-sm ring-1 ring-slate-100 active:scale-[0.99] dark:bg-slate-800 dark:ring-slate-700"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-base font-black text-slate-900 dark:text-white">{item.title}</p>
+                            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(item)}</span>
+                          </div>
+                          <p className="mt-2 line-clamp-3 text-sm font-bold leading-snug text-slate-600 dark:text-slate-300">{item.description}</p>
+                          <p className="mt-2 text-xs font-black uppercase tracking-wide text-slate-400">{item.unit} · {addOnConfidenceLabel(item.confidence)}</p>
+                        </button>
+                      )) : (
+                        <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">No {group.title.toLowerCase()} add-ons yet.</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2705,6 +2806,28 @@ function googleMapsClientUrl(query: string) {
 
 function googleMapsClientEmbedUrl(query: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+}
+
+function formatTripPriceRange(priceSummary: NonNullable<TravelItineraryResult["priceSummary"]>) {
+  const low = priceSummary.estimatedLow;
+  const high = priceSummary.estimatedHigh;
+  if (low === null && high === null) return "Needs quote";
+  if (low !== null && high !== null) return `${priceSummary.currency} ${money(low)}-${money(high).replace("$", "")}`;
+  return `${priceSummary.currency} ${money(low ?? high)}`;
+}
+
+function formatAddOnPrice(addOn: NonNullable<TravelItineraryResult["addOns"]>[number]) {
+  const low = addOn.estimatedLow;
+  const high = addOn.estimatedHigh;
+  if (low === null && high === null) return addOn.priceLabel || "Quote";
+  if (low !== null && high !== null) return `${money(low)}-${money(high).replace("$", "")}`;
+  return money(low ?? high);
+}
+
+function addOnConfidenceLabel(confidence: NonNullable<TravelItineraryResult["addOns"]>[number]["confidence"]) {
+  if (confidence === "researched") return "researched estimate";
+  if (confidence === "needs_quote") return "needs live quote";
+  return "planning estimate";
 }
 
 function TravelStat({ label, value }: { label: string; value: string }) {

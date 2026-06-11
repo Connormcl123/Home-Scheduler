@@ -242,7 +242,7 @@ Do not fabricate exact availability or guaranteed prices. Use language like "est
           role: "user",
           content: `Build a practical 3-day itinerary from these saved Instagram inspirations. For one saved item, focus the whole itinerary on that post's destination.
 
-Return JSON with keys title, summary, destination, mapQuery, lodgingLinks, travelLinks, planning, and days.
+Return JSON with keys title, summary, destination, mapQuery, lodgingLinks, travelLinks, planning, addOns, priceSummary, and days.
 
 The planning object is the most important part. Brainstorm and organize actual options the family can compare before clicking anything:
 - travelOptions: 3 realistic ways to get there, including drive/fly/train when relevant, rough timing, pros/cons, booking notes, and rough cost language when possible. If web search is available, make these realistic for the destination and likely origin if inferable; otherwise say what must be checked.
@@ -250,6 +250,15 @@ The planning object is the most important part. Brainstorm and organize actual o
 - foodAndStops: specific restaurants, food stops, attractions, scenic stops, beaches, parks, walks, or activities. If web search is available, include named options and rough timing/pricing where possible.
 - familyNotes: practical family/touchscreen command-center notes.
 - packingNotes: destination-specific packing reminders.
+
+Also create addOns as selectable trip add-ons grouped by category:
+- stays: hotel, inn, rental, or stay-area options
+- food: restaurants, food stops, markets, cafes, reservations
+- activities: tours, beaches, parks, museums, scenic stops, tickets
+
+Each add-on needs title, category, description, estimatedLow, estimatedHigh, priceLabel, unit, and confidence. Use null for estimatedLow/estimatedHigh when a reliable number is not possible. Use USD and practical ranges, such as nightly lodging, per meal, per person, per family, parking, or ticket costs. These are estimates only, not final quotes.
+
+priceSummary should include currency, estimatedLow, estimatedHigh, and pricingNotes. estimatedLow/estimatedHigh should be the rough package range for a 3-day family trip when possible, based on selected lodging/food/activity assumptions. Do not include flights unless the origin is clear. If pricing is not reliable, use nulls and explain in pricingNotes.
 
 Each day needs day, title, stops array, notes, details, and mapQuery. lodgingLinks and travelLinks should each be arrays of { label, url }. Use direct Google Maps, Google Hotels, Airbnb search, and Google Flights/search URLs when helpful, but do not make links the main answer. The main answer should be organized information already brainstormed for the user.
 
@@ -273,7 +282,7 @@ ${JSON.stringify(placeResearch, null, 2)}`
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["title", "summary", "destination", "mapQuery", "lodgingLinks", "travelLinks", "planning", "days"],
+            required: ["title", "summary", "destination", "mapQuery", "lodgingLinks", "travelLinks", "planning", "addOns", "priceSummary", "days"],
             properties: {
               title: { type: "string" },
               summary: { type: "string" },
@@ -357,6 +366,36 @@ ${JSON.stringify(placeResearch, null, 2)}`
                   packingNotes: { type: "array", items: { type: "string" } }
                 }
               },
+              addOns: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["id", "category", "title", "description", "estimatedLow", "estimatedHigh", "priceLabel", "unit", "confidence"],
+                  properties: {
+                    id: { type: "string" },
+                    category: { type: "string", enum: ["stays", "food", "activities"] },
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    estimatedLow: { type: ["number", "null"] },
+                    estimatedHigh: { type: ["number", "null"] },
+                    priceLabel: { type: "string" },
+                    unit: { type: "string" },
+                    confidence: { type: "string", enum: ["researched", "estimated", "needs_quote"] }
+                  }
+                }
+              },
+              priceSummary: {
+                type: "object",
+                additionalProperties: false,
+                required: ["currency", "estimatedLow", "estimatedHigh", "pricingNotes"],
+                properties: {
+                  currency: { type: "string" },
+                  estimatedLow: { type: ["number", "null"] },
+                  estimatedHigh: { type: ["number", "null"] },
+                  pricingNotes: { type: "array", items: { type: "string" } }
+                }
+              },
               days: {
                 type: "array",
                 items: {
@@ -397,6 +436,8 @@ ${JSON.stringify(placeResearch, null, 2)}`
   const parsed = JSON.parse(extractOpenAIText(payload) || "{}") as OpenAIItinerary;
   const parsedDestination = parsed.destination || parsed.mapQuery || destination || "Saved Destination";
   const mapQuery = parsed.mapQuery || parsedDestination;
+  const planning = parsed.planning || buildLocalPlanning(parsedDestination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0]), placeResearch);
+  const addOns = normalizeAddOns(parsed.addOns, planning);
   return {
     provider: "openai",
     generatedAt: new Date().toISOString(),
@@ -408,7 +449,9 @@ ${JSON.stringify(placeResearch, null, 2)}`
     mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
     lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(parsedDestination, placeResearch)),
     travelLinks: sanitizeLinks(parsed.travelLinks, buildTravelLinks(parsedDestination)),
-    planning: parsed.planning || buildLocalPlanning(parsedDestination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0]), placeResearch),
+    planning,
+    addOns,
+    priceSummary: normalizePriceSummary(parsed.priceSummary, addOns),
     days: Array.isArray(parsed.days) ? parsed.days.map((day) => ({
       day: day.day,
       title: day.title,
@@ -609,6 +652,7 @@ async function generateSingleInspirationItinerary(item: TravelInspiration): Prom
   const travelLinks = buildTravelLinks(destination);
   const mapQuery = [destination, ...anchorStops.slice(0, 4)].join(" ");
   const planning = buildLocalPlanning(destination, anchorStops, foodStops, theme, placeResearch);
+  const addOns = buildAddOnsFromPlanning(planning);
 
   return {
     provider: "local",
@@ -622,6 +666,8 @@ async function generateSingleInspirationItinerary(item: TravelInspiration): Prom
     lodgingLinks,
     travelLinks,
     planning,
+    addOns,
+    priceSummary: buildPriceSummary(addOns),
     days: [
       {
         day: 1,
@@ -890,6 +936,130 @@ function priceLevelText(priceLevel: string) {
     PRICE_LEVEL_VERY_EXPENSIVE: "$$$$"
   };
   return labels[priceLevel] || "Check current pricing.";
+}
+
+function normalizeAddOns(addOns: TravelItineraryResult["addOns"], planning: NonNullable<TravelItineraryResult["planning"]>): NonNullable<TravelItineraryResult["addOns"]> {
+  const fallback = buildAddOnsFromPlanning(planning);
+  if (!Array.isArray(addOns) || !addOns.length) return fallback;
+
+  const normalized = addOns
+    .filter((item) => item?.title && ["stays", "food", "activities"].includes(item.category))
+    .map((item, index) => ({
+      id: item.id || `${item.category}-${index + 1}`,
+      category: item.category,
+      title: item.title,
+      description: item.description || "Estimated trip add-on. Confirm current pricing before booking.",
+      estimatedLow: cleanPriceNumber(item.estimatedLow),
+      estimatedHigh: cleanPriceNumber(item.estimatedHigh),
+      priceLabel: item.priceLabel || formatRange(cleanPriceNumber(item.estimatedLow), cleanPriceNumber(item.estimatedHigh)),
+      unit: item.unit || defaultUnitForCategory(item.category),
+      confidence: item.confidence || "estimated"
+    }));
+
+  return normalized.length ? normalized : fallback;
+}
+
+function buildAddOnsFromPlanning(planning: NonNullable<TravelItineraryResult["planning"]>): NonNullable<TravelItineraryResult["addOns"]> {
+  return [
+    ...planning.lodgingOptions.slice(0, 3).map((option, index) => optionToAddOn(option, "stays", index)),
+    ...planning.foodAndStops.slice(0, 4).map((option, index) => optionToAddOn(option, inferFoodOrActivity(option), index))
+  ];
+}
+
+function optionToAddOn(option: NonNullable<TravelItineraryResult["planning"]>["travelOptions"][number], category: "stays" | "food" | "activities", index: number): NonNullable<TravelItineraryResult["addOns"]>[number] {
+  const [low, high] = estimateRangeFromText(option.estimatedCost || option.recommendation, category);
+  return {
+    id: `${category}-${slugify(option.title)}-${index + 1}`,
+    category,
+    title: option.title,
+    description: option.recommendation,
+    estimatedLow: low,
+    estimatedHigh: high,
+    priceLabel: option.estimatedCost || formatRange(low, high),
+    unit: defaultUnitForCategory(category),
+    confidence: low === null && high === null ? "needs_quote" : "estimated"
+  };
+}
+
+function inferFoodOrActivity(option: NonNullable<TravelItineraryResult["planning"]>["foodAndStops"][number]): "food" | "activities" {
+  const text = `${option.title} ${option.recommendation}`.toLowerCase();
+  if (/restaurant|food|meal|dinner|lunch|breakfast|brunch|coffee|cafe|bakery|seafood|lobster|market/.test(text)) return "food";
+  return "activities";
+}
+
+function normalizePriceSummary(priceSummary: TravelItineraryResult["priceSummary"], addOns: NonNullable<TravelItineraryResult["addOns"]>): NonNullable<TravelItineraryResult["priceSummary"]> {
+  const fallback = buildPriceSummary(addOns);
+  return {
+    currency: priceSummary?.currency || fallback.currency,
+    estimatedLow: cleanPriceNumber(priceSummary?.estimatedLow) ?? fallback.estimatedLow,
+    estimatedHigh: cleanPriceNumber(priceSummary?.estimatedHigh) ?? fallback.estimatedHigh,
+    pricingNotes: priceSummary?.pricingNotes?.length ? priceSummary.pricingNotes : fallback.pricingNotes
+  };
+}
+
+function buildPriceSummary(addOns: NonNullable<TravelItineraryResult["addOns"]>): NonNullable<TravelItineraryResult["priceSummary"]> {
+  const priced = addOns.filter((item) => item.estimatedLow !== null || item.estimatedHigh !== null);
+  const low = sumPrices(priced, "estimatedLow");
+  const high = sumPrices(priced, "estimatedHigh");
+  return {
+    currency: "USD",
+    estimatedLow: low,
+    estimatedHigh: high,
+    pricingNotes: [
+      "Estimates are planning numbers, not confirmed quotes.",
+      "Flight, lodging availability, taxes, resort fees, parking, and seasonal pricing still need live provider checks.",
+      "Use add-on categories to compare what belongs in the final trip package."
+    ]
+  };
+}
+
+function sumPrices(addOns: NonNullable<TravelItineraryResult["addOns"]>, key: "estimatedLow" | "estimatedHigh") {
+  if (!addOns.length) return null;
+  return Math.round(addOns.reduce((sum, item) => sum + (item[key] ?? item.estimatedLow ?? item.estimatedHigh ?? 0), 0));
+}
+
+function cleanPriceNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
+}
+
+function estimateRangeFromText(text: string | undefined, category: "stays" | "food" | "activities"): [number | null, number | null] {
+  const normalized = (text || "").toLowerCase();
+  const explicitRange = normalized.match(/\$?\s*(\d{2,5})\s*(?:-|to|–)\s*\$?\s*(\d{2,5})/);
+  if (explicitRange) return [Number(explicitRange[1]), Number(explicitRange[2])];
+  const singlePrice = normalized.match(/\$\s*(\d{2,5})/);
+  if (singlePrice) {
+    const value = Number(singlePrice[1]);
+    return [value, Math.round(value * 1.25)];
+  }
+  if (category === "stays") {
+    if (/high|expensive|central|walkable|resort|boutique/.test(normalized)) return [250, 550];
+    if (/budget|outside|nearby|lower/.test(normalized)) return [140, 280];
+    return [180, 380];
+  }
+  if (category === "food") {
+    if (/upscale|reservation|dinner/.test(normalized)) return [80, 180];
+    if (/coffee|bakery|snack|casual/.test(normalized)) return [20, 60];
+    return [45, 120];
+  }
+  if (/free|beach|walk|scenic|photo/.test(normalized)) return [0, 30];
+  if (/ticket|tour|museum|park/.test(normalized)) return [25, 120];
+  return [20, 80];
+}
+
+function formatRange(low: number | null, high: number | null) {
+  if (low === null && high === null) return "Needs quote";
+  if (low !== null && high !== null) return `$${low}-$${high}`;
+  return `$${low ?? high}`;
+}
+
+function defaultUnitForCategory(category: "stays" | "food" | "activities") {
+  if (category === "stays") return "per night";
+  if (category === "food") return "per meal";
+  return "per activity";
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 36) || "option";
 }
 
 function sanitizeLinks(links: TravelItineraryResult["lodgingLinks"], fallback: NonNullable<TravelItineraryResult["lodgingLinks"]>) {
