@@ -9,6 +9,7 @@ import { getCalendarEvents } from "./services/calendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
 import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
 import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
+import { getIntegrationStatus } from "./services/integrations.js";
 import { getNews } from "./services/news.js";
 import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
 import { createCategoryRule, getPersonalFinanceSummary, listCategoryRules, updateTransactionCategory } from "./services/personalFinance.js";
@@ -237,6 +238,14 @@ app.patch("/api/finance/transactions/:id/category", async (req, res, next) => {
 app.get("/api/settings", async (_req, res, next) => {
   try {
     res.json(await getSettings());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/integrations/status", async (_req, res, next) => {
+  try {
+    res.json(await getIntegrationStatus());
   } catch (error) {
     next(error);
   }

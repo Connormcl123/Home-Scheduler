@@ -247,3 +247,17 @@ export interface AppSettings {
   rssFeeds: string[];
   financeWatchlist: string[];
 }
+
+export interface ApiIntegrationStatusItem {
+  key: string;
+  label: string;
+  configured: boolean;
+  mode: "live" | "partial" | "mock" | "missing";
+  detail: string;
+  nextStep?: string;
+}
+
+export interface ApiIntegrationStatus {
+  generatedAt: string;
+  items: ApiIntegrationStatusItem[];
+}

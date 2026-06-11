@@ -1,4 +1,4 @@
-import type { DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -108,6 +108,10 @@ export function updateWatchlistItem(id: number, input: Partial<{ symbol: string;
 
 export function deleteWatchlistItem(id: number) {
   return request<void>(`/api/finance/watchlist/${id}`, { method: "DELETE" });
+}
+
+export function fetchIntegrationStatus() {
+  return request<ApiIntegrationStatus>("/api/integrations/status");
 }
 
 export function fetchGroceryItems(activeOnly = false) {

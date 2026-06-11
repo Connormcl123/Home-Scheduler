@@ -43,6 +43,11 @@ export const config = {
   google: {
     mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ""
   },
+  travelProviders: {
+    amadeusClientId: process.env.AMADEUS_CLIENT_ID || "",
+    amadeusClientSecret: process.env.AMADEUS_CLIENT_SECRET || "",
+    bookingProvider: process.env.TRAVEL_BOOKING_PROVIDER || ""
+  },
   openai: {
     apiKey: process.env.OPENAI_API_KEY || "",
     model: process.env.OPENAI_MODEL || "gpt-4.1-mini",

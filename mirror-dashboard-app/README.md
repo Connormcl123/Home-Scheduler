@@ -53,6 +53,8 @@ Important settings:
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
 - `PLAID_CLIENT_NAME`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_USER_ID`: Plaid Link settings. The first implementation uses the Transactions product.
 - `GOOGLE_MAPS_API_KEY`: optional Google Maps Platform key for Places API travel research. Enable Places API (New) in Google Cloud.
+- `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`: optional future flight-search provider credentials. These are surfaced in integration status but not used for booking yet.
+- `TRAVEL_BOOKING_PROVIDER`: optional label for a future lodging/booking provider, such as an affiliate or paid hotel API.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`: optional AI itinerary generation for the Travel tab. Without a key, the app uses a local draft generator.
 - `OPENAI_TRAVEL_WEB_SEARCH`: set to `true` to let OpenAI research current travel options while generating trip packages. This can add API cost and should be used with real keys only.
 - `FINANCE_AI_ENABLED`: reserved for a future AI finance review service.
@@ -89,6 +91,7 @@ Implemented endpoints:
 - `PATCH /api/finance/transactions/:id/category`
 - `GET /api/settings`
 - `PATCH /api/settings`
+- `GET /api/integrations/status`
 - `GET /api/rss-feeds`
 - `POST /api/rss-feeds`
 - `PATCH /api/rss-feeds/:id`
@@ -171,6 +174,10 @@ The Travel tab stores creator post/Reel links, titles, locations, and notes in S
 
 If `OPENAI_API_KEY` is set, the server uses `OPENAI_MODEL` to generate a structured itinerary from the saved links and notes. If `OPENAI_TRAVEL_WEB_SEARCH=true`, the itinerary generator also asks OpenAI to research current restaurants, activities, stay areas, travel options, rough prices, and logistics before returning the trip package. If the key is missing or the request fails, the app generates a local draft grouped by location.
 
+If `GOOGLE_MAPS_API_KEY` is set, the server also calls Google Places API (New) before it asks OpenAI to build the itinerary. That gives the AI real candidate restaurants, attractions, hotels/inns, ratings, addresses, websites, and Google Maps links to organize into the trip plan.
+
+The Settings tab includes an API readiness board backed by `GET /api/integrations/status`. Use it to confirm whether OpenAI, Google Places/Maps, Plaid, iCal, RSS, and future travel booking providers are live, partial, or still missing setup.
+
 For the researched trip-package mode on the Pi:
 
 ```bash
@@ -185,6 +192,10 @@ GOOGLE_MAPS_API_KEY=your_google_maps_platform_key_here
 OPENAI_API_KEY=your_api_key_here
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_TRAVEL_WEB_SEARCH=true
+# Optional later flight/lodging provider staging
+AMADEUS_CLIENT_ID=
+AMADEUS_CLIENT_SECRET=
+TRAVEL_BOOKING_PROVIDER=
 ```
 
 Then restart:

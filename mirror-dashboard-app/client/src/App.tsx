@@ -1,5 +1,5 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, BedDouble, CalendarDays, Car, CheckCircle2, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -16,6 +16,7 @@ import {
   deleteWatchlistItem,
   fetchDashboard,
   fetchGroceryItems,
+  fetchIntegrationStatus,
   fetchNote,
   fetchNotes,
   fetchPersonalFinanceSummary,
@@ -2722,14 +2723,16 @@ function TravelMetric({ label, value }: { label: string; value: string }) {
 function SettingsPanel({ onChanged }: { onChanged: () => void }) {
   const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [watchlist, setWatchlist] = useState<FinanceWatchlistItem[]>([]);
+  const [integrations, setIntegrations] = useState<ApiIntegrationStatus | null>(null);
   const [feedUrl, setFeedUrl] = useState("");
   const [feedTitle, setFeedTitle] = useState("");
   const [symbol, setSymbol] = useState("");
 
   async function load() {
-    const [nextFeeds, nextWatchlist] = await Promise.all([fetchRssFeeds(), fetchWatchlist()]);
+    const [nextFeeds, nextWatchlist, nextIntegrations] = await Promise.all([fetchRssFeeds(), fetchWatchlist(), fetchIntegrationStatus()]);
     setFeeds(nextFeeds);
     setWatchlist(nextWatchlist);
+    setIntegrations(nextIntegrations);
   }
 
   async function reloadAndRefresh() {
@@ -2761,6 +2764,20 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
   return (
     <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <SectionTitle icon={Settings} title="Settings" />
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {(integrations?.items || []).map((item) => (
+          <div key={item.key} className="rounded-3xl bg-white/70 p-4 shadow-sm dark:bg-slate-800/80">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-black text-slate-900 dark:text-white">{item.label}</p>
+                <p className="mt-1 line-clamp-2 text-sm font-bold text-slate-500 dark:text-slate-400">{item.detail}</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black uppercase ${integrationModeClass(item.mode)}`}>{integrationModeLabel(item.mode)}</span>
+            </div>
+            {item.nextStep && <p className="mt-3 line-clamp-2 text-sm font-bold text-sky-700 dark:text-sky-300">{item.nextStep}</p>}
+          </div>
+        ))}
+      </div>
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-2 gap-4">
         <div className="flex min-h-0 flex-col rounded-3xl bg-white/70 p-4">
           <h3 className="text-2xl font-bold">RSS Feeds</h3>
@@ -2801,6 +2818,20 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
       </div>
     </Card>
   );
+}
+
+function integrationModeLabel(mode: ApiIntegrationStatus["items"][number]["mode"]) {
+  if (mode === "live") return "Live";
+  if (mode === "partial") return "Ready";
+  if (mode === "mock") return "Mock";
+  return "Setup";
+}
+
+function integrationModeClass(mode: ApiIntegrationStatus["items"][number]["mode"]) {
+  if (mode === "live") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200";
+  if (mode === "partial") return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200";
+  if (mode === "mock") return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200";
+  return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200";
 }
 
 function EventList({ events }: { events: CalendarEvent[] }) {
