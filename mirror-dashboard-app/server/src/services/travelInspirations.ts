@@ -299,6 +299,7 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
       stops: day.stops,
       notes: day.notes,
       details: day.details,
+      mapQuery: day.mapQuery || [destination, ...day.stops].join(" "),
       mapUrl: googleMapsUrl(day.mapQuery || [destination, ...day.stops].join(" "))
     })) : [],
     sourceCount: inspirations.length
@@ -509,6 +510,7 @@ function generateSingleInspirationItinerary(item: TravelInspiration): TravelItin
         stops: uniqueStrings([destination, ...anchorStops.slice(0, 3)]),
         notes: `Use this first day for arrival, an easy walk, and the most obvious place cues from the post. Trip style: ${theme}.`,
         details: `Travel into ${destination}, check into a nearby stay, and keep the first outing simple. Use the saved post as the anchor: walk the main area, note photo spots, and save dinner for a local seafood or casual restaurant if the post points toward coastal food.`,
+        mapQuery: [destination, ...anchorStops.slice(0, 3)].join(" "),
         mapUrl: googleMapsUrl([destination, ...anchorStops.slice(0, 3)].join(" "))
       },
       {
@@ -517,6 +519,7 @@ function generateSingleInspirationItinerary(item: TravelInspiration): TravelItin
         stops: uniqueStrings([...anchorStops, ...foodStops]).slice(0, 6),
         notes: `Follow the saved post as the anchor for the day. Prioritize named places, caption clues, and food references such as ${foodStops.join(", ") || "local restaurants or cafes from the post"}.`,
         details: `Make this the fullest day. Start with the most recognizable stop from the creator post, build lunch around ${foodStops[0] || "a local food stop"}, and leave time for nearby shops, beach/coastal views, or a scenic walk. Add more saved posts to turn this into a precise route.`,
+        mapQuery: uniqueStrings([...anchorStops, ...foodStops]).join(" "),
         mapUrl: googleMapsUrl(uniqueStrings([...anchorStops, ...foodStops]).join(" "))
       },
       {
@@ -525,6 +528,7 @@ function generateSingleInspirationItinerary(item: TravelInspiration): TravelItin
         stops: uniqueStrings([`${destination} scenic stop`, `${destination} local shops`, "Photo stop", "Return travel"]).slice(0, 5),
         notes: "Keep the last day lighter: one nearby scenic stop, one meal, then travel home. Add more saved posts to make this itinerary more specific.",
         details: `Use the final morning for a relaxed breakfast, one scenic stop, and any missed photos. Keep the map route short so checkout and return travel do not feel rushed.`,
+        mapQuery: `${destination} scenic stop local shops`,
         mapUrl: googleMapsUrl(`${destination} scenic stop local shops`)
       }
     ],

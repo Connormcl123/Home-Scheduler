@@ -183,6 +183,7 @@ export interface TravelItineraryDay {
   stops: string[];
   notes: string;
   details?: string;
+  mapQuery?: string;
   mapUrl?: string;
 }
 

@@ -2312,8 +2312,10 @@ function TravelHubPanel() {
 function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItineraryResult; onClose: () => void }) {
   const lodgingLinks = itinerary.lodgingLinks || [];
   const travelLinks = itinerary.travelLinks || [];
-  const mapUrl = itinerary.mapUrl || googleMapsClientUrl(itinerary.mapQuery || itinerary.destination || itinerary.title);
-  const mapEmbedUrl = itinerary.mapEmbedUrl || googleMapsClientEmbedUrl(itinerary.mapQuery || itinerary.destination || itinerary.title);
+  const initialMapQuery = itinerary.mapQuery || itinerary.destination || itinerary.title;
+  const [activeMapQuery, setActiveMapQuery] = useState(initialMapQuery);
+  const activeMapUrl = googleMapsClientUrl(activeMapQuery);
+  const activeMapEmbedUrl = googleMapsClientEmbedUrl(activeMapQuery);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
@@ -2338,12 +2340,15 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                     <p className="text-2xl font-black text-slate-950 dark:text-white">Trip map</p>
                     <p className="text-base font-bold text-slate-500 dark:text-slate-400">Map points are generated from the saved post title, caption, and itinerary stops.</p>
                   </div>
-                  <button type="button" onClick={() => window.open(mapUrl, "_blank", "noopener,noreferrer")} className="h-12 rounded-2xl bg-teal-700 px-4 text-base font-black text-white active:scale-[0.98]">
+                  <button type="button" onClick={() => setActiveMapQuery(initialMapQuery)} className="h-12 rounded-2xl bg-teal-700 px-4 text-base font-black text-white active:scale-[0.98]">
                     <MapPinned className="mr-2 inline h-5 w-5" />
-                    Open
+                    Reset
                   </button>
                 </div>
-                <iframe title="Itinerary Google Map" src={mapEmbedUrl} className="h-[360px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="h-[360px] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                <div className="border-t border-slate-200 p-3 text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  Showing: {activeMapQuery}
+                </div>
               </div>
 
               <div className="grid gap-3">
@@ -2354,8 +2359,8 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
                         <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">Day {day.day}</p>
                         <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{day.title}</h4>
                       </div>
-                      {day.mapUrl && (
-                        <button type="button" onClick={() => window.open(day.mapUrl, "_blank", "noopener,noreferrer")} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-teal-800 active:scale-95 dark:bg-slate-800 dark:text-teal-200" aria-label={`Open Day ${day.day} map`}>
+                      {(day.mapQuery || day.mapUrl) && (
+                        <button type="button" onClick={() => setActiveMapQuery(day.mapQuery || `${itinerary.destination || itinerary.title} ${day.stops.join(" ")}`)} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-teal-800 active:scale-95 dark:bg-slate-800 dark:text-teal-200" aria-label={`Show Day ${day.day} on map`}>
                           <MapPinned className="h-5 w-5" />
                         </button>
                       )}
