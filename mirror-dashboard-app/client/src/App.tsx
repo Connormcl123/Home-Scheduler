@@ -2336,6 +2336,7 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
     body: itinerary.days[0]?.details || itinerary.summary,
     chips: itinerary.days[0]?.stops || []
   });
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const activeMapEmbedUrl = googleMapsClientEmbedUrl(activeMapQuery);
 
   return (
@@ -2357,8 +2358,8 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden p-4">
-          <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)]">
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
+          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.5fr)]">
             <div className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4">
               <div className="overflow-hidden rounded-3xl border border-teal-100 bg-slate-50 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-3 dark:border-slate-800">
@@ -2411,8 +2412,18 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
               <SelectedItineraryDetail detail={selectedDetail} />
             </div>
 
-            <aside className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-4">
-              {itinerary.planning && <ItineraryPlanningPanel planning={itinerary.planning} onSelect={setSelectedDetail} />}
+            <aside className="grid content-start gap-4">
+              {itinerary.planning && (
+                <button type="button" onClick={() => setOptionsOpen(true)} className="flex min-h-24 items-center justify-between gap-3 rounded-3xl border border-teal-100 bg-teal-50 p-4 text-left shadow-sm active:scale-[0.99] dark:border-teal-500/20 dark:bg-teal-500/10">
+                  <span>
+                    <span className="block text-2xl font-black text-slate-950 dark:text-white">Trip Options</span>
+                    <span className="mt-1 block text-sm font-bold text-slate-600 dark:text-slate-300">Travel, stays, food, family notes, and packing.</span>
+                  </span>
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-teal-800 shadow-sm dark:bg-slate-900 dark:text-teal-200">
+                    <Sparkles className="h-6 w-6" />
+                  </span>
+                </button>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <CompactLinkPanel icon={<Route className="h-5 w-5" />} title="Travel" links={travelLinks} />
                 <CompactLinkPanel icon={<BedDouble className="h-5 w-5" />} title="Stays" links={lodgingLinks} />
@@ -2421,6 +2432,16 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           </div>
         </div>
       </div>
+      {optionsOpen && itinerary.planning && (
+        <TripOptionsModal
+          planning={itinerary.planning}
+          onClose={() => setOptionsOpen(false)}
+          onSelect={(detail) => {
+            setSelectedDetail(detail);
+            setOptionsOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -2460,6 +2481,27 @@ function ItineraryPlanningPanel({ planning, onSelect }: { planning: NonNullable<
         <ItineraryOptionGroup title="Food and stops" icon={<Utensils className="h-5 w-5" />} tone="from-amber-500 to-rose-500" options={planning.foodAndStops} onSelect={onSelect} />
         <ItineraryNoteGroup title="Family notes" icon={<CheckCircle2 className="h-5 w-5" />} notes={planning.familyNotes} onSelect={onSelect} />
         <ItineraryNoteGroup title="Packing notes" icon={<Luggage className="h-5 w-5" />} notes={planning.packingNotes} onSelect={onSelect} />
+      </div>
+    </div>
+  );
+}
+
+function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullable<TravelItineraryResult["planning"]>; onClose: () => void; onSelect: (detail: ItinerarySelectedDetail) => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+          <div>
+            <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">AI planning</p>
+            <h3 className="text-3xl font-black text-slate-950 dark:text-white">Trip Options</h3>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close trip options">
+            <X className="h-7 w-7" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
+          <ItineraryPlanningPanel planning={planning} onSelect={onSelect} />
+        </div>
       </div>
     </div>
   );
