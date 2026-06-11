@@ -2176,19 +2176,19 @@ function TravelHubPanel() {
           </div>
         </div>
 
-        <div className="mt-4 shrink-0 rounded-[20px] border border-teal-100 bg-white p-4 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
+        <div className="mt-3 shrink-0 rounded-[20px] border border-teal-100 bg-white p-3 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Build trip candidates</h3>
-              <p className="mt-1 text-xl font-semibold text-slate-500 dark:text-slate-400">Ranked by ease, family fit, timing, budget, and deal strength.</p>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white">Build trip candidates</h3>
+              <p className="mt-1 text-lg font-semibold text-slate-500 dark:text-slate-400">Ranked by ease, family fit, timing, budget, and deal strength.</p>
             </div>
-            <button type="button" onClick={buildItinerary} disabled={travelBusy} className="touch-button bg-teal-700 px-8 text-white disabled:opacity-60">
-              <Sparkles className="mr-2 h-7 w-7" />
+            <button type="button" onClick={buildItinerary} disabled={travelBusy} className="h-14 rounded-2xl bg-teal-700 px-6 text-lg font-black text-white disabled:opacity-60">
+              <Sparkles className="mr-2 inline h-6 w-6" />
               {travelBusy ? "Working" : "Generate"}
             </button>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            {rankedTrips.slice(0, 6).map(({ trip, score }) => (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {rankedTrips.slice(0, 3).map(({ trip, score }) => (
               <button
                 key={trip.id}
                 type="button"
@@ -2197,21 +2197,15 @@ function TravelHubPanel() {
                   selected?.id === trip.id ? "border-teal-500 ring-4 ring-teal-200 dark:ring-teal-500/30" : "border-slate-200 dark:border-slate-700"
                 }`}
               >
-                <div className="h-20 p-4 text-white" style={{ background: trip.visual }}>
+                <div className="h-14 p-3 text-white" style={{ background: trip.visual }}>
                   <div className="flex items-start justify-between">
-                    <MapPinned className="h-8 w-8" />
-                    <span className="rounded-full bg-white/20 px-3 py-1 text-lg font-black">{score}%</span>
+                    <MapPinned className="h-6 w-6" />
+                    <span className="rounded-full bg-white/20 px-3 py-1 text-base font-black">{score}%</span>
                   </div>
                 </div>
-                <div className="p-4">
-                  <p className="text-xl font-black text-slate-900 dark:text-white">{trip.name}</p>
-                  <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
-                  <p className="mt-3 line-clamp-2 text-lg font-semibold text-slate-600 dark:text-slate-300">{trip.summary}</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {trip.tags.slice(0, 3).map((tag) => (
-                      <span key={tag} className="rounded-full bg-teal-50 px-3 py-1 text-base font-black text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">{tag}</span>
-                    ))}
-                  </div>
+                <div className="p-3">
+                  <p className="truncate text-lg font-black text-slate-900 dark:text-white">{trip.name}</p>
+                  <p className="truncate text-base font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
                 </div>
               </button>
             ))}
@@ -2219,73 +2213,42 @@ function TravelHubPanel() {
         </div>
 
         <div className="mt-4 grid min-h-0 flex-1 grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] gap-4">
-          <div className="min-h-0 overflow-y-auto rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <h3 className="text-3xl font-black text-slate-900 dark:text-white">Selected idea</h3>
-            {selected && (
-              <div className="mt-4 grid gap-4">
-                <div className="rounded-[18px] p-5 text-white" style={{ background: selected.visual }}>
-                  <p className="text-4xl font-black">{selected.name}</p>
-                  <p className="mt-1 text-2xl font-bold opacity-90">{selected.location}</p>
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  <TravelMetric label="ease" value={`${selected.ease}%`} />
-                  <TravelMetric label="family fit" value={`${selected.babyFit}%`} />
-                  <TravelMetric label="deal" value={`${selected.deal}%`} />
-                  <TravelMetric label="cost" value={money(selected.estimatedCost)} />
-                </div>
-                <ol className="grid gap-3">
-                  {selected.route.map((stop, index) => (
-                    <li key={stop} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-xl font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-200">{index + 1}</span>
-                      {stop}
-                    </li>
+          <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Instagram ideas</h3>
+              {travelMessage && <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-black text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">{travelMessage}</span>}
+            </div>
+            <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+              {inspirations.length ? (
+                <div className="grid gap-3">
+                  {inspirations.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-100">
+                        <MapPinned className="h-7 w-7" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-2xl font-black text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="truncate text-lg font-bold text-slate-500 dark:text-slate-400">{item.location || "Location pending"}</p>
+                        {item.notes && <p className="mt-1 line-clamp-2 text-base font-semibold text-slate-500 dark:text-slate-400">{item.notes}</p>}
+                      </div>
+                      <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")} className="h-12 rounded-xl bg-white px-4 text-base font-black text-teal-800 shadow-sm dark:bg-slate-700 dark:text-teal-200">
+                        Open
+                      </button>
+                      <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-12 w-12 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
                   ))}
-                </ol>
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="grid h-full place-items-center rounded-2xl bg-slate-50 p-4 text-center text-2xl font-black text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  Send Instagram links from your phone shortcut.
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 overflow-hidden">
-            <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white">Instagram ideas</h3>
-                {travelMessage && <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-black text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">{travelMessage}</span>}
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <input value={inspirationUrl} onChange={(event) => setInspirationUrl(event.target.value)} placeholder="Reel or post URL" className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
-                <input value={inspirationTitle} onChange={(event) => setInspirationTitle(event.target.value)} placeholder="Short title" className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
-                <input value={inspirationLocation} onChange={(event) => setInspirationLocation(event.target.value)} placeholder="Place or city" className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
-                <button type="button" onClick={saveInspiration} disabled={travelBusy} className="h-12 rounded-2xl bg-teal-700 px-4 text-base font-black text-white active:scale-[0.98] disabled:opacity-60">
-                  Save idea
-                </button>
-                <input value={inspirationNotes} onChange={(event) => setInspirationNotes(event.target.value)} placeholder="Notes from the video" className="col-span-2 h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-800" />
-              </div>
-              <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
-                {inspirations.length ? (
-                  <div className="grid gap-2">
-                    {inspirations.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-800">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-lg font-black text-slate-900 dark:text-white">{item.title}</p>
-                          <p className="truncate text-base font-bold text-slate-500 dark:text-slate-400">{item.location || "Location pending"}</p>
-                        </div>
-                        <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")} className="h-11 rounded-xl bg-white px-3 text-sm font-black text-teal-800 shadow-sm dark:bg-slate-700 dark:text-teal-200">
-                          Open
-                        </button>
-                        <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid h-full place-items-center rounded-2xl bg-slate-50 p-4 text-center text-lg font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                    Save Instagram travel links here, then generate a route from the collection.
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">AI itinerary</h3>
                 <button type="button" onClick={buildItinerary} disabled={travelBusy} className="h-12 rounded-2xl bg-slate-900 px-4 text-base font-black text-white active:scale-[0.98] disabled:opacity-60 dark:bg-white dark:text-slate-900">
@@ -2317,7 +2280,6 @@ function TravelHubPanel() {
                     Generate an itinerary after saving a few creator posts.
                   </div>
                 )}
-              </div>
             </div>
           </div>
         </div>
