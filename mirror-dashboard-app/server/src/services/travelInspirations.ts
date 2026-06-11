@@ -181,6 +181,12 @@ async function getTravelInspiration(id: number): Promise<TravelInspiration | nul
 }
 
 async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<TravelItineraryResult> {
+  const travelSignals = inspirations.map((item) => ({
+    ...item,
+    inferredPlaces: extractPlaceCandidates(item),
+    tripTheme: inferTripTheme(item)
+  }));
+
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -192,11 +198,11 @@ async function generateWithOpenAI(inspirations: TravelInspiration[]): Promise<Tr
       input: [
         {
           role: "system",
-          content: "Create concise, family-friendly travel itinerary ideas from user-saved travel inspiration links and notes. Do not claim to have watched private videos; use only the supplied titles, locations, tags, notes, and URLs."
+          content: "Create concise, family-friendly travel itineraries from saved Instagram travel posts. Treat the title, caption/notes, hashtags, URL metadata, and inferredPlaces as the source material. Identify the place or places being discussed, then build a realistic trip itinerary to visit them. Do not claim to have watched private video content. If the video itself is not accessible, say the plan is based on the post metadata/caption."
         },
         {
           role: "user",
-          content: `Build a practical 3-day itinerary from these saved Instagram inspirations. Return JSON with keys title, summary, and days. Each day needs day, title, stops array, and notes.\n\n${JSON.stringify(inspirations, null, 2)}`
+          content: `Build a practical 3-day itinerary from these saved Instagram inspirations. For one saved item, focus the whole itinerary on that post's destination. Return JSON with keys title, summary, and days. Each day needs day, title, stops array, and notes. Include travel context such as the destination, best-fit trip style, food/landmark ideas from the caption, and how to structure the visit.\n\n${JSON.stringify(travelSignals, null, 2)}`
         }
       ],
       text: {
@@ -375,9 +381,7 @@ function titleFromUrl(url: string) {
 }
 
 function inferLocation(text: string) {
-  const hashtag = text.match(/#([A-Z][A-Za-z]+(?:Travel|Trip|Beach|City|Italy|France|Spain|Greece|Japan|Mexico|Hawaii|CapeCod|Boston|Paris|Rome|London|Tokyo|Miami|Orlando))/);
-  if (hashtag?.[1]) return hashtag[1].replace(/([a-z])([A-Z])/g, "$1 $2");
-  return null;
+  return inferDestinationFromText(text);
 }
 
 function decodeHtml(value: string) {
@@ -396,8 +400,12 @@ function escapeRegex(value: string) {
 }
 
 function generateLocalItinerary(inspirations: TravelInspiration[]): TravelItineraryResult {
+  if (inspirations.length === 1) {
+    return generateSingleInspirationItinerary(inspirations[0]);
+  }
+
   const grouped = inspirations.reduce<Record<string, TravelInspiration[]>>((acc, item) => {
-    const key = item.location?.trim() || "Saved Places";
+    const key = item.location?.trim() || inferDestination(item) || "Saved Places";
     acc[key] = [...(acc[key] || []), item];
     return acc;
   }, {});
@@ -417,4 +425,130 @@ function generateLocalItinerary(inspirations: TravelInspiration[]): TravelItiner
     days,
     sourceCount: inspirations.length
   };
+}
+
+function generateSingleInspirationItinerary(item: TravelInspiration): TravelItineraryResult {
+  const destination = item.location?.trim() || inferDestination(item) || "Saved Destination";
+  const places = extractPlaceCandidates(item);
+  const theme = inferTripTheme(item);
+  const anchorStops = places.length ? places : [destination];
+  const foodStops = extractFoodSignals(item);
+
+  return {
+    provider: "local",
+    generatedAt: new Date().toISOString(),
+    title: `${destination} Trip From Saved Post`,
+    summary: `Built from the saved Instagram title/caption for ${destination}. The app cannot inspect private video frames yet, so this uses the post metadata, caption text, hashtags, and visible travel clues.`,
+    days: [
+      {
+        day: 1,
+        title: `Arrive and get oriented in ${destination}`,
+        stops: uniqueStrings([destination, ...anchorStops.slice(0, 3)]),
+        notes: `Use this first day for arrival, an easy walk, and the most obvious place cues from the post. Trip style: ${theme}.`
+      },
+      {
+        day: 2,
+        title: "Main creator-inspired day",
+        stops: uniqueStrings([...anchorStops, ...foodStops]).slice(0, 6),
+        notes: `Follow the saved post as the anchor for the day. Prioritize named places, caption clues, and food references such as ${foodStops.join(", ") || "local restaurants or cafes from the post"}.`
+      },
+      {
+        day: 3,
+        title: "Flexible add-ons and return",
+        stops: uniqueStrings([`${destination} scenic stop`, `${destination} local shops`, "Photo stop", "Return travel"]).slice(0, 5),
+        notes: "Keep the last day lighter: one nearby scenic stop, one meal, then travel home. Add more saved posts to make this itinerary more specific."
+      }
+    ],
+    sourceCount: 1
+  };
+}
+
+function extractPlaceCandidates(item: TravelInspiration) {
+  const text = travelText(item);
+  const candidates = [
+    ...hashtagWords(text),
+    ...knownPlaceSignals(text),
+    ...(item.location ? [item.location] : [])
+  ];
+  return uniqueStrings(candidates.map(formatPlaceCandidate).filter(Boolean)).slice(0, 8);
+}
+
+function inferDestination(item: TravelInspiration) {
+  return item.location?.trim() || inferDestinationFromText(travelText(item));
+}
+
+function inferDestinationFromText(text: string) {
+  const candidates = uniqueStrings([...knownPlaceSignals(text), ...hashtagWords(text).map(formatPlaceCandidate).filter(Boolean)]);
+  const priority = candidates.find((place) => /maine|ogunquit|bar harbor|acadia|portland|cape cod|boston|paris|rome|london|tokyo|hawaii/i.test(place));
+  return priority || candidates[0] || null;
+}
+
+function inferTripTheme(item: TravelInspiration) {
+  const text = travelText(item).toLowerCase();
+  const themes = [];
+  if (/cozy|small town|charming|new england|fall|autumn/.test(text)) themes.push("cozy small-town getaway");
+  if (/beach|coast|ocean|lobster|seafood|harbor/.test(text)) themes.push("coastal food and views");
+  if (/roadtrip|road trip|drive/.test(text)) themes.push("road trip");
+  if (/family|kid|baby/.test(text)) themes.push("family-friendly");
+  return themes.length ? themes.join(", ") : "creator-inspired weekend trip";
+}
+
+function extractFoodSignals(item: TravelInspiration) {
+  const text = travelText(item).toLowerCase();
+  const foods = [
+    ["lobsterroll", "Lobster roll"],
+    ["lobster roll", "Lobster roll"],
+    ["seafood", "Seafood stop"],
+    ["coffee", "Coffee shop"],
+    ["brunch", "Brunch"],
+    ["bakery", "Bakery"]
+  ];
+  return foods.filter(([needle]) => text.includes(needle)).map(([, label]) => label);
+}
+
+function travelText(item: TravelInspiration) {
+  return [item.title, item.location, item.notes, item.tags.join(" "), item.url].filter(Boolean).join(" ");
+}
+
+function hashtagWords(text: string) {
+  return [...text.matchAll(/#([a-z0-9_]+)/gi)].map((match) => match[1]);
+}
+
+function knownPlaceSignals(text: string) {
+  const signals = [
+    ["ogunquit", "Ogunquit"],
+    ["visitmaine", "Maine"],
+    ["maine", "Maine"],
+    ["newengland", "New England"],
+    ["new england", "New England"],
+    ["barharbor", "Bar Harbor"],
+    ["bar harbor", "Bar Harbor"],
+    ["acadia", "Acadia National Park"],
+    ["portlandmaine", "Portland, Maine"],
+    ["portland maine", "Portland, Maine"],
+    ["capecod", "Cape Cod"],
+    ["cape cod", "Cape Cod"],
+    ["boston", "Boston"]
+  ];
+  const normalized = text.toLowerCase();
+  return signals.filter(([needle]) => normalized.includes(needle)).map(([, place]) => place);
+}
+
+function formatPlaceCandidate(value: string | null | undefined) {
+  const text = value?.replace(/_/g, " ").trim();
+  if (!text) return "";
+  const mapped = knownPlaceSignals(text)[0];
+  if (mapped) return mapped;
+  if (/lobster|roll|roadtrip|road trip|usa|travel|trip|reel|instagram|save|visit/i.test(text)) return "";
+  return text.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function uniqueStrings(values: string[]) {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
