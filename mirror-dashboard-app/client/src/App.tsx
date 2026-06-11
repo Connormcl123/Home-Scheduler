@@ -1,6 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { ApiIntegrationStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUpRight, BedDouble, CalendarDays, Car, CheckCircle2, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BedDouble, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -2587,6 +2587,21 @@ function TripAddOnsModal({ addOns, priceSummary, onClose, onSelect }: { addOns: 
     { key: "food", title: "Food", icon: <Utensils className="h-5 w-5" />, tone: "from-amber-500 to-rose-500" },
     { key: "activities", title: "Activities", icon: <MapPinned className="h-5 w-5" />, tone: "from-teal-500 to-emerald-500" }
   ] as const;
+  const [activeIndexByCategory, setActiveIndexByCategory] = useState<Record<string, number>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function setActive(category: string, index: number) {
+    setActiveIndexByCategory((current) => ({ ...current, [category]: index }));
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
@@ -2607,6 +2622,7 @@ function TripAddOnsModal({ addOns, priceSummary, onClose, onSelect }: { addOns: 
             <div className="presentation-card rounded-3xl border border-amber-100 bg-amber-50 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
               <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Estimate</p>
               <p className="mt-2 text-4xl font-black text-slate-950 dark:text-white">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
+              <p className="mt-2 rounded-2xl bg-white/80 p-3 text-sm font-black text-amber-800 shadow-sm dark:bg-slate-900/80 dark:text-amber-200">{selectedIds.size} selected add-on{selectedIds.size === 1 ? "" : "s"}</p>
               <div className="mt-4 grid gap-2">
                 {(priceSummary?.pricingNotes || ["Estimates are planning numbers, not confirmed quotes."]).slice(0, 4).map((note, index) => (
                   <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900/80 dark:text-slate-300">{note}</p>
@@ -2614,51 +2630,170 @@ function TripAddOnsModal({ addOns, priceSummary, onClose, onSelect }: { addOns: 
               </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-3">
+            <div className="grid gap-4">
               {groups.map((group, groupIndex) => {
                 const items = addOns.filter((item) => item.category === group.key);
-                return (
-                  <div key={group.key} style={{ animationDelay: `${groupIndex * 80 + 120}ms` }} className="presentation-card rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-                    <div className="flex items-center gap-2">
-                      <span className={`grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br ${group.tone} text-white shadow-sm`}>{group.icon}</span>
-                      <div>
-                        <p className="text-xl font-black text-slate-950 dark:text-white">{group.title}</p>
-                        <p className="text-xs font-black uppercase text-slate-400">{items.length} option{items.length === 1 ? "" : "s"}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid gap-2">
-                      {items.length ? items.map((item, index) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          style={{ animationDelay: `${index * 55 + 180}ms` }}
-                          onClick={() => onSelect({
-                            title: item.title,
-                            eyebrow: group.title,
-                            body: item.description,
-                            chips: [formatAddOnPrice(item), item.unit, addOnConfidenceLabel(item.confidence)]
-                          })}
-                          className="presentation-option presentation-route rounded-2xl bg-slate-50 p-3 text-left shadow-sm ring-1 ring-slate-100 active:scale-[0.99] dark:bg-slate-800 dark:ring-slate-700"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="text-base font-black text-slate-900 dark:text-white">{item.title}</p>
-                            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(item)}</span>
-                          </div>
-                          <p className="mt-2 line-clamp-3 text-sm font-bold leading-snug text-slate-600 dark:text-slate-300">{item.description}</p>
-                          <p className="mt-2 text-xs font-black uppercase tracking-wide text-slate-400">{item.unit} · {addOnConfidenceLabel(item.confidence)}</p>
-                        </button>
-                      )) : (
-                        <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">No {group.title.toLowerCase()} add-ons yet.</p>
-                      )}
-                    </div>
-                  </div>
-                );
+                return <AddOnCarousel
+                  key={group.key}
+                  title={group.title}
+                  category={group.key}
+                  icon={group.icon}
+                  tone={group.tone}
+                  items={items}
+                  activeIndex={activeIndexByCategory[group.key] || 0}
+                  selectedIds={selectedIds}
+                  animationDelay={groupIndex * 80 + 120}
+                  onActiveChange={(index) => setActive(group.key, index)}
+                  onToggleSelected={toggleSelected}
+                  onSelect={onSelect}
+                />;
               })}
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function AddOnCarousel({
+  title,
+  category,
+  icon,
+  tone,
+  items,
+  activeIndex,
+  selectedIds,
+  animationDelay,
+  onActiveChange,
+  onToggleSelected,
+  onSelect
+}: {
+  title: string;
+  category: NonNullable<TravelItineraryResult["addOns"]>[number]["category"];
+  icon: ReactNode;
+  tone: string;
+  items: NonNullable<TravelItineraryResult["addOns"]>;
+  activeIndex: number;
+  selectedIds: Set<string>;
+  animationDelay: number;
+  onActiveChange: (index: number) => void;
+  onToggleSelected: (id: string) => void;
+  onSelect: (detail: ItinerarySelectedDetail) => void;
+}) {
+  const safeIndex = items.length ? Math.min(activeIndex, items.length - 1) : 0;
+  const active = items[safeIndex];
+
+  function shift(direction: -1 | 1) {
+    if (!items.length) return;
+    onActiveChange((safeIndex + direction + items.length) % items.length);
+  }
+
+  return (
+    <div style={{ animationDelay: `${animationDelay}ms` }} className="presentation-card rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className={`grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-sm`}>{icon}</span>
+          <div>
+            <p className="text-xl font-black text-slate-950 dark:text-white">{title}</p>
+            <p className="text-xs font-black uppercase text-slate-400">{items.length} option{items.length === 1 ? "" : "s"}</p>
+          </div>
+        </div>
+        {active && (
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+            {safeIndex + 1} / {items.length}
+          </span>
+        )}
+      </div>
+
+      {active ? (
+        <div className="mt-3 grid gap-3 md:grid-cols-[64px_minmax(0,1fr)_64px] md:items-stretch">
+          <button type="button" onClick={() => shift(-1)} className="hidden place-items-center rounded-2xl bg-slate-50 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200 md:grid" aria-label={`Previous ${title} option`}>
+            <ChevronLeft className="h-8 w-8" />
+          </button>
+
+          <div className="presentation-route overflow-hidden rounded-3xl bg-slate-50 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+            <button
+              type="button"
+              onClick={() => onSelect({
+                title: active.title,
+                eyebrow: title,
+                body: active.description,
+                chips: [formatAddOnPrice(active), active.unit, addOnConfidenceLabel(active.confidence)]
+              })}
+              className="grid w-full grid-cols-[112px_minmax(0,1fr)] text-left active:scale-[0.995]"
+            >
+              <AddOnThumbnail category={category} index={safeIndex} tone={tone} icon={icon} large />
+              <div className="min-w-0 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="line-clamp-2 text-2xl font-black text-slate-950 dark:text-white">{active.title}</p>
+                  <span className="shrink-0 rounded-full bg-white px-3 py-2 text-sm font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(active)}</span>
+                </div>
+                <p className="mt-2 line-clamp-3 text-base font-bold leading-snug text-slate-600 dark:text-slate-300">{active.description}</p>
+                <p className="mt-3 text-xs font-black uppercase tracking-wide text-slate-400">{active.unit} · {addOnConfidenceLabel(active.confidence)}</p>
+              </div>
+            </button>
+
+            <div className="flex items-center justify-between gap-3 border-t border-slate-200 p-3 dark:border-slate-700">
+              <div className="flex gap-2 md:hidden">
+                <button type="button" onClick={() => shift(-1)} className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-slate-600 shadow-sm dark:bg-slate-700 dark:text-slate-200" aria-label={`Previous ${title} option`}>
+                  <ChevronLeft className="h-7 w-7" />
+                </button>
+                <button type="button" onClick={() => shift(1)} className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-slate-600 shadow-sm dark:bg-slate-700 dark:text-slate-200" aria-label={`Next ${title} option`}>
+                  <ChevronRight className="h-7 w-7" />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => onToggleSelected(active.id)}
+                className={`h-12 rounded-2xl px-5 text-sm font-black active:scale-[0.98] ${selectedIds.has(active.id) ? "bg-emerald-600 text-white" : "bg-slate-900 text-white dark:bg-white dark:text-slate-950"}`}
+              >
+                {selectedIds.has(active.id) ? "Selected" : "Select"}
+              </button>
+            </div>
+          </div>
+
+          <button type="button" onClick={() => shift(1)} className="hidden place-items-center rounded-2xl bg-slate-50 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200 md:grid" aria-label={`Next ${title} option`}>
+            <ChevronRight className="h-8 w-8" />
+          </button>
+
+          <div className="md:col-span-3">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {items.map((item, index) => (
+                <button
+                  key={`${item.id}-thumb`}
+                  type="button"
+                  onClick={() => onActiveChange(index)}
+                  className={`min-w-[84px] overflow-hidden rounded-2xl text-left shadow-sm ring-2 active:scale-[0.98] ${index === safeIndex ? "ring-amber-400" : selectedIds.has(item.id) ? "ring-emerald-400" : "ring-transparent"}`}
+                  aria-label={`Show ${item.title}`}
+                >
+                  <AddOnThumbnail category={category} index={index} tone={tone} icon={icon} />
+                  <span className="block truncate bg-white px-2 py-1 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">{formatAddOnPrice(item)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">No {title.toLowerCase()} add-ons yet.</p>
+      )}
+    </div>
+  );
+}
+
+function AddOnThumbnail({ category, index, tone, icon, large = false }: { category: NonNullable<TravelItineraryResult["addOns"]>[number]["category"]; index: number; tone: string; icon: ReactNode; large?: boolean }) {
+  const labels = {
+    stays: ["Stay", "Inn", "Rent"],
+    food: ["Meal", "Cafe", "Taste"],
+    activities: ["Stop", "View", "Tour"]
+  };
+  return (
+    <span className={`grid place-items-center bg-gradient-to-br ${tone} text-white ${large ? "h-full min-h-[184px]" : "h-16"}`}>
+      <span className="grid place-items-center gap-1 text-center">
+        <span className={`${large ? "grid h-16 w-16" : "grid h-9 w-9"} place-items-center rounded-2xl bg-white/20 shadow-sm`}>{icon}</span>
+        <span className={`${large ? "text-base" : "text-[10px]"} font-black uppercase tracking-wide`}>{labels[category][index % labels[category].length]}</span>
+      </span>
+    </span>
   );
 }
 
