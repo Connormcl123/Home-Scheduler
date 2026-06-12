@@ -2327,37 +2327,8 @@ function TripBadge({ icon, label }: { icon: ReactNode; label: string }) {
 }
 
 function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItineraryResult; onClose: () => void }) {
-  const displayDays = itinerary.days.length ? itinerary.days : [{
-    day: 1,
-    title: itinerary.destination || itinerary.title,
-    stops: [itinerary.destination || itinerary.title],
-    notes: itinerary.summary,
-    details: itinerary.summary,
-    mapQuery: itinerary.mapQuery || itinerary.destination || itinerary.title
-  }];
-  const firstDay = itinerary.days[0];
-  const [selectedDayNumber, setSelectedDayNumber] = useState(firstDay?.day || 1);
-  const selectedDay = displayDays.find((day) => day.day === selectedDayNumber) || displayDays[0];
-  const initialMapQuery = selectedDay?.mapQuery || itinerary.mapQuery || itinerary.destination || itinerary.title;
-  const [activeMapQuery, setActiveMapQuery] = useState(initialMapQuery);
-  const [selectedDetail, setSelectedDetail] = useState<ItinerarySelectedDetail>({
-    title: selectedDay?.title || itinerary.title,
-    eyebrow: selectedDay ? `Day ${selectedDay.day}` : itinerary.destination || "Overview",
-    body: selectedDay?.details || itinerary.summary,
-    chips: selectedDay?.stops || []
-  });
-  const [optionsOpen, setOptionsOpen] = useState(false);
-  const [addOnsOpen, setAddOnsOpen] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
-  const activeMapEmbedUrl = googleMapsClientEmbedUrl(activeMapQuery);
   const priceSummary = itinerary.priceSummary;
   const addOns = itinerary.addOns || [];
-
-  function selectDay(day: TravelItineraryResult["days"][number]) {
-    setSelectedDayNumber(day.day);
-    setActiveMapQuery(day.mapQuery || `${itinerary.destination || itinerary.title} ${day.stops.join(" ")}`);
-    setSelectedDetail({ title: day.title, eyebrow: `Day ${day.day}`, body: day.details || day.notes, chips: day.stops });
-  }
 
   return (
     <div className="presentation-backdrop fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
@@ -2369,7 +2340,6 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
             <p className="mt-1 line-clamp-2 max-w-4xl text-base font-bold text-slate-600 dark:text-slate-300">{itinerary.summary}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <TripBadge icon={<MapPinned className="h-5 w-5" />} label={itinerary.destination || "Destination"} />
-              <TripBadge icon={<CalendarDays className="h-5 w-5" />} label={`${displayDays.length} day plan`} />
               <TripBadge icon={<Sparkles className="h-5 w-5" />} label={itinerary.provider === "openai" ? "ChatGPT planned" : "Draft planned"} />
               {priceSummary && <TripBadge icon={<DollarSign className="h-5 w-5" />} label={formatTripPriceRange(priceSummary)} />}
             </div>
@@ -2379,143 +2349,10 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
           </button>
         </div>
 
-        <div className="presentation-tabs border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {displayDays.map((day) => (
-              <button
-                key={`tab-${day.day}`}
-                type="button"
-                onClick={() => selectDay(day)}
-                className={`h-12 shrink-0 rounded-2xl px-4 text-sm font-black active:scale-[0.98] ${
-                  selectedDayNumber === day.day
-                    ? "bg-teal-700 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                }`}
-              >
-                Day {day.day}
-              </button>
-            ))}
-            {itinerary.planning && (
-              <button type="button" onClick={() => setOptionsOpen(true)} className="h-12 shrink-0 rounded-2xl bg-teal-50 px-4 text-sm font-black text-teal-800 active:scale-[0.98] dark:bg-teal-500/15 dark:text-teal-200">
-                Trip Options
-              </button>
-            )}
-            {addOns.length > 0 && (
-              <button type="button" onClick={() => setAddOnsOpen(true)} className="h-12 shrink-0 rounded-2xl bg-amber-50 px-4 text-sm font-black text-amber-800 active:scale-[0.98] dark:bg-amber-500/15 dark:text-amber-200">
-                Add-ons
-              </button>
-            )}
-            <button type="button" onClick={() => setMapOpen(true)} className="h-12 shrink-0 rounded-2xl bg-sky-50 px-4 text-sm font-black text-sky-800 active:scale-[0.98] dark:bg-sky-500/15 dark:text-sky-200">
-              Map
-            </button>
-          </div>
-        </div>
-
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
-          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(440px,0.9fr)]">
-            <div className="grid content-start gap-4">
-              <div className="grid gap-3">
-                {displayDays.map((day, index) => (
-                  <button
-                    key={day.day}
-                    type="button"
-                    onClick={() => selectDay(day)}
-                    style={{ animationDelay: `${index * 80 + 120}ms` }}
-                    className={`group overflow-hidden rounded-3xl border bg-white text-left shadow-sm transition active:scale-[0.99] dark:bg-slate-900 ${
-                      selectedDayNumber === day.day ? "border-teal-500 ring-4 ring-teal-100 dark:ring-teal-500/20" : "border-slate-200 dark:border-slate-800"
-                    } presentation-card`}
-                  >
-                    <div className="flex items-center justify-between bg-gradient-to-br from-teal-600 to-sky-500 p-4 text-white">
-                      <div>
-                        <span className="text-xs font-black uppercase tracking-wide">Day</span>
-                        <span className="block text-4xl font-black leading-none">{day.day}</span>
-                      </div>
-                      <CalendarDays className="h-7 w-7" />
-                    </div>
-                    <div className="p-4">
-                      <h4 className="line-clamp-2 text-xl font-black leading-tight text-slate-950 dark:text-white">{day.title}</h4>
-                      <p className="mt-2 line-clamp-2 text-sm font-bold text-slate-500 dark:text-slate-400">{day.notes}</p>
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {day.stops.slice(0, 3).map((stop) => (
-                          <span key={`${day.day}-${stop}`} className="max-w-full truncate rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">{stop}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <aside className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
-              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{selectedDay ? `Day ${selectedDay.day}` : "Route"}</p>
-                <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{selectedDay?.title || itinerary.title}</h4>
-                <p className="mt-2 line-clamp-2 text-sm font-bold text-slate-500 dark:text-slate-400">{selectedDay?.notes || itinerary.summary}</p>
-              </div>
-
-              <div className="min-h-0 touch-pan-y overflow-y-auto overscroll-contain rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <div className="grid gap-2">
-                  {(selectedDay?.stops || []).map((stop, index) => (
-                    <button
-                      key={`${selectedDay?.day}-${stop}-${index}`}
-                      type="button"
-                      style={{ animationDelay: `${index * 55 + 180}ms` }}
-                      onClick={() => {
-                        setActiveMapQuery(`${itinerary.destination || itinerary.title} ${stop}`);
-                        setSelectedDetail({
-                          title: stop,
-                          eyebrow: `Stop ${index + 1}`,
-                          body: index === 0 ? selectedDay?.details || selectedDay?.notes || "" : `Use this stop as part of ${selectedDay?.title || "the day route"}.`,
-                          chips: [selectedDay?.title || "", itinerary.destination || ""].filter(Boolean)
-                        });
-                      }}
-                      className="presentation-route grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left active:scale-[0.99] dark:bg-slate-800"
-                    >
-                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-teal-700 text-lg font-black text-white">{index + 1}</span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-base font-black text-slate-900 dark:text-white">{stop}</span>
-                        <span className="mt-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Tap to focus map and details</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <SelectedItineraryDetail key={`${selectedDetail.eyebrow}-${selectedDetail.title}`} detail={selectedDetail} />
-            </aside>
-          </div>
+          <TripAddOnsContent addOns={addOns} priceSummary={priceSummary} onSelect={() => undefined} />
         </div>
       </div>
-      {optionsOpen && itinerary.planning && (
-        <TripOptionsModal
-          planning={itinerary.planning}
-          onClose={() => setOptionsOpen(false)}
-          onSelect={(detail) => {
-            setSelectedDetail(detail);
-            setOptionsOpen(false);
-          }}
-        />
-      )}
-      {addOnsOpen && (
-        <TripAddOnsModal
-          addOns={addOns}
-          priceSummary={priceSummary}
-          onClose={() => setAddOnsOpen(false)}
-          onSelect={(detail) => {
-            setSelectedDetail(detail);
-            setAddOnsOpen(false);
-          }}
-        />
-      )}
-      {mapOpen && (
-        <TripMapModal
-          title={selectedDay ? `Day ${selectedDay.day} Map` : "Trip Map"}
-          activeMapQuery={activeMapQuery}
-          activeMapEmbedUrl={activeMapEmbedUrl}
-          onClose={() => setMapOpen(false)}
-          onReset={() => setActiveMapQuery(initialMapQuery)}
-        />
-      )}
     </div>
   );
 }
@@ -2576,6 +2413,64 @@ function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullab
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4">
           <ItineraryPlanningPanel planning={planning} onSelect={onSelect} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TripAddOnsContent({ addOns, priceSummary, onSelect }: { addOns: NonNullable<TravelItineraryResult["addOns"]>; priceSummary?: TravelItineraryResult["priceSummary"]; onSelect: (detail: ItinerarySelectedDetail) => void }) {
+  const groups = [
+    { key: "stays", title: "Stays", icon: <BedDouble className="h-5 w-5" />, tone: "from-violet-500 to-sky-500" },
+    { key: "food", title: "Food", icon: <Utensils className="h-5 w-5" />, tone: "from-amber-500 to-rose-500" },
+    { key: "activities", title: "Activities", icon: <MapPinned className="h-5 w-5" />, tone: "from-teal-500 to-emerald-500" }
+  ] as const;
+  const [activeIndexByCategory, setActiveIndexByCategory] = useState<Record<string, number>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function setActive(category: string, index: number) {
+    setActiveIndexByCategory((current) => ({ ...current, [category]: index }));
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="presentation-card rounded-3xl border border-amber-100 bg-amber-50 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
+        <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Estimate</p>
+        <p className="mt-2 text-4xl font-black text-slate-950 dark:text-white">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
+        <p className="mt-2 rounded-2xl bg-white/80 p-3 text-sm font-black text-amber-800 shadow-sm dark:bg-slate-900/80 dark:text-amber-200">{selectedIds.size} selected add-on{selectedIds.size === 1 ? "" : "s"}</p>
+        <div className="mt-4 grid gap-2">
+          {(priceSummary?.pricingNotes || ["Estimates are planning numbers, not confirmed quotes."]).slice(0, 4).map((note, index) => (
+            <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900/80 dark:text-slate-300">{note}</p>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-4">
+        {groups.map((group, groupIndex) => {
+          const items = addOns.filter((item) => item.category === group.key);
+          return <AddOnCarousel
+            key={group.key}
+            title={group.title}
+            category={group.key}
+            icon={group.icon}
+            tone={group.tone}
+            items={items}
+            activeIndex={activeIndexByCategory[group.key] || 0}
+            selectedIds={selectedIds}
+            animationDelay={groupIndex * 80 + 120}
+            onActiveChange={(index) => setActive(group.key, index)}
+            onToggleSelected={toggleSelected}
+            onSelect={onSelect}
+          />;
+        })}
       </div>
     </div>
   );
