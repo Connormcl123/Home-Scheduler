@@ -215,6 +215,8 @@ export interface TravelAddOn {
   category: TravelAddOnCategory;
   title: string;
   description: string;
+  provider?: "hotel" | "airbnb" | "vacation_rental" | "restaurant" | "activity" | "local";
+  bookingUrl?: string | null;
   estimatedLow: number | null;
   estimatedHigh: number | null;
   priceLabel: string;

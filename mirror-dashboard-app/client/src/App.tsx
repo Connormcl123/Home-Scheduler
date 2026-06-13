@@ -2650,7 +2650,7 @@ function AddOnCarousel({
                         title: item.title,
                         eyebrow: title,
                         body: item.description,
-                        chips: [formatAddOnPrice(item), item.unit, addOnConfidenceLabel(item.confidence)]
+                        chips: [addOnProviderLabel(item), formatAddOnPrice(item), item.unit, addOnConfidenceLabel(item.confidence)]
                       });
                     }}
                     className="block w-full text-left active:scale-[0.99]"
@@ -2659,7 +2659,7 @@ function AddOnCarousel({
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="rounded-full bg-white px-2 py-1 text-[11px] font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(item)}</span>
-                        <span className="truncate text-[10px] font-black uppercase text-slate-400">{item.unit}</span>
+                        <span className="truncate text-[10px] font-black uppercase text-slate-400">{addOnProviderLabel(item)}</span>
                       </div>
                       <p className="mt-2 line-clamp-2 min-h-[44px] text-base font-black leading-tight text-slate-950 dark:text-white">{item.title}</p>
                       <p className="mt-1 line-clamp-2 text-xs font-bold leading-snug text-slate-500 dark:text-slate-300">{item.description}</p>
@@ -2672,6 +2672,17 @@ function AddOnCarousel({
                   >
                     {selected ? "Selected" : "Add"}
                   </button>
+                  {item.bookingUrl && (
+                    <a
+                      href={item.bookingUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mx-3 mb-3 flex h-10 items-center justify-center gap-2 rounded-2xl bg-slate-900 text-xs font-black text-white active:scale-[0.98] dark:bg-white dark:text-slate-950"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open
+                    </a>
+                  )}
                 </article>
               );
             })}
@@ -2875,6 +2886,18 @@ function formatAddOnPrice(addOn: NonNullable<TravelItineraryResult["addOns"]>[nu
   if (low === null && high === null) return addOn.priceLabel || "Quote";
   if (low !== null && high !== null) return `${money(low)}-${money(high).replace("$", "")}`;
   return money(low ?? high);
+}
+
+function addOnProviderLabel(addOn: NonNullable<TravelItineraryResult["addOns"]>[number]) {
+  const labels = {
+    hotel: "Hotel",
+    airbnb: "Airbnb",
+    vacation_rental: "Rental",
+    restaurant: "Food",
+    activity: "Activity",
+    local: "Idea"
+  };
+  return labels[addOn.provider || "local"];
 }
 
 function addOnConfidenceLabel(confidence: NonNullable<TravelItineraryResult["addOns"]>[number]["confidence"]) {

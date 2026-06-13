@@ -1,6 +1,7 @@
 import type { TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { config } from "../config.js";
 import { getDb } from "../db.js";
+import { buildLodgingOptions, mergeStayAddOns, type LodgingOption } from "./travelLodging.js";
 import { researchTravelPlaces, type TravelPlaceResearch } from "./travelPlaces.js";
 
 type TravelRow = {
@@ -450,7 +451,8 @@ ${JSON.stringify(placeResearch, null, 2)}`
   const parsedDestination = parsed.destination || parsed.mapQuery || destination || "Saved Destination";
   const mapQuery = parsed.mapQuery || parsedDestination;
   const planning = parsed.planning || buildLocalPlanning(parsedDestination, extractPlaceCandidates(inspirations[0]), extractFoodSignals(inspirations[0]), inferTripTheme(inspirations[0]), placeResearch);
-  const addOns = normalizeAddOns(parsed.addOns, planning);
+  const lodgingOptions = buildLodgingOptions(parsedDestination, placeResearch);
+  const addOns = mergeStayAddOns(normalizeAddOns(parsed.addOns, planning), lodgingOptions);
   return {
     provider: "openai",
     generatedAt: new Date().toISOString(),
@@ -460,7 +462,7 @@ ${JSON.stringify(placeResearch, null, 2)}`
     mapQuery,
     mapUrl: googleMapsUrl(mapQuery),
     mapEmbedUrl: googleMapsEmbedUrl(mapQuery),
-    lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(parsedDestination, placeResearch)),
+    lodgingLinks: sanitizeLinks(parsed.lodgingLinks, buildLodgingLinks(parsedDestination, placeResearch, lodgingOptions)),
     travelLinks: sanitizeLinks(parsed.travelLinks, buildTravelLinks(parsedDestination)),
     planning,
     addOns,
@@ -662,11 +664,12 @@ async function generateSingleInspirationItinerary(item: TravelInspiration): Prom
   const theme = inferTripTheme(item);
   const anchorStops = places.length ? places : [destination];
   const foodStops = extractFoodSignals(item);
-  const lodgingLinks = buildLodgingLinks(destination, placeResearch);
+  const lodgingOptions = buildLodgingOptions(destination, placeResearch);
+  const lodgingLinks = buildLodgingLinks(destination, placeResearch, lodgingOptions);
   const travelLinks = buildTravelLinks(destination);
   const mapQuery = [destination, ...anchorStops.slice(0, 4)].join(" ");
   const planning = buildLocalPlanning(destination, anchorStops, foodStops, theme, placeResearch);
-  const addOns = buildAddOnsFromPlanning(planning);
+  const addOns = mergeStayAddOns(buildAddOnsFromPlanning(planning), lodgingOptions);
 
   return {
     provider: "local",
@@ -813,8 +816,14 @@ function googleMapsEmbedUrl(query: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }
 
-function buildLodgingLinks(destination: string, research?: TravelPlaceResearch) {
+function buildLodgingLinks(destination: string, research?: TravelPlaceResearch, lodgingOptions: LodgingOption[] = []) {
   const encoded = encodeURIComponent(destination);
+  const providerLinks = lodgingOptions
+    .filter((option) => option.bookingUrl)
+    .map((option) => ({
+      label: option.source === "airbnb" ? `Airbnb: ${option.title}` : option.title,
+      url: option.bookingUrl || googleMapsUrl(`${option.title} ${destination}`)
+    }));
   const researchedLinks = (research?.lodging || [])
     .filter((place) => place.googleMapsUri || place.websiteUri)
     .slice(0, 3)
@@ -823,6 +832,7 @@ function buildLodgingLinks(destination: string, research?: TravelPlaceResearch) 
       url: place.websiteUri || place.googleMapsUri || googleMapsUrl(`${place.name} ${destination}`)
     }));
   return [
+    ...providerLinks,
     ...researchedLinks,
     { label: `Hotels near ${destination}`, url: `https://www.google.com/travel/hotels/${encoded}` },
     { label: `Airbnb stays in ${destination}`, url: `https://www.airbnb.com/s/${encoded}/homes` },
@@ -963,6 +973,8 @@ function normalizeAddOns(addOns: TravelItineraryResult["addOns"], planning: NonN
       category: item.category,
       title: item.title,
       description: item.description || "Estimated trip add-on. Confirm current pricing before booking.",
+      provider: item.provider || defaultProviderForCategory(item.category),
+      bookingUrl: item.bookingUrl || null,
       estimatedLow: cleanPriceNumber(item.estimatedLow),
       estimatedHigh: cleanPriceNumber(item.estimatedHigh),
       priceLabel: item.priceLabel || formatRange(cleanPriceNumber(item.estimatedLow), cleanPriceNumber(item.estimatedHigh)),
@@ -987,6 +999,8 @@ function optionToAddOn(option: NonNullable<TravelItineraryResult["planning"]>["t
     category,
     title: option.title,
     description: option.recommendation,
+    provider: defaultProviderForCategory(category),
+    bookingUrl: null,
     estimatedLow: low,
     estimatedHigh: high,
     priceLabel: option.estimatedCost || formatRange(low, high),
@@ -1070,6 +1084,12 @@ function defaultUnitForCategory(category: "stays" | "food" | "activities") {
   if (category === "stays") return "per night";
   if (category === "food") return "per meal";
   return "per activity";
+}
+
+function defaultProviderForCategory(category: "stays" | "food" | "activities") {
+  if (category === "stays") return "local";
+  if (category === "food") return "restaurant";
+  return "activity";
 }
 
 function slugify(value: string) {
