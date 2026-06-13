@@ -115,6 +115,16 @@ textarea {
   transform: translateY(1px) scale(0.99);
 }
 
+.airbnb-addon-carousel {
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-inline: 18px;
+  touch-action: pan-x;
+}
+
+.airbnb-addon-carousel::-webkit-scrollbar {
+  height: 0;
+}
+
 @keyframes presentation-backdrop-in {
   from {
     opacity: 0;

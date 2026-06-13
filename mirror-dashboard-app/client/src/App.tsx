@@ -2577,11 +2577,31 @@ function AddOnCarousel({
   onSelect: (detail: ItinerarySelectedDetail) => void;
 }) {
   const safeIndex = items.length ? Math.min(activeIndex, items.length - 1) : 0;
-  const active = items[safeIndex];
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   function shift(direction: -1 | 1) {
     if (!items.length) return;
-    onActiveChange((safeIndex + direction + items.length) % items.length);
+    const nextIndex = (safeIndex + direction + items.length) % items.length;
+    onActiveChange(nextIndex);
+    const card = carouselRef.current?.querySelector<HTMLElement>(`[data-addon-index="${nextIndex}"]`);
+    card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }
+
+  function handleScroll() {
+    const carousel = carouselRef.current;
+    if (!carousel || !items.length) return;
+    const center = carousel.scrollLeft + carousel.clientWidth / 2;
+    let closestIndex = safeIndex;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    Array.from(carousel.querySelectorAll<HTMLElement>("[data-addon-index]")).forEach((card) => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(cardCenter - center);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = Number(card.dataset.addonIndex || 0);
+      }
+    });
+    if (closestIndex !== safeIndex) onActiveChange(closestIndex);
   }
 
   return (
@@ -2591,82 +2611,85 @@ function AddOnCarousel({
           <span className={`grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-sm`}>{icon}</span>
           <div>
             <p className="text-xl font-black text-slate-950 dark:text-white">{title}</p>
-            <p className="text-xs font-black uppercase text-slate-400">{items.length} option{items.length === 1 ? "" : "s"}</p>
+            <p className="text-xs font-black uppercase text-slate-400">Swipe through {items.length} option{items.length === 1 ? "" : "s"}</p>
           </div>
         </div>
-        {active && (
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-            {safeIndex + 1} / {items.length}
-          </span>
+        {items.length > 1 && (
+          <div className="flex gap-2">
+            <button type="button" onClick={() => shift(-1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label={`Previous ${title} option`}>
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button type="button" onClick={() => shift(1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label={`Next ${title} option`}>
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          </div>
         )}
       </div>
 
-      {active ? (
-        <div className="mt-3 grid gap-3 md:grid-cols-[64px_minmax(0,1fr)_64px] md:items-stretch">
-          <button type="button" onClick={() => shift(-1)} className="hidden place-items-center rounded-2xl bg-slate-50 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200 md:grid" aria-label={`Previous ${title} option`}>
-            <ChevronLeft className="h-8 w-8" />
-          </button>
-
-          <div className="presentation-route overflow-hidden rounded-3xl bg-slate-50 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <button
-              type="button"
-              onClick={() => onSelect({
-                title: active.title,
-                eyebrow: title,
-                body: active.description,
-                chips: [formatAddOnPrice(active), active.unit, addOnConfidenceLabel(active.confidence)]
-              })}
-              className="grid w-full grid-cols-[112px_minmax(0,1fr)] text-left active:scale-[0.995]"
-            >
-              <AddOnThumbnail category={category} index={safeIndex} tone={tone} icon={icon} large />
-              <div className="min-w-0 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="line-clamp-2 text-2xl font-black text-slate-950 dark:text-white">{active.title}</p>
-                  <span className="shrink-0 rounded-full bg-white px-3 py-2 text-sm font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(active)}</span>
-                </div>
-                <p className="mt-2 line-clamp-3 text-base font-bold leading-snug text-slate-600 dark:text-slate-300">{active.description}</p>
-                <p className="mt-3 text-xs font-black uppercase tracking-wide text-slate-400">{active.unit} · {addOnConfidenceLabel(active.confidence)}</p>
-              </div>
-            </button>
-
-            <div className="flex items-center justify-between gap-3 border-t border-slate-200 p-3 dark:border-slate-700">
-              <div className="flex gap-2 md:hidden">
-                <button type="button" onClick={() => shift(-1)} className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-slate-600 shadow-sm dark:bg-slate-700 dark:text-slate-200" aria-label={`Previous ${title} option`}>
-                  <ChevronLeft className="h-7 w-7" />
-                </button>
-                <button type="button" onClick={() => shift(1)} className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-slate-600 shadow-sm dark:bg-slate-700 dark:text-slate-200" aria-label={`Next ${title} option`}>
-                  <ChevronRight className="h-7 w-7" />
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => onToggleSelected(active.id)}
-                className={`h-12 rounded-2xl px-5 text-sm font-black active:scale-[0.98] ${selectedIds.has(active.id) ? "bg-emerald-600 text-white" : "bg-slate-900 text-white dark:bg-white dark:text-slate-950"}`}
-              >
-                {selectedIds.has(active.id) ? "Selected" : "Select"}
-              </button>
-            </div>
-          </div>
-
-          <button type="button" onClick={() => shift(1)} className="hidden place-items-center rounded-2xl bg-slate-50 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200 md:grid" aria-label={`Next ${title} option`}>
-            <ChevronRight className="h-8 w-8" />
-          </button>
-
-          <div className="md:col-span-3">
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {items.map((item, index) => (
-                <button
-                  key={`${item.id}-thumb`}
-                  type="button"
-                  onClick={() => onActiveChange(index)}
-                  className={`min-w-[84px] overflow-hidden rounded-2xl text-left shadow-sm ring-2 active:scale-[0.98] ${index === safeIndex ? "ring-amber-400" : selectedIds.has(item.id) ? "ring-emerald-400" : "ring-transparent"}`}
-                  aria-label={`Show ${item.title}`}
+      {items.length ? (
+        <div className="mt-3">
+          <div
+            ref={carouselRef}
+            onScroll={handleScroll}
+            className="airbnb-addon-carousel flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2"
+          >
+            {items.map((item, index) => {
+              const selected = selectedIds.has(item.id);
+              const isActive = index === safeIndex;
+              return (
+                <article
+                  key={item.id}
+                  data-addon-index={index}
+                  className={`min-w-[188px] max-w-[188px] snap-center overflow-hidden rounded-3xl bg-slate-50 shadow-sm ring-2 transition dark:bg-slate-800 ${isActive ? "scale-[1.015] ring-amber-400" : selected ? "ring-emerald-400" : "ring-transparent"}`}
                 >
-                  <AddOnThumbnail category={category} index={index} tone={tone} icon={icon} />
-                  <span className="block truncate bg-white px-2 py-1 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">{formatAddOnPrice(item)}</span>
-                </button>
-              ))}
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onActiveChange(index);
+                      onSelect({
+                        title: item.title,
+                        eyebrow: title,
+                        body: item.description,
+                        chips: [formatAddOnPrice(item), item.unit, addOnConfidenceLabel(item.confidence)]
+                      });
+                    }}
+                    className="block w-full text-left active:scale-[0.99]"
+                  >
+                    <AddOnThumbnail category={category} index={index} tone={tone} icon={icon} />
+                    <div className="p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(item)}</span>
+                        <span className="truncate text-[10px] font-black uppercase text-slate-400">{item.unit}</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 min-h-[44px] text-base font-black leading-tight text-slate-950 dark:text-white">{item.title}</p>
+                      <p className="mt-1 line-clamp-2 text-xs font-bold leading-snug text-slate-500 dark:text-slate-300">{item.description}</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleSelected(item.id)}
+                    className={`mx-3 mb-3 h-10 w-[calc(100%-1.5rem)] rounded-2xl text-xs font-black active:scale-[0.98] ${selected ? "bg-emerald-600 text-white" : "bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100"}`}
+                  >
+                    {selected ? "Selected" : "Add"}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex justify-center gap-1.5">
+            {items.map((item, index) => (
+              <button
+                key={`${item.id}-dot`}
+                type="button"
+                onClick={() => {
+                  onActiveChange(index);
+                  const card = carouselRef.current?.querySelector<HTMLElement>(`[data-addon-index="${index}"]`);
+                  card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                }}
+                className={`h-2.5 rounded-full transition-all ${index === safeIndex ? "w-8 bg-slate-900 dark:bg-white" : selectedIds.has(item.id) ? "w-2.5 bg-emerald-500" : "w-2.5 bg-slate-300 dark:bg-slate-700"}`}
+                aria-label={`Show ${item.title}`}
+              />
+            ))}
           </div>
         </div>
       ) : (
