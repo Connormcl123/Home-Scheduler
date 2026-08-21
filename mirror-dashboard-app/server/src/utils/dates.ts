@@ -1,5 +1,9 @@
 export function todayIso(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  // Must be the LOCAL calendar date, not UTC. toISOString() rolls over in the
+  // evening for western timezones, which made "today" and "tomorrow" land a day
+  // early for notes, task filtering, and anything the assistant is told.
+  // en-CA formats as YYYY-MM-DD.
+  return date.toLocaleDateString("en-CA");
 }
 
 export function addDays(date: Date, days: number) {

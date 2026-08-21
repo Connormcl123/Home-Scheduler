@@ -308,7 +308,7 @@ async function buildLiveContext() {
 
   return [
     `Right now it is ${now.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
-    `Today's date is ${todayIso()}.`,
+    `Today's date is ${todayIso()}. Dates you write must be relative to that, in the home's local time.`,
     "",
     "Open tasks:",
     openTasks || "- none",
