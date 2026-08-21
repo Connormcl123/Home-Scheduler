@@ -55,8 +55,11 @@ export const config = {
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY || "",
-    model: process.env.ANTHROPIC_MODEL || "claude-opus-5",
+    model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5",
     effort: process.env.ANTHROPIC_EFFORT || "low"
+  },
+  travelDeals: {
+    dailyAt: process.env.TRAVEL_DEALS_DAILY_AT || "05:00"
   },
   voice: {
     webhookToken: process.env.ALEXA_WEBHOOK_TOKEN || ""

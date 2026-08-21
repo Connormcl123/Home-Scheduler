@@ -22,6 +22,7 @@ import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
 import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
 import { AssistantError, getAssistantStatus, runAssistantTurn } from "./services/assistant.js";
+import { generateTravelDeals, listTravelDeals, startTravelDealScheduler } from "./services/travelDeals.js";
 
 const app = express();
 
@@ -439,6 +440,22 @@ app.post("/api/voice/calendar-event", async (req, res, next) => {
   }
 });
 
+app.get("/api/travel/deals", async (_req, res, next) => {
+  try {
+    res.json(await listTravelDeals());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/travel/deals/refresh", async (_req, res, next) => {
+  try {
+    res.json(await generateTravelDeals());
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/assistant/status", (_req, res) => {
   res.json(getAssistantStatus());
 });
@@ -471,6 +488,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 app.listen(config.port, async () => {
   await getDb();
+  startTravelDealScheduler();
   console.log(`Mirror dashboard server listening on http://localhost:${config.port}`);
 });
 

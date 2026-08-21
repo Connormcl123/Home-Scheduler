@@ -1,5 +1,5 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { ApiIntegrationStatus, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -35,6 +35,8 @@ import {
   updateTask,
   updateWatchlistItem,
   fetchAssistantStatus,
+  fetchTravelDeals,
+  refreshTravelDeals,
   sendAssistantMessage,
 } from "./api";
 
@@ -613,7 +615,7 @@ function DashboardApp() {
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
-    if (view === "travel") return <TravelHubPanel />;
+    if (view === "travel") return <TravelPanel />;
     if (view === "assistant") return <AssistantPanel onChanged={refreshDashboard} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return <HomePanel dashboard={dashboard} now={now} />;
@@ -2172,6 +2174,300 @@ function loadPlaidScript() {
     script.onerror = () => reject(new Error("Plaid Link failed to load."));
     document.head.appendChild(script);
   });
+}
+
+const DEAL_ACCENTS: Record<string, { card: string; chip: string; ring: string }> = {
+  sky: { card: "from-sky-500 to-sky-700", chip: "bg-sky-100 text-sky-800", ring: "ring-sky-300" },
+  amber: { card: "from-amber-500 to-orange-600", chip: "bg-amber-100 text-amber-900", ring: "ring-amber-300" },
+  emerald: { card: "from-emerald-500 to-teal-700", chip: "bg-emerald-100 text-emerald-900", ring: "ring-emerald-300" },
+  rose: { card: "from-rose-500 to-pink-700", chip: "bg-rose-100 text-rose-900", ring: "ring-rose-300" },
+  violet: { card: "from-violet-500 to-indigo-700", chip: "bg-violet-100 text-violet-900", ring: "ring-violet-300" },
+  teal: { card: "from-teal-500 to-cyan-700", chip: "bg-teal-100 text-teal-900", ring: "ring-teal-300" }
+};
+
+function dealAccent(name: string) {
+  return DEAL_ACCENTS[name] || DEAL_ACCENTS.sky;
+}
+
+function TravelPanel() {
+  const [tab, setTab] = useState<"ideas" | "planner">("ideas");
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex shrink-0 gap-3">
+        {(["ideas", "planner"] as const).map((entry) => (
+          <button
+            key={entry}
+            onClick={() => setTab(entry)}
+            className={`min-h-14 rounded-2xl px-7 text-xl font-black capitalize active:scale-95 ${
+              tab === entry
+                ? "bg-sky-600 text-white"
+                : "bg-white/75 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            }`}
+          >
+            {entry}
+          </button>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1">{tab === "ideas" ? <TravelDealsPanel /> : <TravelHubPanel />}</div>
+    </div>
+  );
+}
+
+function TravelDealsPanel() {
+  const [state, setState] = useState<TravelDealsResponse | null>(null);
+  const [index, setIndex] = useState(0);
+  const [expanded, setExpanded] = useState<TravelDeal | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const dragRef = useRef<{ startX: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    fetchTravelDeals()
+      .then((data) => { setState(data); setIndex(0); })
+      .catch((err: Error) => setError(err.message));
+  }, []);
+
+  async function refresh() {
+    setBusy(true);
+    setError("");
+    try {
+      const data = await refreshTravelDeals();
+      setState(data);
+      setIndex(0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not refresh trip ideas.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const deals = state?.deals ?? [];
+
+  function step(direction: number) {
+    if (!deals.length) return;
+    setIndex((current) => Math.min(deals.length - 1, Math.max(0, current + direction)));
+  }
+
+  // Swipe on the rail itself; a small movement still counts as a tap.
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    dragRef.current = { startX: event.clientX, moved: false };
+  }
+  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag) return;
+    const delta = event.clientX - drag.startX;
+    if (Math.abs(delta) > 60) step(delta < 0 ? 1 : -1);
+  }
+
+  return (
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between">
+        <SectionTitle icon={Luggage} title="Trip ideas today" />
+        <div className="flex items-center gap-3">
+          {state?.generatedFor && (
+            <span className="text-lg font-semibold text-slate-500 dark:text-slate-400">{state.generatedFor}</span>
+          )}
+          <button
+            onClick={refresh}
+            disabled={busy}
+            className="touch-button w-20 bg-white/80 text-slate-600 disabled:opacity-40 dark:bg-slate-800 dark:text-slate-200"
+            aria-label="Refresh trip ideas"
+          >
+            <RefreshCw className={`h-7 w-7 ${busy ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="mt-3 shrink-0 text-xl font-semibold text-rose-600 dark:text-rose-400">{error}</p>}
+
+      {state && state.status !== "ready" && (
+        <div className="mt-4 rounded-2xl bg-amber-100 p-5 text-xl font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+          {state.reason}
+        </div>
+      )}
+
+      {busy && !deals.length && (
+        <p className="mt-6 text-2xl text-slate-500 dark:text-slate-400">Planning fresh trips...</p>
+      )}
+
+      {deals.length > 0 && (
+        <>
+          {/* Lazy-susan rail: only transform/opacity animate, so the Pi composites on the GPU. */}
+          <div
+            className="relative mt-4 min-h-0 flex-1 select-none overflow-hidden"
+            style={{ perspective: "1400px" }}
+            onPointerDown={onPointerDown}
+            onPointerUp={onPointerUp}
+            onPointerCancel={() => { dragRef.current = null; }}
+          >
+            {deals.map((deal, position) => {
+              const offset = position - index;
+              const distance = Math.abs(offset);
+              if (distance > 3) return null;
+              const accent = dealAccent(deal.accent);
+              const isCenter = offset === 0;
+              return (
+                <button
+                  key={deal.id}
+                  onClick={() => (isCenter ? setExpanded(deal) : setIndex(position))}
+                  aria-label={isCenter ? `Open ${deal.destination}` : `Show ${deal.destination}`}
+                  className={`absolute left-1/2 top-1/2 flex h-[74%] w-[46%] flex-col justify-between rounded-[28px] bg-gradient-to-br p-7 text-left text-white transition-transform duration-500 ease-out ${accent.card} ${
+                    isCenter ? "shadow-xl" : ""
+                  }`}
+                  style={{
+                    transform: `translate(-50%, -50%) translateX(${offset * 46}%) rotateY(${offset * -32}deg) scale(${isCenter ? 1 : 0.82})`,
+                    zIndex: 10 - distance,
+                    opacity: distance > 2 ? 0 : 1,
+                    pointerEvents: distance > 2 ? "none" : "auto"
+                  }}
+                >
+                  <div>
+                    <span className="text-6xl leading-none">{deal.emoji}</span>
+                    <p className="mt-4 text-4xl font-black leading-tight">{deal.destination}</p>
+                    <p className="text-xl font-semibold text-white/80">{deal.country}</p>
+                    <p className="mt-3 text-2xl font-bold leading-snug">{deal.headline}</p>
+                    {isCenter && <p className="mt-3 text-xl leading-relaxed text-white/90">{deal.hook}</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-lg font-bold">
+                    {deal.tripLength && <span className="rounded-full bg-white/20 px-4 py-2">{deal.tripLength}</span>}
+                    {deal.estCost && <span className="rounded-full bg-white/20 px-4 py-2">{deal.estCost}</span>}
+                    {deal.bestMonths && <span className="rounded-full bg-white/20 px-4 py-2">{deal.bestMonths}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex shrink-0 items-center justify-center gap-5">
+            <button
+              onClick={() => step(-1)}
+              disabled={index === 0}
+              className="touch-button w-20 bg-white/80 text-slate-600 disabled:opacity-30 dark:bg-slate-800 dark:text-slate-200"
+              aria-label="Previous trip"
+            >
+              <ChevronLeft className="h-8 w-8" />
+            </button>
+            <div className="flex items-center gap-2">
+              {deals.map((deal, position) => (
+                <button
+                  key={deal.id}
+                  onClick={() => setIndex(position)}
+                  aria-label={`Go to ${deal.destination}`}
+                  className={`h-4 rounded-full transition-all ${position === index ? "w-10 bg-sky-600" : "w-4 bg-slate-300 dark:bg-slate-600"}`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => step(1)}
+              disabled={index >= deals.length - 1}
+              className="touch-button w-20 bg-white/80 text-slate-600 disabled:opacity-30 dark:bg-slate-800 dark:text-slate-200"
+              aria-label="Next trip"
+            >
+              <ChevronRight className="h-8 w-8" />
+            </button>
+          </div>
+          <p className="mt-2 shrink-0 text-center text-lg text-slate-500 dark:text-slate-400">
+            Tap the front card for the full breakdown
+          </p>
+        </>
+      )}
+
+      {expanded && <TravelDealDetailView deal={expanded} onClose={() => setExpanded(null)} />}
+    </Card>
+  );
+}
+
+function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: () => void }) {
+  const accent = dealAccent(deal.accent);
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-6">
+      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900">
+        <div className={`flex shrink-0 items-start justify-between bg-gradient-to-br p-7 text-white ${accent.card}`}>
+          <div>
+            <span className="text-5xl leading-none">{deal.emoji}</span>
+            <p className="mt-3 text-4xl font-black">{deal.destination}</p>
+            <p className="text-xl font-semibold text-white/80">{deal.country}</p>
+            <p className="mt-2 text-2xl font-bold">{deal.headline}</p>
+          </div>
+          <button onClick={onClose} className="touch-button w-20 bg-white/20 text-white" aria-label="Close trip details">
+            <X className="h-8 w-8" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-7 text-slate-700 dark:text-slate-200">
+          <p className="text-2xl leading-relaxed">{deal.detail.overview || deal.hook}</p>
+
+          <div className="flex flex-wrap gap-3 text-lg font-bold">
+            {deal.tripLength && <span className={`rounded-full px-5 py-2 ${accent.chip}`}>{deal.tripLength}</span>}
+            {deal.estCost && <span className={`rounded-full px-5 py-2 ${accent.chip}`}>{deal.estCost}</span>}
+            {deal.bestMonths && <span className={`rounded-full px-5 py-2 ${accent.chip}`}>Best {deal.bestMonths}</span>}
+          </div>
+
+          {deal.detail.highlights.length > 0 && (
+            <section>
+              <h3 className="text-2xl font-bold">Worth doing</h3>
+              <ul className="mt-3 space-y-2 text-xl leading-relaxed">
+                {deal.detail.highlights.map((item, i) => (
+                  <li key={i} className="flex gap-3"><span className="text-sky-600 dark:text-sky-400">•</span>{item}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {deal.detail.itinerary.length > 0 && (
+            <section>
+              <h3 className="text-2xl font-bold">Rough plan</h3>
+              <div className="mt-3 space-y-3">
+                {deal.detail.itinerary.map((entry, i) => (
+                  <div key={i} className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-800">
+                    <p className="text-xl font-bold">{entry.day}</p>
+                    <p className="mt-1 text-xl leading-relaxed">{entry.plan}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {deal.detail.stay && (
+              <section className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-800">
+                <h3 className="text-xl font-bold">Where to stay</h3>
+                <p className="mt-2 text-xl leading-relaxed">{deal.detail.stay}</p>
+              </section>
+            )}
+            {deal.detail.gettingThere && (
+              <section className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-800">
+                <h3 className="text-xl font-bold">Getting there</h3>
+                <p className="mt-2 text-xl leading-relaxed">{deal.detail.gettingThere}</p>
+              </section>
+            )}
+          </div>
+
+          {deal.detail.familyTip && (
+            <section className="rounded-2xl bg-amber-100 p-5 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+              <h3 className="text-xl font-bold">With the kids</h3>
+              <p className="mt-2 text-xl leading-relaxed">{deal.detail.familyTip}</p>
+            </section>
+          )}
+
+          {deal.detail.budgetBreakdown.length > 0 && (
+            <section>
+              <h3 className="text-2xl font-bold">Rough budget</h3>
+              <div className="mt-3 space-y-2">
+                {deal.detail.budgetBreakdown.map((row, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-mirror-line pb-2 text-xl">
+                    <span>{row.label}</span>
+                    <span className="font-bold">{row.amount}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TravelHubPanel() {

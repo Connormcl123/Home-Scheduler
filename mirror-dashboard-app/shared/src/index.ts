@@ -311,3 +311,36 @@ export interface AssistantStatus {
   model: string;
   reason?: string;
 }
+
+export interface TravelDealDetail {
+  overview: string;
+  highlights: string[];
+  itinerary: Array<{ day: string; plan: string }>;
+  stay: string;
+  gettingThere: string;
+  familyTip: string;
+  budgetBreakdown: Array<{ label: string; amount: string }>;
+}
+
+export interface TravelDeal {
+  id: number;
+  generatedFor: string;
+  destination: string;
+  country?: string | null;
+  headline: string;
+  hook: string;
+  emoji: string;
+  accent: string;
+  bestMonths?: string | null;
+  tripLength?: string | null;
+  estCost?: string | null;
+  detail: TravelDealDetail;
+  createdAt: string;
+}
+
+export interface TravelDealsResponse {
+  generatedFor: string | null;
+  deals: TravelDeal[];
+  status: "ready" | "empty" | "disabled";
+  reason?: string;
+}

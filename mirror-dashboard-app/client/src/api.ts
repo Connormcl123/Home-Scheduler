@@ -1,4 +1,4 @@
-import type { ApiIntegrationStatus, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, TravelDealsResponse, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -164,4 +164,12 @@ export function sendAssistantMessage(message: string, history: AssistantMessage[
     method: "POST",
     body: JSON.stringify({ message, history })
   });
+}
+
+export function fetchTravelDeals() {
+  return request<TravelDealsResponse>("/api/travel/deals");
+}
+
+export function refreshTravelDeals() {
+  return request<TravelDealsResponse>("/api/travel/deals/refresh", { method: "POST" });
 }

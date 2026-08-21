@@ -323,6 +323,16 @@ async function buildLiveContext() {
   ].join("\n");
 }
 
+/**
+ * Effort and adaptive thinking only exist on 4.6-and-later models. Haiku 4.5 and
+ * Sonnet 4.5 reject `effort` outright with a 400, so the request shape has to
+ * follow the configured model instead of being hardcoded — otherwise switching
+ * ANTHROPIC_MODEL to a faster model breaks every call.
+ */
+function supportsEffort(model: string) {
+  return /^claude-(opus-5|opus-4-[5-8]|sonnet-5|sonnet-4-6|fable-5|mythos-5)/.test(model);
+}
+
 /** Turns SDK/network failures into something readable on a wall display. */
 function toAssistantError(error: unknown): AssistantError {
   if (error instanceof AssistantError) return error;
@@ -373,16 +383,20 @@ export async function runAssistantTurn(history: AssistantMessage[], userMessage:
   let reply = "";
 
   for (let turn = 0; turn < 6; turn += 1) {
+    const request: Anthropic.MessageCreateParamsNonStreaming = {
+      model: config.anthropic.model,
+      max_tokens: 4096,
+      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      tools,
+      messages
+    };
+    if (supportsEffort(config.anthropic.model)) {
+      request.output_config = { effort: config.anthropic.effort as "low" | "medium" | "high" };
+    }
+
     let response: Anthropic.Message;
     try {
-      response = await getClient().messages.create({
-        model: config.anthropic.model,
-        max_tokens: 8192,
-        output_config: { effort: config.anthropic.effort as "low" | "medium" | "high" },
-        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-        tools,
-        messages
-      });
+      response = await getClient().messages.create(request);
     } catch (error) {
       throw toAssistantError(error);
     }

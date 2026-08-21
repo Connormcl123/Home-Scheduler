@@ -141,6 +141,22 @@ export async function initializeSchema(database: Database) {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS travel_deals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      generated_for TEXT NOT NULL,
+      destination TEXT NOT NULL,
+      country TEXT,
+      headline TEXT NOT NULL,
+      hook TEXT NOT NULL,
+      emoji TEXT NOT NULL DEFAULT '✈️',
+      accent TEXT NOT NULL DEFAULT 'sky',
+      best_months TEXT,
+      trip_length TEXT,
+      est_cost TEXT,
+      detail TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS local_calendar_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
