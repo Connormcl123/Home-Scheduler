@@ -20,6 +20,7 @@ type DealRow = {
   best_months: string | null;
   trip_length: string | null;
   est_cost: string | null;
+  image_url: string | null;
   detail: string;
   created_at: string;
 };
@@ -53,6 +54,7 @@ function rowToDeal(row: DealRow): TravelDeal {
     bestMonths: row.best_months,
     tripLength: row.trip_length,
     estCost: row.est_cost,
+    imageUrl: row.image_url,
     detail,
     createdAt: row.created_at
   };
@@ -99,6 +101,10 @@ const DEAL_SCHEMA = {
           bestMonths: { type: "string", description: "When to go, e.g. April to June." },
           tripLength: { type: "string", description: "e.g. Long weekend, or 5 to 7 days." },
           estCost: { type: "string", description: "Rough all-in cost for a family of four, e.g. $2,400." },
+          photoQuery: {
+            type: "string",
+            description: "The Wikipedia article title most likely to have a scenic photo of this place, e.g. Acadia National Park. Prefer a landmark or park over a town's administrative page."
+          },
           overview: { type: "string", description: "Two or three sentences on the shape of the trip." },
           highlights: { type: "array", items: { type: "string" }, description: "Four to six specific things to do." },
           itinerary: {
@@ -125,7 +131,7 @@ const DEAL_SCHEMA = {
         },
         required: [
           "destination", "country", "headline", "hook", "emoji", "bestMonths", "tripLength",
-          "estCost", "overview", "highlights", "itinerary", "stay", "gettingThere",
+          "estCost", "photoQuery", "overview", "highlights", "itinerary", "stay", "gettingThere",
           "familyTip", "budgetBreakdown"
         ],
         additionalProperties: false
@@ -145,7 +151,43 @@ type GeneratedDeal = {
   bestMonths: string;
   tripLength: string;
   estCost: string;
+  photoQuery: string;
 } & TravelDealDetail;
+
+/**
+ * Wikipedia page images: no API key, no quota worth worrying about at six
+ * lookups a day, and it already has good photography for most destinations.
+ * Asks for a bounded thumbnail rather than the original, which can be many
+ * megabytes and would stall the Pi.
+ */
+async function findDestinationPhoto(query: string): Promise<string | null> {
+  const url = new URL("https://en.wikipedia.org/w/api.php");
+  url.searchParams.set("action", "query");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("prop", "pageimages");
+  url.searchParams.set("piprop", "thumbnail");
+  url.searchParams.set("pithumbsize", "900");
+  url.searchParams.set("generator", "search");
+  url.searchParams.set("gsrsearch", query);
+  url.searchParams.set("gsrlimit", "1");
+  url.searchParams.set("origin", "*");
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "MirrorDashboard/1.0 (family wall display)" },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      query?: { pages?: Record<string, { thumbnail?: { source?: string } }> };
+    };
+    const pages = Object.values(payload.query?.pages || {});
+    return pages[0]?.thumbnail?.source || null;
+  } catch {
+    // A missing photo just means the card keeps its gradient.
+    return null;
+  }
+}
 
 let client: Anthropic | null = null;
 function getClient() {
@@ -202,6 +244,12 @@ export async function generateTravelDeals(forDate = todayIso()): Promise<TravelD
   const parsed = JSON.parse(text) as { deals: GeneratedDeal[] };
   if (!parsed.deals?.length) throw new Error("The trip generator returned no ideas.");
 
+  // Look these up together rather than serially; six sequential round trips
+  // would noticeably delay the morning refresh.
+  const photos = await Promise.all(
+    parsed.deals.map((deal) => findDestinationPhoto(deal.photoQuery || deal.destination))
+  );
+
   await db.run("DELETE FROM travel_deals WHERE generated_for = ?", forDate);
   for (const [index, deal] of parsed.deals.entries()) {
     const detail: TravelDealDetail = {
@@ -215,8 +263,8 @@ export async function generateTravelDeals(forDate = todayIso()): Promise<TravelD
     };
     await db.run(
       `INSERT INTO travel_deals
-       (generated_for, destination, country, headline, hook, emoji, accent, best_months, trip_length, est_cost, detail)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (generated_for, destination, country, headline, hook, emoji, accent, best_months, trip_length, est_cost, image_url, detail)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       forDate,
       deal.destination,
       deal.country || null,
@@ -227,6 +275,7 @@ export async function generateTravelDeals(forDate = todayIso()): Promise<TravelD
       deal.bestMonths || null,
       deal.tripLength || null,
       deal.estCost || null,
+      photos[index],
       JSON.stringify(detail)
     );
   }

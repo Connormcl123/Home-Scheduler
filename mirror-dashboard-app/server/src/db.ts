@@ -175,6 +175,7 @@ export async function initializeSchema(database: Database) {
   await ensureColumn(database, "finance_transactions", "pending", "INTEGER NOT NULL DEFAULT 0");
   await ensureColumn(database, "finance_transactions", "categorized_by", "TEXT NOT NULL DEFAULT 'provider'");
   await ensureColumn(database, "travel_inspirations", "thumbnail_url", "TEXT");
+  await ensureColumn(database, "travel_deals", "image_url", "TEXT");
 }
 
 async function ensureColumn(database: Database, table: string, column: string, definition: string) {

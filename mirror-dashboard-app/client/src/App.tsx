@@ -2357,7 +2357,7 @@ function TravelDealsPanel() {
                   key={deal.id}
                   onClick={() => (isCenter ? setExpanded(deal) : setIndex(position))}
                   aria-label={isCenter ? `Open ${deal.destination}` : `Show ${deal.destination}`}
-                  className={`absolute left-1/2 top-1/2 flex h-[400px] w-[460px] flex-col justify-between rounded-[28px] bg-gradient-to-br p-7 text-left text-white transition-transform duration-500 ease-out ${accent.card} ${
+                  className={`absolute left-1/2 top-1/2 flex h-[400px] w-[460px] flex-col justify-between overflow-hidden rounded-[28px] bg-gradient-to-br p-7 text-left text-white transition-transform duration-500 ease-out ${accent.card} ${
                     isCenter ? "shadow-xl" : ""
                   }`}
                   style={{
@@ -2367,17 +2367,32 @@ function TravelDealsPanel() {
                     pointerEvents: distance > 2 ? "none" : "auto"
                   }}
                 >
-                  <div>
+                  {deal.imageUrl && (
+                    <>
+                      <img
+                        src={deal.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full object-cover"
+                        // A dead image link should leave the gradient, not a broken icon.
+                        onError={(event) => { event.currentTarget.style.display = "none"; }}
+                      />
+                      {/* Scrim: the photo is arbitrary, so text needs a guaranteed contrast floor. */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25" />
+                    </>
+                  )}
+                  <div className="relative">
                     <span className="text-6xl leading-none">{deal.emoji}</span>
                     <p className="mt-4 text-4xl font-black leading-tight">{deal.destination}</p>
                     <p className="text-xl font-semibold text-white/80">{deal.country}</p>
                     <p className="mt-3 text-2xl font-bold leading-snug">{deal.headline}</p>
                     {isCenter && <p className="mt-3 text-xl leading-relaxed text-white/90">{deal.hook}</p>}
                   </div>
-                  <div className="flex flex-wrap gap-2 text-lg font-bold">
-                    {deal.tripLength && <span className="rounded-full bg-white/20 px-4 py-2">{deal.tripLength}</span>}
-                    {deal.estCost && <span className="rounded-full bg-white/20 px-4 py-2">{deal.estCost}</span>}
-                    {deal.bestMonths && <span className="rounded-full bg-white/20 px-4 py-2">{deal.bestMonths}</span>}
+                  <div className="relative flex flex-wrap gap-2 text-lg font-bold">
+                    {deal.tripLength && <span className="rounded-full bg-white/25 px-4 py-2">{deal.tripLength}</span>}
+                    {deal.estCost && <span className="rounded-full bg-white/25 px-4 py-2">{deal.estCost}</span>}
+                    {deal.bestMonths && <span className="rounded-full bg-white/25 px-4 py-2">{deal.bestMonths}</span>}
                   </div>
                 </button>
               );
@@ -2428,14 +2443,26 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-6">
       <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900">
-        <div className={`flex shrink-0 items-start justify-between bg-gradient-to-br p-7 text-white ${accent.card}`}>
-          <div>
+        <div className={`relative flex shrink-0 items-start justify-between overflow-hidden bg-gradient-to-br p-7 text-white ${accent.card}`}>
+          {deal.imageUrl && (
+            <>
+              <img
+                src={deal.imageUrl}
+                alt=""
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(event) => { event.currentTarget.style.display = "none"; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/25" />
+            </>
+          )}
+          <div className="relative">
             <span className="text-5xl leading-none">{deal.emoji}</span>
             <p className="mt-3 text-4xl font-black">{deal.destination}</p>
             <p className="text-xl font-semibold text-white/80">{deal.country}</p>
             <p className="mt-2 text-2xl font-bold">{deal.headline}</p>
           </div>
-          <button onClick={onClose} className="touch-button w-20 bg-white/20 text-white" aria-label="Close trip details">
+          <button onClick={onClose} className="relative touch-button w-20 bg-white/25 text-white" aria-label="Close trip details">
             <X className="h-8 w-8" />
           </button>
         </div>

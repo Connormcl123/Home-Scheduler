@@ -334,6 +334,7 @@ export interface TravelDeal {
   bestMonths?: string | null;
   tripLength?: string | null;
   estCost?: string | null;
+  imageUrl?: string | null;
   detail: TravelDealDetail;
   createdAt: string;
 }
