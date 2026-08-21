@@ -44,8 +44,12 @@ if [ -f "$PROFILE_PREFS" ]; then
   sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$PROFILE_PREFS" 2>/dev/null || true
 fi
 
+# Without --password-store=basic, Chromium tries to unlock the GNOME keyring on
+# launch and blocks on a password dialog nobody is standing at the wall display
+# to answer, leaving the screen white.
 exec "${CHROMIUM_BIN}" \
   --kiosk \
+  --password-store=basic \
   "${PLATFORM_ARGS[@]}" \
   --noerrdialogs \
   --disable-infobars \
