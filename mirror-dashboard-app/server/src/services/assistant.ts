@@ -323,6 +323,30 @@ async function buildLiveContext() {
   ].join("\n");
 }
 
+/** Turns SDK/network failures into something readable on a wall display. */
+function toAssistantError(error: unknown): AssistantError {
+  if (error instanceof AssistantError) return error;
+
+  if (error instanceof Anthropic.APIError) {
+    const detail = `${error.message ?? ""} ${JSON.stringify((error as { error?: unknown }).error ?? "")}`;
+    if (/credit balance/i.test(detail)) {
+      return new AssistantError("The assistant is out of Anthropic API credits. Add credits in the Anthropic Console to turn it back on.", 402);
+    }
+    if (error.status === 401 || error.status === 403) {
+      return new AssistantError("Anthropic rejected the API key. Check ANTHROPIC_API_KEY in .env.", 401);
+    }
+    if (error.status === 429) {
+      return new AssistantError("The assistant is being rate limited. Try again in a moment.", 429);
+    }
+    if (typeof error.status === "number" && error.status >= 500) {
+      return new AssistantError("Anthropic is having trouble right now. Try again shortly.", 503);
+    }
+    return new AssistantError("The assistant could not complete that request.", 502);
+  }
+
+  return new AssistantError("The assistant is unreachable. Check the Pi's network connection.", 503);
+}
+
 /**
  * The agent loop is written out here rather than using the SDK's beta tool
  * runner: this dashboard is a long-lived appliance, so it stays on the stable
@@ -349,14 +373,19 @@ export async function runAssistantTurn(history: AssistantMessage[], userMessage:
   let reply = "";
 
   for (let turn = 0; turn < 6; turn += 1) {
-    const response = await getClient().messages.create({
-      model: config.anthropic.model,
-      max_tokens: 8192,
-      output_config: { effort: config.anthropic.effort as "low" | "medium" | "high" },
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      tools,
-      messages
-    });
+    let response: Anthropic.Message;
+    try {
+      response = await getClient().messages.create({
+        model: config.anthropic.model,
+        max_tokens: 8192,
+        output_config: { effort: config.anthropic.effort as "low" | "medium" | "high" },
+        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        tools,
+        messages
+      });
+    } catch (error) {
+      throw toAssistantError(error);
+    }
 
     if (response.stop_reason === "refusal") {
       reply = "Sorry, I can't help with that one.";
