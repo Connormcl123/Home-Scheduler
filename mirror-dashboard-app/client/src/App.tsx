@@ -475,6 +475,7 @@ function DashboardApp() {
   const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-theme") === "dark");
   const [burnInStep, setBurnInStep] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [externalLink, setExternalLink] = useState<string | null>(null);
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
@@ -504,6 +505,31 @@ function DashboardApp() {
         }
       });
   };
+
+  // Chromium runs with --kiosk, so there is no back button or address bar: any
+  // link that leaves the dashboard strands the wall display on a page nobody can
+  // close. Intercept those and show the destination instead of navigating.
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest?.("a");
+      if (!link) return;
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      let url: URL;
+      try {
+        url = new URL(href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin === window.location.origin) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setExternalLink(url.href);
+    }
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -807,6 +833,25 @@ function DashboardApp() {
           </div>
         </section>
       </div>
+      {externalLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-8">
+          <div className="w-full max-w-3xl rounded-[28px] bg-white p-8 dark:bg-slate-900">
+            <h2 className="text-3xl font-bold text-mirror-ink dark:text-slate-100">Opens outside the dashboard</h2>
+            <p className="mt-3 text-xl text-slate-600 dark:text-slate-300">
+              The wall display stays on the dashboard. Open this on your phone instead:
+            </p>
+            <p className="mt-4 break-all rounded-2xl bg-slate-100 p-5 text-2xl font-semibold text-sky-700 dark:bg-slate-800 dark:text-sky-300">
+              {externalLink}
+            </p>
+            <button
+              onClick={() => setExternalLink(null)}
+              className="mt-6 min-h-16 w-full rounded-2xl bg-sky-600 text-2xl font-black text-white active:scale-95"
+            >
+              Back to dashboard
+            </button>
+          </div>
+        </div>
+      )}
       <OnScreenKeyboard
         visible={keyboardVisible}
         getTarget={() => keyboardTargetRef.current}
@@ -2208,7 +2253,7 @@ function TravelPanel() {
           </button>
         ))}
       </div>
-      <div className="min-h-0 flex-1">{tab === "ideas" ? <TravelDealsPanel /> : <TravelHubPanel />}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{tab === "ideas" ? <TravelDealsPanel /> : <TravelHubPanel />}</div>
     </div>
   );
 }
@@ -2295,7 +2340,7 @@ function TravelDealsPanel() {
         <>
           {/* Lazy-susan rail: only transform/opacity animate, so the Pi composites on the GPU. */}
           <div
-            className="relative mt-4 min-h-0 flex-1 select-none overflow-hidden"
+            className="relative mt-4 min-h-[420px] flex-1 select-none overflow-hidden"
             style={{ perspective: "1400px" }}
             onPointerDown={onPointerDown}
             onPointerUp={onPointerUp}
@@ -2312,7 +2357,7 @@ function TravelDealsPanel() {
                   key={deal.id}
                   onClick={() => (isCenter ? setExpanded(deal) : setIndex(position))}
                   aria-label={isCenter ? `Open ${deal.destination}` : `Show ${deal.destination}`}
-                  className={`absolute left-1/2 top-1/2 flex h-[74%] w-[46%] flex-col justify-between rounded-[28px] bg-gradient-to-br p-7 text-left text-white transition-transform duration-500 ease-out ${accent.card} ${
+                  className={`absolute left-1/2 top-1/2 flex h-[400px] w-[460px] flex-col justify-between rounded-[28px] bg-gradient-to-br p-7 text-left text-white transition-transform duration-500 ease-out ${accent.card} ${
                     isCenter ? "shadow-xl" : ""
                   }`}
                   style={{
