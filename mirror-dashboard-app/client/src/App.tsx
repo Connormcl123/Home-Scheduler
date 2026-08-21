@@ -2266,7 +2266,6 @@ function TravelDealsPanel() {
   const [error, setError] = useState("");
   const [dragDx, setDragDx] = useState(0);
   const dragRef = useRef<{ startX: number; startIndex: number; moved: boolean } | null>(null);
-  const rafRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
 
   useEffect(() => {
@@ -2313,22 +2312,17 @@ function TravelDealsPanel() {
     const dx = event.clientX - drag.startX;
     // Past this the gesture is a drag, not a tap.
     if (Math.abs(dx) > 8) drag.moved = true;
-    // One state update per frame; the Pi drops frames if every pointermove
-    // triggers its own re-render of the whole rail.
-    if (rafRef.current !== null) return;
-    rafRef.current = window.requestAnimationFrame(() => {
-      rafRef.current = null;
-      setDragDx(dx);
-    });
+    // Set straight from the event rather than deferring to rAF: the browser
+    // already coalesces pointermove to one per frame, so a rAF hop only adds a
+    // frame of lag between finger and card - and if rAF is throttled the rail
+    // stops tracking entirely while still snapping on release, which reads as
+    // a broken gesture.
+    setDragDx(dx);
   }
 
   function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     dragRef.current = null;
-    if (rafRef.current !== null) {
-      window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
     if (!drag) return;
     const dx = event.clientX - drag.startX;
     // Snap to whichever card the finger left nearest the middle.
