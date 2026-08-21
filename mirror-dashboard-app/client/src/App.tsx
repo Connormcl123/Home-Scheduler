@@ -1,6 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { ApiIntegrationStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUpRight, BedDouble, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
+import type { ApiIntegrationStatus, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -33,10 +33,12 @@ import {
   updateGroceryItem,
   updateRssFeed,
   updateTask,
-  updateWatchlistItem
+  updateWatchlistItem,
+  fetchAssistantStatus,
+  sendAssistantMessage,
 } from "./api";
 
-type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "travel" | "settings";
+type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "travel" | "assistant" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
 type TravelTripType = "low-effort" | "beach" | "new-england" | "city" | "nature" | "splurge";
 
@@ -158,6 +160,7 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "notes", label: "Notes", icon: StickyNote },
   { view: "finance", label: "Finance", icon: Landmark },
   { view: "travel", label: "Travel", icon: Plane },
+  { view: "assistant", label: "Assistant", icon: Bot },
   { view: "settings", label: "Settings", icon: Settings }
 ];
 
@@ -611,6 +614,7 @@ function DashboardApp() {
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
     if (view === "travel") return <TravelHubPanel />;
+    if (view === "assistant") return <AssistantPanel onChanged={refreshDashboard} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return <HomePanel dashboard={dashboard} now={now} />;
   }, [dashboard, now, view]);
@@ -1697,6 +1701,123 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
             <p className="truncate text-slate-500">{note.body || "Empty note"}</p>
           </button>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+function AssistantPanel({ onChanged }: { onChanged: () => void }) {
+  const [status, setStatus] = useState<AssistantStatus | null>(null);
+  const [messages, setMessages] = useState<Array<AssistantMessage & { actions?: AssistantAction[] }>>([]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    fetchAssistantStatus().then(setStatus).catch(() => setStatus({ enabled: false, model: "", reason: "Could not reach the assistant service." }));
+  }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, busy]);
+
+  async function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+    const history = messages.map(({ role, content }) => ({ role, content }));
+    setMessages((current) => [...current, { role: "user", content: trimmed }]);
+    setDraft("");
+    setBusy(true);
+    setError("");
+    try {
+      const result = await sendAssistantMessage(trimmed, history);
+      setMessages((current) => [...current, { role: "assistant", content: result.reply, actions: result.actions }]);
+      if (result.refresh.length) onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The assistant could not answer.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const suggestions = ["What's on today?", "Add milk to the grocery list", "Remind me to take the trash out tomorrow"];
+
+  return (
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <SectionTitle icon={Bot} title="Assistant" />
+
+      {status && !status.enabled && (
+        <div className="mt-4 rounded-2xl bg-amber-100 p-5 text-xl font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+          {status.reason}
+        </div>
+      )}
+
+      <div ref={scrollRef} className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
+        {!messages.length && (
+          <div className="rounded-2xl bg-white/70 p-6 text-2xl text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
+            Ask about the day, or tell me what to add. I can update tasks, groceries, the calendar, and today's note.
+          </div>
+        )}
+        {messages.map((message, index) => (
+          <div key={index} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
+            <div
+              className={`max-w-[80%] rounded-3xl px-6 py-4 text-2xl leading-relaxed ${
+                message.role === "user"
+                  ? "bg-sky-600 text-white"
+                  : "bg-white/80 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{message.content}</p>
+              {message.actions?.length ? (
+                <div className="mt-3 space-y-1 border-t border-white/40 pt-3 text-lg font-semibold text-emerald-700 dark:border-white/10 dark:text-emerald-300">
+                  {message.actions.map((action, actionIndex) => (
+                    <p key={actionIndex}>{action.summary}</p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="flex justify-start">
+            <div className="rounded-3xl bg-white/80 px-6 py-4 text-2xl text-slate-500 dark:bg-slate-800 dark:text-slate-400">Thinking...</div>
+          </div>
+        )}
+        {error && <p className="text-xl font-semibold text-rose-600 dark:text-rose-400">{error}</p>}
+      </div>
+
+      {!messages.length && status?.enabled && (
+        <div className="mt-4 flex shrink-0 flex-wrap gap-3">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => send(suggestion)}
+              className="min-h-14 rounded-2xl bg-white/75 px-5 text-xl font-semibold text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200"
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 flex shrink-0 gap-3">
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter") send(draft); }}
+          disabled={!status?.enabled || busy}
+          placeholder={status?.enabled ? "Ask or tell me something..." : "Assistant is not configured"}
+          className="touch-input min-w-0 flex-1"
+        />
+        <button
+          onClick={() => send(draft)}
+          disabled={!status?.enabled || busy || !draft.trim()}
+          className="touch-button w-24 bg-sky-600 text-white disabled:opacity-40"
+          aria-label="Send message"
+        >
+          <Send className="h-7 w-7" />
+        </button>
       </div>
     </Card>
   );

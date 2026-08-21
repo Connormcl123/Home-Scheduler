@@ -204,6 +204,59 @@ Then restart:
 sudo systemctl restart mirror-dashboard
 ```
 
+## Household Assistant (Claude)
+
+The Assistant tab is a chat panel backed by a Claude agent that can read and change the
+dashboard. It uses tool calling against the same services the REST API uses, so anything it
+does shows up on the touchscreen immediately.
+
+What it can do today:
+
+- Read and create tasks, mark them complete, delete them.
+- Read the grocery list, add items, mark them purchased.
+- Read upcoming calendar events and add local events.
+- Read and write the daily note.
+- Report current weather and the forecast.
+
+Setup:
+
+```bash
+cd ~/Home-Scheduler/mirror-dashboard-app
+nano .env
+```
+
+Add:
+
+```bash
+ANTHROPIC_API_KEY=your_key_here
+ANTHROPIC_MODEL=claude-opus-5
+# low keeps replies fast on the wall display; medium/high deliberate more
+ANTHROPIC_EFFORT=low
+```
+
+Then restart:
+
+```bash
+sudo systemctl restart mirror-dashboard
+```
+
+Without a key the tab still renders and explains what to set - nothing else breaks.
+
+Endpoints:
+
+- `GET /api/assistant/status`
+- `POST /api/assistant/chat`
+
+```bash
+curl -X POST http://localhost:4174/api/assistant/chat   -H "Content-Type: application/json"   -d '{"message":"add milk to the grocery list","history":[]}'
+```
+
+The response includes `reply`, an `actions` list describing every change made, and a
+`refresh` list telling the UI which panels to reload.
+
+To give the assistant a new capability, add a tool definition and a matching handler in
+`server/src/services/assistant.ts`.
+
 ## Alexa Voice Commands
 
 Voice command webhooks are available for tasks and local calendar events:

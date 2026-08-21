@@ -21,6 +21,7 @@ import { createEnrichedTravelInspiration, deleteTravelInspiration, generateTrave
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
 import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
+import { AssistantError, getAssistantStatus, runAssistantTurn } from "./services/assistant.js";
 
 const app = express();
 
@@ -438,6 +439,21 @@ app.post("/api/voice/calendar-event", async (req, res, next) => {
   }
 });
 
+app.get("/api/assistant/status", (_req, res) => {
+  res.json(getAssistantStatus());
+});
+
+app.post("/api/assistant/chat", async (req, res, next) => {
+  try {
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!message) return res.status(400).json({ error: "A message is required." });
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
+    res.json(await runAssistantTurn(history, message));
+  } catch (error) {
+    next(error);
+  }
+});
+
 if (fs.existsSync(config.clientDistPath)) {
   app.use(express.static(config.clientDistPath));
   app.use((req, res, next) => {
@@ -448,6 +464,7 @@ if (fs.existsSync(config.clientDistPath)) {
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof VoiceCommandError) return res.status(error.status).json({ error: error.message });
+  if (error instanceof AssistantError) return res.status(error.status).json({ error: error.message });
   console.error(error);
   res.status(500).json({ error: "Unexpected server error." });
 });

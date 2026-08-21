@@ -53,6 +53,11 @@ export const config = {
     model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
     travelWebSearch: process.env.OPENAI_TRAVEL_WEB_SEARCH === "true"
   },
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY || "",
+    model: process.env.ANTHROPIC_MODEL || "claude-opus-5",
+    effort: process.env.ANTHROPIC_EFFORT || "low"
+  },
   voice: {
     webhookToken: process.env.ALEXA_WEBHOOK_TOKEN || ""
   }

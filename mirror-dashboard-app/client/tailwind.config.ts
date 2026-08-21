@@ -2,6 +2,9 @@ import type { Config } from "tailwindcss";
 
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  // The nav rail toggles a `dark` class on <main>; without this the
+  // dark: variants would follow the OS preference and never fire.
+  darkMode: "class",
   theme: {
     extend: {
       fontFamily: {

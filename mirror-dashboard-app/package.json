@@ -17,5 +17,10 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
+  },
+  "allowScripts": {
+    "sqlite3@5.1.7": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
   }
 }

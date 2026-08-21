@@ -16,6 +16,16 @@ export async function getIntegrationStatus(): Promise<ApiIntegrationStatus> {
     generatedAt: new Date().toISOString(),
     items: [
       {
+        key: "anthropic",
+        label: "Claude household assistant",
+        configured: Boolean(config.anthropic.apiKey),
+        mode: config.anthropic.apiKey ? "live" : "missing",
+        detail: config.anthropic.apiKey
+          ? `Assistant is live on ${config.anthropic.model} at ${config.anthropic.effort} effort.`
+          : "The Assistant tab is disabled until a Claude API key is present.",
+        nextStep: config.anthropic.apiKey ? undefined : "Add ANTHROPIC_API_KEY to .env and restart the server."
+      },
+      {
         key: "openai",
         label: "OpenAI trip planner",
         configured: Boolean(config.openai.apiKey),

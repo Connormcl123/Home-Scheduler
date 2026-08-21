@@ -286,3 +286,28 @@ export interface ApiIntegrationStatus {
   generatedAt: string;
   items: ApiIntegrationStatusItem[];
 }
+
+export type AssistantRole = "user" | "assistant";
+
+export interface AssistantMessage {
+  role: AssistantRole;
+  content: string;
+}
+
+export interface AssistantAction {
+  tool: string;
+  summary: string;
+}
+
+export interface AssistantChatResponse {
+  reply: string;
+  actions: AssistantAction[];
+  /** Panels touched by this turn, so the UI knows what to refresh. */
+  refresh: Array<"tasks" | "grocery" | "notes" | "calendar" | "dashboard">;
+}
+
+export interface AssistantStatus {
+  enabled: boolean;
+  model: string;
+  reason?: string;
+}

@@ -1,4 +1,4 @@
-import type { ApiIntegrationStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -148,4 +148,15 @@ export function deleteTravelInspiration(id: number) {
 
 export function generateTravelItinerary() {
   return request<TravelItineraryResult>("/api/travel/itinerary", { method: "POST" });
+}
+
+export function fetchAssistantStatus() {
+  return request<AssistantStatus>("/api/assistant/status");
+}
+
+export function sendAssistantMessage(message: string, history: AssistantMessage[]) {
+  return request<AssistantChatResponse>("/api/assistant/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history })
+  });
 }
