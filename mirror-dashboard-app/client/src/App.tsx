@@ -2264,7 +2264,10 @@ function TravelDealsPanel() {
   const [expanded, setExpanded] = useState<TravelDeal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const dragRef = useRef<{ startX: number; moved: boolean } | null>(null);
+  const [dragDx, setDragDx] = useState(0);
+  const dragRef = useRef<{ startX: number; startIndex: number; moved: boolean } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     fetchTravelDeals()
@@ -2293,16 +2296,56 @@ function TravelDealsPanel() {
     setIndex((current) => Math.min(deals.length - 1, Math.max(0, current + direction)));
   }
 
-  // Swipe on the rail itself; a small movement still counts as a tap.
+  // Finger travel that equates to advancing one card.
+  const CARD_STEP = 240;
+
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    dragRef.current = { startX: event.clientX, moved: false };
+    if (!deals.length) return;
+    // Capture so the drag survives the finger leaving the rail.
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { startX: event.clientX, startIndex: index, moved: false };
+    setDragDx(0);
   }
-  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = event.clientX - drag.startX;
+    // Past this the gesture is a drag, not a tap.
+    if (Math.abs(dx) > 8) drag.moved = true;
+    // One state update per frame; the Pi drops frames if every pointermove
+    // triggers its own re-render of the whole rail.
+    if (rafRef.current !== null) return;
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null;
+      setDragDx(dx);
+    });
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     dragRef.current = null;
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     if (!drag) return;
-    const delta = event.clientX - drag.startX;
-    if (Math.abs(delta) > 60) step(delta < 0 ? 1 : -1);
+    const dx = event.clientX - drag.startX;
+    // Snap to whichever card the finger left nearest the middle.
+    const landed = Math.round(drag.startIndex - dx / CARD_STEP);
+    setIndex(Math.min(deals.length - 1, Math.max(0, landed)));
+    setDragDx(0);
+    // pointerup is followed by click; a drag must not also open the card.
+    suppressClickRef.current = drag.moved;
+  }
+
+  function openOrCentre(deal: TravelDeal, position: number, centred: boolean) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    if (centred) setExpanded(deal);
+    else setIndex(position);
   }
 
   return (
@@ -2340,30 +2383,34 @@ function TravelDealsPanel() {
         <>
           {/* Lazy-susan rail: only transform/opacity animate, so the Pi composites on the GPU. */}
           <div
-            className="relative mt-4 min-h-[420px] flex-1 select-none overflow-hidden"
+            className="relative mt-4 min-h-[420px] flex-1 touch-none select-none overflow-hidden"
             style={{ perspective: "1400px" }}
+            data-no-touch-scroll
             onPointerDown={onPointerDown}
-            onPointerUp={onPointerUp}
-            onPointerCancel={() => { dragRef.current = null; }}
+            onPointerMove={onPointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
           >
             {deals.map((deal, position) => {
-              const offset = position - index;
+              // While dragging this is fractional, so the rail tracks the finger
+              // instead of jumping a whole card at a time.
+              const offset = position - (index - dragDx / CARD_STEP);
               const distance = Math.abs(offset);
               if (distance > 3) return null;
               const accent = dealAccent(deal.accent);
-              const isCenter = offset === 0;
+              const isCenter = distance < 0.5;
               return (
                 <button
                   key={deal.id}
-                  onClick={() => (isCenter ? setExpanded(deal) : setIndex(position))}
+                  onClick={() => openOrCentre(deal, position, isCenter)}
                   aria-label={isCenter ? `Open ${deal.destination}` : `Show ${deal.destination}`}
-                  className={`absolute left-1/2 top-1/2 flex h-[400px] w-[460px] flex-col justify-between overflow-hidden rounded-[28px] bg-gradient-to-br p-7 text-left text-white transition-transform duration-500 ease-out ${accent.card} ${
+                  className={`absolute left-1/2 top-1/2 flex h-[400px] w-[460px] flex-col justify-between overflow-hidden rounded-[28px] bg-gradient-to-br p-7 text-left text-white ${dragRef.current ? "" : "transition-transform duration-500 ease-out"} ${accent.card} ${
                     isCenter ? "shadow-xl" : ""
                   }`}
                   style={{
-                    transform: `translate(-50%, -50%) translateX(${offset * 46}%) rotateY(${offset * -32}deg) scale(${isCenter ? 1 : 0.82})`,
-                    zIndex: 10 - distance,
-                    opacity: distance > 2 ? 0 : 1,
+                    transform: `translate(-50%, -50%) translateX(${offset * 46}%) rotateY(${offset * -32}deg) scale(${1 - Math.min(distance, 1) * 0.18})`,
+                    zIndex: 10 - Math.round(distance),
+                    opacity: Math.max(0, Math.min(1, 2.6 - distance)),
                     pointerEvents: distance > 2 ? "none" : "auto"
                   }}
                 >
