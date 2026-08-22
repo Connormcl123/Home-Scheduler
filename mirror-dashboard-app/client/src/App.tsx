@@ -647,6 +647,16 @@ function DashboardApp() {
     return <HomePanel dashboard={dashboard} now={now} />;
   }, [dashboard, now, view]);
 
+  const clock = useMemo(() => {
+    const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
+    const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? "";
+    return {
+      time: `${part("hour")}:${part("minute")}`,
+      period: part("dayPeriod"),
+      date: now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    };
+  }, [now]);
+
   const shift = burnInOffsets[burnInStep];
   const orderedNavItems = useMemo(() => {
     return navOrder
@@ -767,6 +777,12 @@ function DashboardApp() {
       </div>
       <div className={`mx-auto flex h-screen max-h-screen max-w-[1920px] gap-4 overflow-hidden px-5 py-4 transition-transform duration-700 ${keyboardVisible ? "pb-80" : ""}`} style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
         <aside className="flex w-32 shrink-0 flex-col items-center gap-2 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+          <div className="w-full pb-1 text-center">
+            <p className="text-3xl font-black leading-none text-mirror-ink dark:text-slate-100">{clock.time}</p>
+            <p className="text-sm font-bold leading-tight text-slate-500 dark:text-slate-400">{clock.period}</p>
+            <p className="mt-1 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">{clock.date}</p>
+          </div>
+          <div className="h-px w-14 bg-mirror-line" />
           <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full bg-amber-100 text-amber-700 dark:bg-slate-800 dark:text-sky-200" aria-label="Toggle dark mode">
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
           </button>
@@ -814,20 +830,6 @@ function DashboardApp() {
           )}
         </aside>
         <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-          <header className="flex shrink-0 items-center justify-between rounded-[24px] border border-white/70 bg-white/80 px-6 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
-            <div>
-              <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
-              <h1 className="text-4xl font-bold tracking-normal">{now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</h1>
-            </div>
-            <div className="flex items-center gap-4 text-right">
-              <button onClick={refreshDashboard} className="touch-button w-20 bg-white/80 text-slate-600 dark:bg-slate-800 dark:text-slate-200" aria-label="Refresh dashboard"><RefreshCw className="h-7 w-7" /></button>
-              <div>
-                <p className="text-sm font-semibold uppercase text-slate-500 dark:text-slate-400">Family Command Center</p>
-                <p className="text-lg text-slate-600 dark:text-slate-300">{dashboard.weather.locationName} - {dashboard.weather.current.description}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-500">Refresh {lastRefresh ? lastRefresh.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "pending"}</p>
-              </div>
-            </div>
-          </header>
           <div className="min-h-0 flex-1 overflow-hidden">
             {content}
           </div>
@@ -1074,27 +1076,29 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
 
   return (
     <section className="relative flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[#f7f8f4] p-5 shadow-sm dark:border-white/10 dark:bg-slate-950">
-      <div className="flex items-center justify-between gap-5">
-        <div>
-          <p className="text-lg font-bold uppercase tracking-normal text-slate-500 dark:text-slate-400">Family Calendar</p>
-          <h2 className="text-5xl font-bold text-slate-900 dark:text-white">This Week</h2>
-        </div>
-        <div className="flex rounded-2xl bg-white p-2 shadow-sm dark:bg-slate-900">
-          {(["Day", "Week", "Month", "Schedule"] as CalendarMode[]).map((label) => (
-            <button
-              key={label}
-              onClick={() => setCalendarMode(label)}
-              className={`h-16 rounded-xl px-6 text-xl font-bold ${label === calendarMode ? "bg-slate-900 text-white dark:bg-sky-500" : "text-slate-500 dark:text-slate-300"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => setIsEventModalOpen(true)} className="touch-button bg-[#ffcf5a] px-7 text-slate-900"><Plus className="mr-2 h-7 w-7" /> Event</button>
-      </div>
-
-      <div className="mt-5 grid min-h-0 flex-1 grid-cols-[300px_1fr] gap-5">
+      <div className="grid min-h-0 flex-1 grid-cols-[300px_1fr] gap-5">
         <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] bg-white p-5 shadow-sm dark:bg-slate-900">
+          <div className="grid grid-cols-2 gap-2">
+            {(["Day", "Week", "Month", "Schedule"] as CalendarMode[]).map((label) => (
+              <button
+                key={label}
+                onClick={() => setCalendarMode(label)}
+                className={`h-16 rounded-xl text-xl font-bold ${
+                  label === calendarMode
+                    ? "bg-slate-900 text-white dark:bg-sky-500"
+                    : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setIsEventModalOpen(true)}
+            className="flex min-h-16 items-center justify-center rounded-2xl bg-[#ffcf5a] text-xl font-black text-slate-900 active:scale-95"
+          >
+            <Plus className="mr-2 h-7 w-7" /> Event
+          </button>
           <div className="rounded-3xl bg-[#eef5ff] p-5 dark:bg-slate-800">
             <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString([], { weekday: "long" })}</p>
             <p className="text-6xl font-bold text-slate-900 dark:text-white">{new Date().getDate()}</p>
