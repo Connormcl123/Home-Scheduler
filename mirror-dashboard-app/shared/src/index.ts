@@ -62,6 +62,8 @@ export interface FinanceQuote {
   price: number | null;
   change: number | null;
   changePercent: number | null;
+  /** Recent daily closes, oldest first, for drawing a sparkline. */
+  spark?: number[];
 }
 
 export interface FinanceAccount {

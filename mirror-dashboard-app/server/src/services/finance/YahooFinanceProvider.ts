@@ -1,40 +1,35 @@
-import yahooFinanceDefault from "yahoo-finance2";
 import type { FinanceQuote } from "@mirror-dashboard/shared";
 import type { FinanceProvider } from "./FinanceProvider.js";
 
 /**
- * yahoo-finance2's default export is not the same shape everywhere: some builds
- * hand back a ready-made instance with .quote on it, others hand back the
- * YahooFinance class itself and expect you to construct it. The Pi and the dev
- * machine landed on different ones, which is why every quote came back null
- * with "yahoo.quote is not a function". Normalise instead of assuming.
+ * Talks to Yahoo's public chart endpoint directly rather than going through
+ * yahoo-finance2. That library is unmaintained, its default export has an
+ * inconsistent shape across builds, and its quote() path needs a cookie/crumb
+ * handshake that the Pi was getting 429ed on for every symbol. The chart
+ * endpoint needs no handshake, and it returns a price series as well as the
+ * current price, so the dashboard can draw a sparkline instead of a bare number.
  */
-function resolveClient(): { quote(symbol: string): Promise<any> } | null {
-  const mod = yahooFinanceDefault as any;
-  if (typeof mod?.quote === "function") return mod;
-  if (typeof mod?.default?.quote === "function") return mod.default;
-  if (typeof mod === "function") {
-    try {
-      const instance = new mod();
-      if (typeof instance?.quote === "function") return instance;
-    } catch {
-      // fall through to the null case below
-    }
-  }
-  return null;
-}
+const CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
 
-let client: ReturnType<typeof resolveClient> | undefined;
-function getClient() {
-  if (client === undefined) {
-    client = resolveClient();
-    if (!client) console.warn("yahoo-finance2 exposed no usable quote(); market data will be blank.");
-  }
-  return client;
-}
+type ChartResponse = {
+  chart?: {
+    result?: Array<{
+      meta?: {
+        symbol?: string;
+        shortName?: string;
+        longName?: string;
+        regularMarketPrice?: number;
+        chartPreviousClose?: number;
+        previousClose?: number;
+      };
+      indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+    }>;
+    error?: unknown;
+  };
+};
 
 export class YahooFinanceProvider implements FinanceProvider {
-  readonly name = "yahoo-test";
+  readonly name = "yahoo-chart";
 
   async getQuotes(symbols: string[]): Promise<FinanceQuote[]> {
     const unique = Array.from(new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean)));
@@ -42,20 +37,40 @@ export class YahooFinanceProvider implements FinanceProvider {
   }
 
   private async getQuote(symbol: string): Promise<FinanceQuote> {
-    const yahoo = getClient();
-    if (!yahoo) return { symbol, name: symbol, price: null, change: null, changePercent: null };
+    const empty: FinanceQuote = { symbol, name: symbol, price: null, change: null, changePercent: null };
     try {
-      const quote: any = await yahoo.quote(symbol);
+      const url = `${CHART_URL}/${encodeURIComponent(symbol)}?interval=1d&range=1mo`;
+      const response = await fetch(url, {
+        // Yahoo rejects the default undici agent string.
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; MirrorDashboard/1.0)" },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) throw new Error(`chart request failed: ${response.status}`);
+
+      const payload = (await response.json()) as ChartResponse;
+      const result = payload.chart?.result?.[0];
+      const meta = result?.meta;
+      if (!meta || typeof meta.regularMarketPrice !== "number") throw new Error("no price in chart response");
+
+      const closes = (result?.indicators?.quote?.[0]?.close || []).filter(
+        (value): value is number => typeof value === "number"
+      );
+      const previous = meta.chartPreviousClose ?? meta.previousClose ?? closes[closes.length - 2] ?? null;
+      const price = meta.regularMarketPrice;
+      const change = previous === null ? null : price - previous;
+
       return {
         symbol,
-        name: quote.shortName || quote.longName || symbol,
-        price: quote.regularMarketPrice ?? null,
-        change: quote.regularMarketChange ?? null,
-        changePercent: quote.regularMarketChangePercent ?? null
+        name: meta.shortName || meta.longName || symbol,
+        price,
+        change,
+        changePercent: previous ? (change! / previous) * 100 : null,
+        // Trimmed to a month so the payload stays small on a Pi.
+        spark: closes.slice(-30)
       };
     } catch (error) {
       console.warn(`Finance quote unavailable for ${symbol}:`, error instanceof Error ? error.message : error);
-      return { symbol, name: symbol, price: null, change: null, changePercent: null };
+      return empty;
     }
   }
 }
