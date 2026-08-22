@@ -353,6 +353,7 @@ export interface HomeCard {
   kind: HomeCardKind;
   title: string;
   detail: string;
+  bullets?: string[];
   urgency: "now" | "soon" | "later";
   imageUrl?: string | null;
   link?: string;

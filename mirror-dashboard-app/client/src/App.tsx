@@ -964,7 +964,7 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
           return (
             <article
               key={`${card.kind}-${index}`}
-              className={`relative flex min-h-0 flex-col justify-between overflow-hidden rounded-[24px] border border-white/70 bg-white/85 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${
+              className={`relative flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/70 bg-white/85 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${
                 lead ? "col-span-2" : ""
               }`}
             >
@@ -981,6 +981,9 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/20" />
                 </>
               )}
+              {!card.imageUrl && (
+                <Icon className="pointer-events-none absolute -bottom-8 -right-6 h-44 w-44 text-slate-900/[0.05] dark:text-white/[0.05]" />
+              )}
               <div className="relative flex items-center gap-3">
                 <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${card.imageUrl ? "bg-white/20 text-white" : look.tint}`}>
                   <Icon className="h-6 w-6" />
@@ -992,13 +995,26 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
                   <span className="ml-auto rounded-full bg-rose-600 px-3 py-1 text-xs font-black uppercase text-white">Now</span>
                 )}
               </div>
-              <div className="relative mt-3">
-                <p className={`font-black leading-tight ${lead ? "text-3xl" : "text-2xl"} ${card.imageUrl ? "text-white" : "text-mirror-ink dark:text-slate-50"}`}>
+              <div className="relative mt-4 min-h-0 flex-1">
+                <p className={`font-black leading-tight ${lead ? "text-4xl" : "text-2xl"} ${card.imageUrl ? "text-white" : "text-mirror-ink dark:text-slate-50"}`}>
                   {card.title}
                 </p>
-                <p className={`mt-1 text-lg leading-snug ${card.imageUrl ? "text-white/85" : "text-slate-500 dark:text-slate-400"}`}>
+                <p className={`mt-2 text-xl leading-snug ${card.imageUrl ? "text-white/85" : "text-slate-500 dark:text-slate-400"}`}>
                   {countdown ? `${countdown} · ${card.detail}` : card.detail}
                 </p>
+                {card.bullets && card.bullets.length > 0 && (
+                  <ul className={`mt-4 space-y-2 border-t pt-3 ${card.imageUrl ? "border-white/25" : "border-mirror-line"}`}>
+                    {card.bullets.slice(0, lead ? 3 : 2).map((bullet, position) => (
+                      <li
+                        key={position}
+                        className={`flex gap-2 text-lg leading-snug ${card.imageUrl ? "text-white/80" : "text-slate-600 dark:text-slate-300"}`}
+                      >
+                        <span className={card.imageUrl ? "text-white/50" : "text-sky-500"}>&middot;</span>
+                        <span className="line-clamp-2">{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </article>
           );

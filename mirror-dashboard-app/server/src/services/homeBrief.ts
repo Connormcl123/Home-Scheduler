@@ -82,9 +82,14 @@ const PULSE_SCHEMA = {
           kind: { type: "string", enum: ["event", "task", "grocery", "weather", "news", "note", "travel", "finance"] },
           title: { type: "string", description: "Four to seven words." },
           detail: { type: "string", description: "One short supporting line." },
+          bullets: {
+            type: "array",
+            items: { type: "string" },
+            description: "Two or three very short supporting facts - names, times, amounts. These fill out the card, so prefer concrete specifics over restating the title."
+          },
           urgency: { type: "string", enum: ["now", "soon", "later"] }
         },
-        required: ["kind", "title", "detail", "urgency"],
+        required: ["kind", "title", "detail", "bullets", "urgency"],
         additionalProperties: false
       }
     }
@@ -107,14 +112,40 @@ function fallbackPulse(ctx: Awaited<ReturnType<typeof collectContext>>): HomePul
       kind: "event",
       title: next.title,
       detail: new Date(next.start).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }),
+      bullets: ctx.events.slice(1, 3).map((event) => `${new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} ${event.title}`),
       urgency: "soon"
     });
   }
   const urgent = ctx.tasks.find((task) => task.priority === "high") || ctx.tasks[0];
-  if (urgent) cards.push({ kind: "task", title: urgent.title, detail: urgent.dueDate ? `Due ${urgent.dueDate}` : "No due date", urgency: "soon" });
+  if (urgent) {
+    cards.push({
+      kind: "task",
+      title: urgent.title,
+      detail: urgent.dueDate ? `Due ${urgent.dueDate}` : "No due date",
+      bullets: ctx.tasks.slice(1, 4).map((task) => task.title),
+      urgency: "soon"
+    });
+  }
   const out = ctx.grocery.find((item) => item.status === "out");
-  if (out) cards.push({ kind: "grocery", title: `${out.name} is out`, detail: "Add it to the run", urgency: "soon" });
-  if (ctx.news[0]) cards.push({ kind: "news", title: ctx.news[0].title, detail: ctx.news[0].source, urgency: "later" });
+  if (out) {
+    cards.push({
+      kind: "grocery",
+      title: `${out.name} is out`,
+      detail: "Add it to the run",
+      bullets: ctx.grocery.slice(0, 3).map((item) => `${item.name} - ${item.status}`),
+      urgency: "soon"
+    });
+  }
+  if (ctx.news[0]) {
+    cards.push({
+      kind: "news",
+      title: ctx.news[0].title,
+      detail: ctx.news[0].source,
+      bullets: ctx.news.slice(1, 3).map((article) => article.title),
+      urgency: "later",
+      imageUrl: ctx.news[0].imageUrl || null
+    });
+  }
 
   return {
     generatedAt: new Date().toISOString(),
@@ -158,7 +189,9 @@ export async function getHomePulse(force = false): Promise<HomePulse> {
       output_config: { format: { type: "json_schema", schema: PULSE_SCHEMA } },
       system:
         "You choose what a family sees on their kitchen wall display. Rank by what is genuinely useful in the next few hours, " +
-        "not by category. Something happening soon beats something interesting. Be concrete and specific; never pad with filler.",
+        "not by category. Something happening soon beats something interesting. Be concrete and specific; never pad with filler. " +
+        "Unless something genuinely urgent crowds it out, include one news card and one travel card - those carry photographs, " +
+        "and a wall of text-only cards is hard to read at a glance.",
       messages: [{ role: "user", content: describeContext(ctx) }]
     });
 
