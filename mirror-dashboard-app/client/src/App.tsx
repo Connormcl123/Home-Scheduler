@@ -1095,7 +1095,16 @@ function SlideQr({ url }: { url: string }) {
 function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: () => void }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  // The budget bar grows on a transition rather than a keyframe: var() inside
+  // @keyframes is not reliably interpolated, and the bar rendered stuck at zero.
+  const [revealed, setRevealed] = useState(false);
   const slides = story.slides;
+
+  useEffect(() => {
+    setRevealed(false);
+    const timer = window.setTimeout(() => setRevealed(true), 80);
+    return () => window.clearTimeout(timer);
+  }, [index]);
 
   useEffect(() => {
     if (paused) return;
@@ -1206,8 +1215,8 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
                     </div>
                     <div className="mt-3 h-4 overflow-hidden rounded-full bg-white/20">
                       <div
-                        className="story-bar h-full rounded-full bg-amber-300"
-                        style={{ ["--bar-width" as string]: `${Math.min(100, (slide.budget.spent / slide.budget.limit) * 100)}%` }}
+                        className="h-full rounded-full bg-amber-300 transition-[width] duration-700 ease-out"
+                        style={{ width: revealed ? `${Math.min(100, (slide.budget.spent / slide.budget.limit) * 100)}%` : "0%" }}
                       />
                     </div>
                   </div>
