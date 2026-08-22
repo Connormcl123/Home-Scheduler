@@ -4,3 +4,7 @@ data/
 .env
 .DS_Store
 npm-debug.log*
+
+# The Pi generates its own lockfile with npm 10 on ARM; a Windows/npm-11 one
+# collides on pull and can carry wrong-platform optional binaries.
+package-lock.json
