@@ -891,7 +891,7 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
       </Card>
       <Card className="col-span-12">
         <p className="text-xl font-semibold text-slate-600">
-          Updated {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Designed for kiosk touch, with manual page buttons and local-first data.
+          Updated {now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. Designed for kiosk touch, with manual page buttons and local-first data.
         </p>
       </Card>
     </div>
@@ -3714,12 +3714,14 @@ function Card({ children, className = "" }: { children: ReactNode; className?: s
   return <section className={`min-h-0 rounded-[24px] border border-white/75 bg-mirror-card p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${className}`}>{children}</section>;
 }
 
+// Times are pinned to en-US rather than the system locale: the Pi's locale
+// formats 24-hour, and the household wants AM/PM everywhere.
 function formatEventTime(value: string) {
-  return new Date(value).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  return new Date(value).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
 function formatTimeOnly(value: string) {
-  return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 function formatHour(hour: number) {
@@ -3734,11 +3736,11 @@ function formatShortDate(value: string) {
 
 function formatServerDateTime(value: string) {
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  return new Date(normalized).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return new Date(normalized).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function money(value: number | null) {
-  return value === null ? "--" : value.toLocaleString([], { style: "currency", currency: "USD" });
+  return value === null ? "--" : value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
 function signed(value: number | null) {
