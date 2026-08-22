@@ -53,6 +53,7 @@ export interface NewsArticle {
   source: string;
   link: string;
   publishedAt?: string;
+  imageUrl?: string | null;
 }
 
 export interface FinanceQuote {
@@ -344,4 +345,36 @@ export interface TravelDealsResponse {
   deals: TravelDeal[];
   status: "ready" | "empty" | "disabled";
   reason?: string;
+}
+
+export type HomeCardKind = "event" | "task" | "grocery" | "weather" | "news" | "note" | "travel" | "finance";
+
+export interface HomeCard {
+  kind: HomeCardKind;
+  title: string;
+  detail: string;
+  urgency: "now" | "soon" | "later";
+  imageUrl?: string | null;
+  link?: string;
+  startsAt?: string;
+}
+
+export interface HomePulse {
+  generatedAt: string;
+  headline: string;
+  cards: HomeCard[];
+  source: "ai" | "local";
+}
+
+export interface StorySlide {
+  kind: "greeting" | "weather" | "schedule" | "tasks" | "news" | "travel" | "closing";
+  title: string;
+  lines: string[];
+  imageUrl?: string | null;
+}
+
+export interface MorningStory {
+  forDate: string;
+  slides: StorySlide[];
+  createdAt: string;
 }

@@ -3,7 +3,39 @@ import Parser from "rss-parser";
 import type { NewsArticle } from "@mirror-dashboard/shared";
 import { getSettings } from "./settings.js";
 
-const parser = new Parser();
+// Feeds advertise images in several competing ways; ask for all of them and
+// take whichever the publisher actually used.
+const parser = new Parser({
+  customFields: {
+    item: [
+      ["media:content", "mediaContent", { keepArray: true }],
+      ["media:thumbnail", "mediaThumbnail", { keepArray: true }]
+    ]
+  }
+});
+
+type FeedItemWithMedia = {
+  enclosure?: { url?: string; type?: string };
+  mediaContent?: Array<{ $?: { url?: string; medium?: string; type?: string } }>;
+  mediaThumbnail?: Array<{ $?: { url?: string } }>;
+  "content:encoded"?: string;
+  content?: string;
+};
+
+function extractImage(item: FeedItemWithMedia): string | null {
+  if (item.enclosure?.url && (item.enclosure.type || "").startsWith("image")) {
+    return item.enclosure.url;
+  }
+  const thumb = item.mediaThumbnail?.[0]?.$?.url;
+  if (thumb) return thumb;
+  const media = item.mediaContent?.find(
+    (entry) => entry.$?.medium === "image" || (entry.$?.type || "").startsWith("image")
+  )?.$?.url;
+  if (media) return media;
+  // Last resort: the first <img> in the rendered body.
+  const html = item["content:encoded"] || item.content || "";
+  return /<img[^>]+src=["']([^"']+)["']/i.exec(html)?.[1] || null;
+}
 
 export async function getNews(): Promise<NewsArticle[]> {
   const settings = await getSettings();
@@ -19,7 +51,8 @@ export async function getNews(): Promise<NewsArticle[]> {
           title: item.title || "Untitled article",
           source: feed.title || new URL(feedUrl).hostname,
           link,
-          publishedAt: item.isoDate || item.pubDate
+          publishedAt: item.isoDate || item.pubDate,
+          imageUrl: extractImage(item as FeedItemWithMedia)
         });
       }
     } catch (error) {

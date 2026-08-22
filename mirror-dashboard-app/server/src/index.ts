@@ -23,6 +23,7 @@ import { getWeather } from "./services/weather.js";
 import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
 import { AssistantError, getAssistantStatus, runAssistantTurn } from "./services/assistant.js";
 import { generateTravelDeals, listTravelDeals, startTravelDealScheduler } from "./services/travelDeals.js";
+import { generateMorningStory, getHomePulse, getMorningStory } from "./services/homeBrief.js";
 
 const app = express();
 
@@ -435,6 +436,30 @@ app.post("/api/voice/calendar-event", async (req, res, next) => {
     if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
     const event = await createCalendarEventFromVoice(req.body || {});
     res.status(201).json({ ok: true, message: `Added calendar event: ${event.title}`, event });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/home/pulse", async (req, res, next) => {
+  try {
+    res.json(await getHomePulse(req.query.force === "1"));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/home/story", async (_req, res, next) => {
+  try {
+    res.json(await getMorningStory());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/home/story/refresh", async (_req, res, next) => {
+  try {
+    res.json(await generateMorningStory());
   } catch (error) {
     next(error);
   }

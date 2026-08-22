@@ -316,6 +316,14 @@ export function startTravelDealScheduler() {
       } catch (error) {
         console.error("Travel idea refresh failed:", error instanceof Error ? error.message : error);
       }
+      try {
+        // Written after the trip ideas so the story can use the day's photo.
+        const { generateMorningStory } = await import("./homeBrief.js");
+        await generateMorningStory();
+        console.log(`Morning story written for ${todayIso()}`);
+      } catch (error) {
+        console.error("Morning story failed:", error instanceof Error ? error.message : error);
+      }
       schedule();
     }, delay);
     timer.unref?.();

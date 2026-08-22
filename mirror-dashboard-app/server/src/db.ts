@@ -157,6 +157,13 @@ export async function initializeSchema(database: Database) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS daily_briefs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      for_date TEXT NOT NULL UNIQUE,
+      slides TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS local_calendar_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,

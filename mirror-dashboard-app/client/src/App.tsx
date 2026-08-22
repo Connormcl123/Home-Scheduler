@@ -1,5 +1,5 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { ApiIntegrationStatus, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, HomeCardKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -35,6 +35,8 @@ import {
   updateTask,
   updateWatchlistItem,
   fetchAssistantStatus,
+  fetchHomePulse,
+  fetchMorningStory,
   fetchTravelDeals,
   refreshTravelDeals,
   sendAssistantMessage,
@@ -863,37 +865,236 @@ function DashboardApp() {
   );
 }
 
+const CARD_LOOK: Record<HomeCardKind, { icon: LucideIcon; tint: string; label: string }> = {
+  event: { icon: CalendarDays, tint: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300", label: "Calendar" },
+  task: { icon: CheckCircle2, tint: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", label: "Task" },
+  grocery: { icon: ShoppingBasket, tint: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", label: "Grocery" },
+  weather: { icon: CloudSun, tint: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300", label: "Weather" },
+  news: { icon: Newspaper, tint: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300", label: "News" },
+  note: { icon: StickyNote, tint: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300", label: "Note" },
+  travel: { icon: Plane, tint: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", label: "Travel" },
+  finance: { icon: Landmark, tint: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", label: "Finance" }
+};
+
+/** "in 25 min" / "in 2h 10m" — the thing you actually want from a wall display. */
+function countdownTo(iso: string, now: Date) {
+  const ms = new Date(iso).getTime() - now.getTime();
+  if (Number.isNaN(ms)) return null;
+  if (ms < -60000) return null;
+  const minutes = Math.round(ms / 60000);
+  if (minutes <= 0) return "now";
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `in ${hours}h ${rest}m` : `in ${hours}h`;
+}
+
 function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date }) {
+  const [pulse, setPulse] = useState<HomePulse | null>(null);
+  const [story, setStory] = useState<MorningStory | null>(null);
+  const [storyOpen, setStoryOpen] = useState(false);
+
+  useEffect(() => {
+    fetchHomePulse().then(setPulse).catch(() => setPulse(null));
+  }, []);
+
+  // Auto-play once per day, and only in the morning, so it never ambushes
+  // anyone walking past at dinner time.
+  useEffect(() => {
+    fetchMorningStory()
+      .then((data) => {
+        if (!data?.slides?.length) return;
+        setStory(data);
+        const seen = safeStorageGet("mirror-dashboard-story-seen");
+        const today = new Date().toLocaleDateString("en-CA");
+        if (seen !== today && data.forDate === today && new Date().getHours() < 10) {
+          setStoryOpen(true);
+          safeStorageSet("mirror-dashboard-story-seen", today);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const weather = dashboard.weather;
+  const today = weather.daily[0];
+  const cards = pulse?.cards ?? [];
+
   return (
-    <div className="grid flex-1 grid-cols-12 gap-5">
-      <Card className="col-span-4 row-span-2">
-        <WeatherCard dashboard={dashboard} />
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      {/* Hero: the one line worth walking over for. */}
+      <Card className="shrink-0">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <p className="text-sm font-black uppercase tracking-widest text-sky-600 dark:text-sky-400">Right now</p>
+            <p className="mt-2 text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">
+              {pulse?.headline ?? "Reading the day..."}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-5">
+            {/* Weather demoted to a strip: temperature and the forecast, nothing more. */}
+            <div className="text-right">
+              <p className="text-4xl font-black leading-none text-mirror-ink dark:text-slate-50">{Math.round(weather.current.temperature)}&deg;</p>
+              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">{weather.current.description}</p>
+              {today && (
+                <p className="text-base text-slate-400 dark:text-slate-500">
+                  {Math.round(today.high)}&deg; / {Math.round(today.low)}&deg;
+                </p>
+              )}
+            </div>
+            {story && (
+              <button
+                onClick={() => setStoryOpen(true)}
+                className="touch-button w-20 bg-sky-600 text-white"
+                aria-label="Play the morning briefing"
+              >
+                <Sparkles className="h-7 w-7" />
+              </button>
+            )}
+          </div>
+        </div>
       </Card>
-      <Card className="col-span-5 row-span-2">
-        <SectionTitle icon={CalendarDays} title="Agenda" />
-        <EventList events={dashboard.calendar.slice(0, 5)} />
-      </Card>
-      <Card className="col-span-3 row-span-2">
-        <SectionTitle icon={CheckCircle2} title="Today" />
-        <TaskList tasks={dashboard.tasks.slice(0, 5)} />
-      </Card>
-      <Card className="col-span-4">
-        <SectionTitle icon={StickyNote} title="Daily Note" />
-        <p className="mt-4 text-2xl leading-snug text-slate-700">{dashboard.todayNote?.body || "No notes yet."}</p>
-      </Card>
-      <Card className="col-span-4">
-        <SectionTitle icon={Newspaper} title="News" />
-        <NewsList articles={dashboard.news.slice(0, 3)} />
-      </Card>
-      <Card className="col-span-4">
-        <SectionTitle icon={Landmark} title="Finance" />
-        <FinanceList quotes={dashboard.finance.quotes.slice(0, 3)} />
-      </Card>
-      <Card className="col-span-12">
-        <p className="text-xl font-semibold text-slate-600">
-          Updated {now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. Designed for kiosk touch, with manual page buttons and local-first data.
-        </p>
-      </Card>
+
+      {/* Ranked cards. The model decides what appears and in what order. */}
+      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-4">
+        {cards.slice(0, 6).map((card, index) => {
+          const look = CARD_LOOK[card.kind] || CARD_LOOK.note;
+          const Icon = look.icon;
+          const countdown = card.startsAt ? countdownTo(card.startsAt, now) : null;
+          const lead = index === 0;
+          return (
+            <article
+              key={`${card.kind}-${index}`}
+              className={`relative flex min-h-0 flex-col justify-between overflow-hidden rounded-[24px] border border-white/70 bg-white/85 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${
+                lead ? "col-span-2" : ""
+              }`}
+            >
+              {card.imageUrl && (
+                <>
+                  <img
+                    src={card.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(event) => { event.currentTarget.style.display = "none"; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/20" />
+                </>
+              )}
+              <div className="relative flex items-center gap-3">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${card.imageUrl ? "bg-white/20 text-white" : look.tint}`}>
+                  <Icon className="h-6 w-6" />
+                </span>
+                <span className={`text-sm font-black uppercase tracking-widest ${card.imageUrl ? "text-white/80" : "text-slate-400 dark:text-slate-500"}`}>
+                  {look.label}
+                </span>
+                {card.urgency === "now" && (
+                  <span className="ml-auto rounded-full bg-rose-600 px-3 py-1 text-xs font-black uppercase text-white">Now</span>
+                )}
+              </div>
+              <div className="relative mt-3">
+                <p className={`font-black leading-tight ${lead ? "text-3xl" : "text-2xl"} ${card.imageUrl ? "text-white" : "text-mirror-ink dark:text-slate-50"}`}>
+                  {card.title}
+                </p>
+                <p className={`mt-1 text-lg leading-snug ${card.imageUrl ? "text-white/85" : "text-slate-500 dark:text-slate-400"}`}>
+                  {countdown ? `${countdown} · ${card.detail}` : card.detail}
+                </p>
+              </div>
+            </article>
+          );
+        })}
+
+        {!cards.length && (
+          <div className="col-span-3 row-span-2 flex items-center justify-center rounded-[24px] bg-white/70 text-2xl text-slate-500 dark:bg-slate-900/70 dark:text-slate-400">
+            Working out what matters today...
+          </div>
+        )}
+      </div>
+
+      {storyOpen && story && <MorningStoryPlayer story={story} onClose={() => setStoryOpen(false)} />}
+    </div>
+  );
+}
+
+const SLIDE_TINT: Record<StorySlide["kind"], string> = {
+  greeting: "from-sky-600 to-indigo-800",
+  weather: "from-cyan-600 to-sky-800",
+  schedule: "from-violet-600 to-purple-900",
+  tasks: "from-emerald-600 to-teal-800",
+  news: "from-slate-700 to-slate-900",
+  travel: "from-amber-500 to-orange-700",
+  closing: "from-indigo-600 to-slate-900"
+};
+
+const SLIDE_MS = 5200;
+
+function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: () => void }) {
+  const [index, setIndex] = useState(0);
+  const slides = story.slides;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (index >= slides.length - 1) onClose();
+      else setIndex((current) => current + 1);
+    }, SLIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [index, slides.length, onClose]);
+
+  const slide = slides[index];
+  if (!slide) return null;
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex flex-col bg-gradient-to-br ${SLIDE_TINT[slide.kind] || SLIDE_TINT.greeting}`}
+      onClick={() => (index >= slides.length - 1 ? onClose() : setIndex(index + 1))}
+    >
+      {slide.imageUrl && (
+        <>
+          {/* Slow push-in. transform only, so the Pi composites it rather than repainting. */}
+          <img
+            key={slide.imageUrl}
+            src={slide.imageUrl}
+            alt=""
+            decoding="async"
+            className="story-kenburns absolute inset-0 h-full w-full object-cover"
+            onError={(event) => { event.currentTarget.style.display = "none"; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30" />
+        </>
+      )}
+
+      <div className="relative flex shrink-0 gap-2 p-6">
+        {slides.map((_, position) => (
+          <div key={position} className="h-2 flex-1 overflow-hidden rounded-full bg-white/25">
+            <div
+              className={`h-full rounded-full bg-white ${position === index ? "story-progress" : ""}`}
+              style={{ width: position < index ? "100%" : position === index ? undefined : "0%" }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="relative flex min-h-0 flex-1 flex-col justify-center px-16 pb-24">
+        <p key={`t-${index}`} className="story-rise text-7xl font-black leading-none text-white">{slide.title}</p>
+        <div className="mt-8 space-y-4">
+          {slide.lines.map((line, position) => (
+            <p
+              key={`${index}-${position}`}
+              className="story-rise text-4xl font-semibold leading-snug text-white/90"
+              style={{ animationDelay: `${140 + position * 110}ms` }}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      </div>
+
+      <button
+        onClick={(event) => { event.stopPropagation(); onClose(); }}
+        className="absolute bottom-8 right-8 min-h-16 rounded-2xl bg-white/20 px-8 text-xl font-black text-white active:scale-95"
+      >
+        Skip
+      </button>
     </div>
   );
 }
