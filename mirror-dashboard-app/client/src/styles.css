@@ -319,3 +319,28 @@ textarea {
   .story-kenburns, .story-rise, .story-progress { animation-duration: 1ms; }
   .story-rise { opacity: 1; }
 }
+
+/* Sparkline draws itself in; stroke-dashoffset animates on the compositor. */
+@keyframes story-spark {
+  from { stroke-dashoffset: 240; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.story-spark {
+  stroke-dasharray: 240;
+  animation: story-spark 900ms ease-out forwards;
+}
+
+@keyframes story-bar {
+  from { width: 0%; }
+  to   { width: var(--bar-width, 0%); }
+}
+
+.story-bar {
+  width: 0%;
+  animation: story-bar 800ms cubic-bezier(0.22, 1, 0.36, 1) 260ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-spark, .story-bar { animation-duration: 1ms; }
+}

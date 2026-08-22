@@ -1,5 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { ApiIntegrationStatus, HomeCardKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import QRCode from "qrcode";
+import type { ApiIntegrationStatus, HomeCardKind, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -1032,32 +1033,84 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
   );
 }
 
-const SLIDE_TINT: Record<StorySlide["kind"], string> = {
+const SLIDE_TINT: Record<StorySlideKind, string> = {
   greeting: "from-sky-600 to-indigo-800",
   weather: "from-cyan-600 to-sky-800",
   schedule: "from-violet-600 to-purple-900",
   tasks: "from-emerald-600 to-teal-800",
   news: "from-slate-700 to-slate-900",
+  markets: "from-slate-800 to-slate-950",
+  finance: "from-emerald-700 to-slate-900",
   travel: "from-amber-500 to-orange-700",
   closing: "from-indigo-600 to-slate-900"
 };
 
-const SLIDE_MS = 5200;
+const SLIDE_MS = 6400;
+
+/** Sparkline as a plain SVG path — no chart library, and it scales crisply. */
+function Sparkline({ points, positive }: { points: number[]; positive: boolean }) {
+  if (points.length < 2) return null;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const span = max - min || 1;
+  const path = points
+    .map((value, index) => {
+      const x = (index / (points.length - 1)) * 100;
+      const y = 30 - ((value - min) / span) * 28;
+      return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  return (
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="h-10 w-40">
+      <path
+        d={path}
+        fill="none"
+        strokeWidth={2.5}
+        vectorEffect="non-scaling-stroke"
+        className={`story-spark ${positive ? "stroke-emerald-400" : "stroke-rose-400"}`}
+      />
+    </svg>
+  );
+}
+
+/** Scan-to-open: the kiosk deliberately refuses to navigate away, so the phone is the way out. */
+function SlideQr({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    QRCode.toDataURL(url, { margin: 1, width: 220, color: { dark: "#0f172a", light: "#ffffff" } })
+      .then((data) => { if (live) setSrc(data); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [url]);
+  if (!src) return null;
+  return (
+    <div className="flex items-center gap-4 rounded-2xl bg-white/95 p-4">
+      <img src={src} alt="" className="h-28 w-28" />
+      <p className="max-w-[9rem] text-lg font-bold leading-tight text-slate-700">Scan to open on your phone</p>
+    </div>
+  );
+}
 
 function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: () => void }) {
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
   const slides = story.slides;
 
   useEffect(() => {
+    if (paused) return;
     const timer = window.setTimeout(() => {
       if (index >= slides.length - 1) onClose();
       else setIndex((current) => current + 1);
     }, SLIDE_MS);
     return () => window.clearTimeout(timer);
-  }, [index, slides.length, onClose]);
+  }, [index, paused, slides.length, onClose]);
 
   const slide = slides[index];
   if (!slide) return null;
+
+  const money = slide.money || [];
+  const quotes = slide.quotes || [];
 
   return (
     <div
@@ -1066,7 +1119,6 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
     >
       {slide.imageUrl && (
         <>
-          {/* Slow push-in. transform only, so the Pi composites it rather than repainting. */}
           <img
             key={slide.imageUrl}
             src={slide.imageUrl}
@@ -1075,7 +1127,7 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
             className="story-kenburns absolute inset-0 h-full w-full object-cover"
             onError={(event) => { event.currentTarget.style.display = "none"; }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/65 to-black/35" />
         </>
       )}
 
@@ -1083,34 +1135,137 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
         {slides.map((_, position) => (
           <div key={position} className="h-2 flex-1 overflow-hidden rounded-full bg-white/25">
             <div
-              className={`h-full rounded-full bg-white ${position === index ? "story-progress" : ""}`}
+              className={`h-full rounded-full bg-white ${position === index && !paused ? "story-progress" : ""}`}
               style={{ width: position < index ? "100%" : position === index ? undefined : "0%" }}
             />
           </div>
         ))}
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col justify-center px-16 pb-24">
-        <p key={`t-${index}`} className="story-rise text-7xl font-black leading-none text-white">{slide.title}</p>
-        <div className="mt-8 space-y-4">
-          {slide.lines.map((line, position) => (
-            <p
-              key={`${index}-${position}`}
-              className="story-rise text-4xl font-semibold leading-snug text-white/90"
-              style={{ animationDelay: `${140 + position * 110}ms` }}
-            >
-              {line}
-            </p>
-          ))}
+      <div className="relative flex min-h-0 flex-1 gap-12 px-16 pb-20">
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <p key={`t-${index}`} className="story-rise text-7xl font-black leading-none text-white">{slide.title}</p>
+          <div className="mt-7 space-y-3">
+            {slide.lines.map((line, position) => (
+              <p
+                key={`${index}-${position}`}
+                className="story-rise text-3xl font-semibold leading-snug text-white/90"
+                style={{ animationDelay: `${140 + position * 100}ms` }}
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+          {slide.link && (
+            <div key={`q-${index}`} className="story-rise mt-8 w-fit" style={{ animationDelay: "420ms" }}>
+              <SlideQr url={slide.link} />
+            </div>
+          )}
         </div>
+
+        {/* Data panel: real figures rendered beside the narrative. */}
+        {(quotes.length > 0 || money.length > 0 || slide.forecast?.length || slide.agenda?.length || slide.checklist?.length) && (
+          <div key={`d-${index}`} className="story-rise flex w-[38%] shrink-0 flex-col justify-center" style={{ animationDelay: "220ms" }}>
+            {quotes.length > 0 && (
+              <div className="space-y-3">
+                {quotes.map((quote) => {
+                  const up = (quote.changePercent ?? 0) >= 0;
+                  return (
+                    <div key={quote.symbol} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-2xl font-black text-white">{quote.symbol}</p>
+                        <p className="text-lg text-white/70">{quote.price?.toFixed(2)}</p>
+                      </div>
+                      <Sparkline points={quote.spark || []} positive={up} />
+                      <p className={`w-24 text-right text-2xl font-black ${up ? "text-emerald-300" : "text-rose-300"}`}>
+                        {up ? "+" : ""}{(quote.changePercent ?? 0).toFixed(1)}%
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {money.length > 0 && (
+              <div className="space-y-4">
+                {money.map((entry) => (
+                  <div key={entry.label} className="rounded-2xl bg-white/10 p-5">
+                    <p className="text-lg font-bold uppercase tracking-widest text-white/60">{entry.label}</p>
+                    <p className={`text-5xl font-black ${
+                      entry.tone === "good" ? "text-emerald-300" : entry.tone === "bad" ? "text-rose-300" : "text-white"
+                    }`}>
+                      {entry.value}
+                    </p>
+                  </div>
+                ))}
+                {slide.budget && slide.budget.limit > 0 && (
+                  <div className="rounded-2xl bg-white/10 p-5">
+                    <div className="flex justify-between text-lg font-bold text-white/70">
+                      <span>Budget</span>
+                      <span>{Math.round((slide.budget.spent / slide.budget.limit) * 100)}%</span>
+                    </div>
+                    <div className="mt-3 h-4 overflow-hidden rounded-full bg-white/20">
+                      <div
+                        className="story-bar h-full rounded-full bg-amber-300"
+                        style={{ ["--bar-width" as string]: `${Math.min(100, (slide.budget.spent / slide.budget.limit) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {slide.forecast && slide.forecast.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                {slide.forecast.map((day) => (
+                  <div key={day.label} className="rounded-2xl bg-white/10 p-5">
+                    <p className="text-xl font-black text-white">{day.label}</p>
+                    <p className="text-4xl font-black text-white">{day.high}&deg;</p>
+                    <p className="text-lg text-white/70">{day.low}&deg; · {day.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {slide.agenda && slide.agenda.length > 0 && (
+              <div className="space-y-3">
+                {slide.agenda.map((entry, position) => (
+                  <div key={position} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4">
+                    <span className="w-24 shrink-0 text-xl font-black text-white/80">{entry.time}</span>
+                    <span className="min-w-0 flex-1 truncate text-2xl font-bold text-white">{entry.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {slide.checklist && slide.checklist.length > 0 && (
+              <div className="space-y-3">
+                {slide.checklist.map((entry, position) => (
+                  <div key={position} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4">
+                    <span className="h-6 w-6 shrink-0 rounded-full border-4 border-white/50" />
+                    <span className="min-w-0 flex-1 truncate text-2xl font-bold text-white">{entry.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <button
-        onClick={(event) => { event.stopPropagation(); onClose(); }}
-        className="absolute bottom-8 right-8 min-h-16 rounded-2xl bg-white/20 px-8 text-xl font-black text-white active:scale-95"
-      >
-        Skip
-      </button>
+      <div className="absolute bottom-8 right-8 flex gap-3">
+        <button
+          onClick={(event) => { event.stopPropagation(); setPaused((value) => !value); }}
+          className="min-h-16 rounded-2xl bg-white/20 px-8 text-xl font-black text-white active:scale-95"
+        >
+          {paused ? "Play" : "Pause"}
+        </button>
+        <button
+          onClick={(event) => { event.stopPropagation(); onClose(); }}
+          className="min-h-16 rounded-2xl bg-white/20 px-8 text-xl font-black text-white active:scale-95"
+        >
+          Skip
+        </button>
+      </div>
     </div>
   );
 }

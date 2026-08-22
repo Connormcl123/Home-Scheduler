@@ -369,11 +369,23 @@ export interface HomePulse {
   source: "ai" | "local";
 }
 
+export type StorySlideKind =
+  | "greeting" | "weather" | "schedule" | "tasks"
+  | "news" | "markets" | "finance" | "travel" | "closing";
+
 export interface StorySlide {
-  kind: "greeting" | "weather" | "schedule" | "tasks" | "news" | "travel" | "closing";
+  kind: StorySlideKind;
   title: string;
   lines: string[];
+  /** Everything below is attached from real data, never written by the model. */
   imageUrl?: string | null;
+  link?: string | null;
+  quotes?: FinanceQuote[];
+  money?: Array<{ label: string; value: string; tone: "good" | "bad" | "neutral" }>;
+  budget?: { spent: number; limit: number; label: string } | null;
+  forecast?: Array<{ label: string; high: number; low: number; description: string }>;
+  agenda?: Array<{ time: string; title: string }>;
+  checklist?: Array<{ title: string; due?: string | null }>;
 }
 
 export interface MorningStory {

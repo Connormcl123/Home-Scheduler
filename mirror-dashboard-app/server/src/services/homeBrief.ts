@@ -9,7 +9,13 @@ import { getNoteByDate } from "./notes.js";
 import { listTasks } from "./tasks.js";
 import { getWeather } from "./weather.js";
 import { listTravelDeals } from "./travelDeals.js";
+import { getFinanceSummary } from "./finance/index.js";
 import { todayIso } from "../utils/dates.js";
+
+function currency(value: number | null | undefined) {
+  if (value === null || value === undefined) return "--";
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
 
 let client: Anthropic | null = null;
 function getClient() {
@@ -20,14 +26,15 @@ function getClient() {
 /** Everything the model needs to judge what matters, gathered once. */
 async function collectContext() {
   const now = new Date();
-  const [events, tasks, grocery, weather, news, note, deals] = await Promise.all([
+  const [events, tasks, grocery, weather, news, note, deals, finance] = await Promise.all([
     getCalendarEvents().catch(() => []),
     listTasks().catch(() => []),
     listGroceryItems({ activeOnly: true }).catch(() => []),
     getWeather().catch(() => null),
     getNews().catch(() => []),
     getNoteByDate(todayIso()).catch(() => null),
-    listTravelDeals().catch(() => ({ deals: [] as Awaited<ReturnType<typeof listTravelDeals>>["deals"] }))
+    listTravelDeals().catch(() => ({ deals: [] as Awaited<ReturnType<typeof listTravelDeals>>["deals"] })),
+    getFinanceSummary().catch(() => null)
   ]);
 
   const upcoming = events
@@ -35,7 +42,7 @@ async function collectContext() {
     .slice(0, 8);
   const openTasks = tasks.filter((task) => !task.completed).slice(0, 10);
 
-  return { now, events: upcoming, tasks: openTasks, grocery, weather, news, note, deal: deals.deals[0] || null };
+  return { now, events: upcoming, tasks: openTasks, grocery, weather, news, note, deal: deals.deals[0] || null, finance };
 }
 
 function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
@@ -222,7 +229,7 @@ const STORY_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          kind: { type: "string", enum: ["greeting", "weather", "schedule", "tasks", "news", "travel", "closing"] },
+          kind: { type: "string", enum: ["greeting", "weather", "schedule", "tasks", "news", "markets", "finance", "travel", "closing"] },
           title: { type: "string", description: "Under six words. This is set very large." },
           lines: {
             type: "array",
@@ -260,7 +267,7 @@ export async function generateMorningStory(forDate = todayIso()): Promise<Mornin
   if (!config.anthropic.apiKey) return null;
 
   const ctx = await collectContext();
-  const kinds = ["greeting", "weather", "schedule", "tasks", "news", "travel", "closing"];
+  const kinds = ["greeting", "weather", "schedule", "tasks", "news", "markets", "finance", "travel", "closing"];
 
   const response = await getClient().messages.create({
     model: config.anthropic.model,
@@ -269,7 +276,9 @@ export async function generateMorningStory(forDate = todayIso()): Promise<Mornin
     system:
       "You write a short morning briefing for a family, shown as full-screen cards on a kitchen wall display. " +
       "Warm but not saccharine, and specific rather than generic - name the actual event, the actual errand. " +
-      "Every line must be readable at a glance from across the room, so keep them short. No emoji.",
+      "Every line must be readable at a glance from across the room, so keep them short. No emoji. " +
+      "For the markets and finance slides, say what the numbers mean rather than reciting them - the figures are " +
+      "rendered beside your text, so repeating them wastes the line. If a market moved sharply, say so plainly.",
     messages: [{
       role: "user",
       content: `${describeContext(ctx)}\n\nWrite one slide for each of these, in order: ${kinds.join(", ")}. ` +
@@ -282,10 +291,58 @@ export async function generateMorningStory(forDate = todayIso()): Promise<Mornin
   const parsed = JSON.parse(text) as { slides: StorySlide[] };
 
   // Imagery comes from real data, not from the model.
+  const money = ctx.finance?.personal;
+  const lead = ctx.news.find((article) => article.imageUrl) || ctx.news[0];
+
   const slides: StorySlide[] = (parsed.slides || []).map((slide) => {
-    if (slide.kind === "news") return { ...slide, imageUrl: ctx.news.find((a) => a.imageUrl)?.imageUrl || null };
-    if (slide.kind === "travel") return { ...slide, imageUrl: ctx.deal?.imageUrl || null };
-    return { ...slide, imageUrl: null };
+    switch (slide.kind) {
+      case "news":
+        return { ...slide, imageUrl: lead?.imageUrl || null, link: lead?.link || null };
+      case "travel":
+        return {
+          ...slide,
+          imageUrl: ctx.deal?.imageUrl || null,
+          link: ctx.deal ? `https://www.google.com/maps/search/${encodeURIComponent(ctx.deal.destination)}` : null
+        };
+      case "markets":
+        return { ...slide, quotes: (ctx.finance?.quotes || []).filter((quote) => quote.price !== null).slice(0, 5) };
+      case "finance":
+        return {
+          ...slide,
+          money: money
+            ? [
+                { label: "Cash", value: currency(money.totalCash), tone: "neutral" as const },
+                { label: "Spent this month", value: currency(money.budgetSpent), tone: "neutral" as const },
+                { label: "Cash flow", value: currency(money.cashFlow), tone: money.cashFlow >= 0 ? ("good" as const) : ("bad" as const) }
+              ]
+            : undefined,
+          budget: money && money.budgetLimit
+            ? { spent: money.budgetSpent, limit: money.budgetLimit, label: money.monthLabel }
+            : null
+        };
+      case "weather":
+        return {
+          ...slide,
+          forecast: (ctx.weather?.daily || []).slice(0, 4).map((day) => ({
+            label: new Date(day.date).toLocaleDateString("en-US", { weekday: "short" }),
+            high: Math.round(day.high),
+            low: Math.round(day.low),
+            description: day.description
+          }))
+        };
+      case "schedule":
+        return {
+          ...slide,
+          agenda: ctx.events.slice(0, 5).map((event) => ({
+            time: new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+            title: event.title
+          }))
+        };
+      case "tasks":
+        return { ...slide, checklist: ctx.tasks.slice(0, 5).map((task) => ({ title: task.title, due: task.dueDate })) };
+      default:
+        return { ...slide, imageUrl: null };
+    }
   });
 
   const db = await getDb();
