@@ -2170,14 +2170,14 @@ function GroceryPanel() {
       </div>
 
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-[1fr_320px] gap-4">
-        <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+        <div className="min-h-0 overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
           <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
           <div className="space-y-3">
             {activeItems.map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} />)}
             {!activeItems.length && <p className="rounded-2xl bg-slate-50 p-6 text-2xl font-bold text-slate-500">Nothing on the grocery list yet.</p>}
           </div>
         </div>
-        <div className="overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+        <div className="min-h-0 overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
           <h3 className="mb-4 text-2xl font-bold">Purchased</h3>
           <div className="space-y-3">
             {purchasedItems.slice(0, 12).map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} compact />)}
