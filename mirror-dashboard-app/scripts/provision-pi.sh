@@ -13,7 +13,10 @@ set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/Connormcl123/Home-Scheduler.git}"
 BRANCH="${BRANCH:-feature/standalone-mirror-dashboard}"
-NODE_MAJOR="${NODE_MAJOR:-22}"
+# The app needs fetch and AbortSignal.timeout, so 18 is the floor. Debian 13
+# ships 20, which is plenty and avoids depending on a third-party repo having
+# published for a brand-new release.
+NODE_MIN_MAJOR="${NODE_MIN_MAJOR:-20}"
 
 APP_USER="$(id -un)"
 CHECKOUT="$HOME/Home-Scheduler"
@@ -38,14 +41,25 @@ for pkg in git curl chromium wlopm grim; do
 done
 
 say "Node.js"
-CURRENT_NODE="$(node -v 2>/dev/null || echo none)"
-if [ "$CURRENT_NODE" = "none" ] || [ "${CURRENT_NODE#v}" -lt "$NODE_MAJOR" ] 2>/dev/null; then
-  echo "installing Node ${NODE_MAJOR}.x (found: $CURRENT_NODE)"
-  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | sudo -E bash -
-  sudo apt-get install -y nodejs
+node_major() { node -v 2>/dev/null | sed 's/^v//; s/\..*//'; }
+CURRENT="$(node_major)"
+if [ -n "$CURRENT" ] && [ "$CURRENT" -ge "$NODE_MIN_MAJOR" ] 2>/dev/null; then
+  echo "Node v$(node -v | tr -d v) already present"
 else
-  echo "Node $CURRENT_NODE already present"
+  # Prefer the distribution's own package. NodeSource does not always have a
+  # repo up for a newly released Debian, and a failed third-party repo leaves
+  # apt in a worse state than not adding it at all.
+  APT_NODE="$(apt-cache policy nodejs 2>/dev/null | sed -n 's/.*Candidate: \([0-9]*\).*//p')"
+  if [ -n "$APT_NODE" ] && [ "$APT_NODE" -ge "$NODE_MIN_MAJOR" ] 2>/dev/null; then
+    echo "installing nodejs ${APT_NODE}.x and npm from apt"
+    sudo apt-get install -y -qq nodejs npm
+  else
+    echo "apt has no suitable Node (candidate: ${APT_NODE:-none}); falling back to NodeSource"
+    curl -fsSL "https://deb.nodesource.com/setup_22.x" | sudo -E bash -
+    sudo apt-get install -y nodejs
+  fi
 fi
+echo "node $(node -v 2>/dev/null || echo MISSING), npm $(npm -v 2>/dev/null || echo MISSING)"
 
 say "Source"
 if [ -d "$CHECKOUT/.git" ]; then
