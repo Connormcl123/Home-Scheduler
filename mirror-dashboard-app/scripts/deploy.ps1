@@ -55,11 +55,22 @@ $pull = & ssh -o BatchMode=yes $Target "cd $RemoteApp/.. && git pull --ff-only 2
 Note $pull
 
 Step "Shipping compiled output"
-# One tar stream rather than three scp walks: far fewer round trips, and it
-# preserves the directory structure without any path juggling.
-$tar = & tar -cz shared/dist server/dist client/dist 2>$null | & ssh -o BatchMode=yes $Target "cd $RemoteApp && tar -xz"
+# Written to a file and copied, rather than piped straight into ssh: PowerShell
+# converts native-command pipelines to text, which corrupts a gzip stream. One
+# archive still beats three scp directory walks for round trips.
+$archive = Join-Path $env:TEMP "mirror-dist.tar.gz"
+& tar -czf $archive shared/dist server/dist client/dist
+if ($LASTEXITCODE -ne 0) { Write-Error "Could not create the archive." }
+
+$sizeMb = (Get-Item $archive).Length / 1MB
+
+& scp -o BatchMode=yes -q $archive "${Target}:/tmp/mirror-dist.tar.gz"
 if ($LASTEXITCODE -ne 0) { Write-Error "Transfer failed." }
-Note "shared, server and client dist copied"
+
+& ssh -o BatchMode=yes $Target "cd $RemoteApp && tar -xzf /tmp/mirror-dist.tar.gz && rm -f /tmp/mirror-dist.tar.gz"
+if ($LASTEXITCODE -ne 0) { Write-Error "Extract failed on the Pi." }
+Remove-Item $archive -Force -ErrorAction SilentlyContinue
+Note ("shared, server and client dist copied ({0:N1} MB)" -f $sizeMb)
 
 Step "Syncing runtime dependencies"
 # Only reinstalls when package.json actually changed, so a normal deploy does
