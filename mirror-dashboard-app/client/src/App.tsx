@@ -2029,7 +2029,7 @@ function CalendarMonthView({
                       <p className="truncate text-xs font-bold" style={{ color: colors.text }}>
                         {formatTimeOnly(calendarEvent.start)}
                       </p>
-                      <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-800 dark:text-slate-100">
+                      <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-900">
                         {calendarEvent.title}
                       </p>
                     </button>
