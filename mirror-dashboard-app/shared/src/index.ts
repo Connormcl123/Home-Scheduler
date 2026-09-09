@@ -360,6 +360,10 @@ export interface HomeCard {
   imageUrl?: string | null;
   link?: string;
   startsAt?: string;
+  /** Set on travel cards so Home can open that specific trip. */
+  dealId?: number;
+  /** Set on news cards so Home can show the article without leaving the kiosk. */
+  source?: string;
 }
 
 export interface HomePulse {

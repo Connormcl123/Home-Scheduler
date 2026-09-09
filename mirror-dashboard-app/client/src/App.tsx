@@ -1,6 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import type { ApiIntegrationStatus, HomeCardKind, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, HomeCard, HomeCardKind, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -479,6 +479,8 @@ function DashboardApp() {
   const [burnInStep, setBurnInStep] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [externalLink, setExternalLink] = useState<string | null>(null);
+  // Set when Home hands off to another tab, so that tab can open the exact item.
+  const [focusDealId, setFocusDealId] = useState<number | null>(null);
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
@@ -644,11 +646,20 @@ function DashboardApp() {
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
-    if (view === "travel") return <TravelPanel />;
+    if (view === "travel") return <TravelPanel focusDealId={focusDealId} />;
     if (view === "assistant") return <AssistantPanel onChanged={refreshDashboard} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
-    return <HomePanel dashboard={dashboard} now={now} />;
-  }, [dashboard, now, view]);
+    return (
+      <HomePanel
+        dashboard={dashboard}
+        now={now}
+        onNavigate={(nextView, dealId) => {
+          setFocusDealId(dealId ?? null);
+          setView(nextView);
+        }}
+      />
+    );
+  }, [dashboard, now, view, focusDealId]);
 
   const clock = useMemo(() => {
     const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
@@ -866,6 +877,16 @@ function DashboardApp() {
   );
 }
 
+/** Which tab owns each kind of card. news is handled in place instead. */
+const CARD_TARGET: Partial<Record<HomeCardKind, View>> = {
+  event: "calendar",
+  task: "tasks",
+  grocery: "grocery",
+  note: "notes",
+  finance: "finance",
+  travel: "travel"
+};
+
 const CARD_LOOK: Record<HomeCardKind, { icon: LucideIcon; tint: string; label: string }> = {
   event: { icon: CalendarDays, tint: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300", label: "Calendar" },
   task: { icon: CheckCircle2, tint: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", label: "Task" },
@@ -890,7 +911,16 @@ function countdownTo(iso: string, now: Date) {
   return rest ? `in ${hours}h ${rest}m` : `in ${hours}h`;
 }
 
-function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date }) {
+function HomePanel({
+  dashboard,
+  now,
+  onNavigate
+}: {
+  dashboard: DashboardSummary;
+  now: Date;
+  onNavigate: (view: View, dealId?: number) => void;
+}) {
+  const [article, setArticle] = useState<HomeCard | null>(null);
   const [pulse, setPulse] = useState<HomePulse | null>(null);
   const [story, setStory] = useState<MorningStory | null>(null);
   const [storyOpen, setStoryOpen] = useState(false);
@@ -963,9 +993,17 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
           const countdown = card.startsAt ? countdownTo(card.startsAt, now) : null;
           const lead = index === 0;
           return (
-            <article
+            <button
               key={`${card.kind}-${index}`}
-              className={`relative flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/70 bg-white/85 p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${
+              type="button"
+              onClick={() => {
+                // News opens here rather than navigating: the kiosk has no way
+                // back from an external site.
+                if (card.kind === "news") { setArticle(card); return; }
+                const target = CARD_TARGET[card.kind];
+                if (target) onNavigate(target, card.dealId);
+              }}
+              className={`relative flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/70 bg-white/85 p-5 text-left shadow-sm transition active:scale-[0.98] dark:border-white/10 dark:bg-slate-900/90 ${
                 lead ? "col-span-2" : ""
               }`}
             >
@@ -1017,7 +1055,7 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
                   </ul>
                 )}
               </div>
-            </article>
+            </button>
           );
         })}
 
@@ -1028,7 +1066,63 @@ function HomePanel({ dashboard, now }: { dashboard: DashboardSummary; now: Date 
         )}
       </div>
 
+      {article && <ArticleReader card={article} onClose={() => setArticle(null)} />}
       {storyOpen && story && <MorningStoryPlayer story={story} onClose={() => setStoryOpen(false)} />}
+    </div>
+  );
+}
+
+/**
+ * Opens a headline without leaving the dashboard. The kiosk deliberately blocks
+ * outbound navigation - there is no back button on a wall display - so the
+ * article is presented here with a QR code to carry it to a phone.
+ */
+function ArticleReader({ card, onClose }: { card: HomeCard; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
+      <div
+        className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {card.imageUrl && (
+          <img
+            src={card.imageUrl}
+            alt=""
+            className="h-72 w-full shrink-0 object-cover"
+            onError={(event) => { event.currentTarget.style.display = "none"; }}
+          />
+        )}
+        <div className="flex min-h-0 flex-1 gap-8 overflow-y-auto p-8">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
+              {card.source || "News"}
+            </p>
+            <h2 className="mt-3 text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">{card.title}</h2>
+            <p className="mt-4 text-2xl leading-snug text-slate-600 dark:text-slate-300">{card.detail}</p>
+            {card.bullets && card.bullets.length > 0 && (
+              <ul className="mt-6 space-y-3 border-t border-mirror-line pt-5">
+                {card.bullets.map((bullet, position) => (
+                  <li key={position} className="flex gap-3 text-xl leading-snug text-slate-600 dark:text-slate-300">
+                    <span className="text-violet-500">&middot;</span>
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {card.link && (
+            <div className="shrink-0">
+              <SlideQr url={card.link} />
+            </div>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="m-8 mt-0 min-h-16 shrink-0 rounded-2xl bg-sky-600 text-2xl font-black text-white active:scale-95"
+        >
+          Back to dashboard
+        </button>
+      </div>
     </div>
   );
 }
@@ -2619,7 +2713,7 @@ function dealAccent(name: string) {
   return DEAL_ACCENTS[name] || DEAL_ACCENTS.sky;
 }
 
-function TravelPanel() {
+function TravelPanel({ focusDealId }: { focusDealId?: number | null }) {
   const [tab, setTab] = useState<"ideas" | "planner">("ideas");
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
@@ -2638,12 +2732,12 @@ function TravelPanel() {
           </button>
         ))}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">{tab === "ideas" ? <TravelDealsPanel /> : <TravelHubPanel />}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{tab === "ideas" ? <TravelDealsPanel focusDealId={focusDealId} /> : <TravelHubPanel />}</div>
     </div>
   );
 }
 
-function TravelDealsPanel() {
+function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
   const [state, setState] = useState<TravelDealsResponse | null>(null);
   const [index, setIndex] = useState(0);
   const [expanded, setExpanded] = useState<TravelDeal | null>(null);
@@ -2655,9 +2749,16 @@ function TravelDealsPanel() {
 
   useEffect(() => {
     fetchTravelDeals()
-      .then((data) => { setState(data); setIndex(0); })
+      .then((data) => {
+        setState(data);
+        // Arriving from a Home card: land on that trip and open it, rather
+        // than dropping the person on the first card to hunt for it.
+        const wanted = focusDealId ? data.deals.findIndex((deal) => deal.id === focusDealId) : -1;
+        setIndex(wanted >= 0 ? wanted : 0);
+        if (wanted >= 0) setExpanded(data.deals[wanted]);
+      })
       .catch((err: Error) => setError(err.message));
-  }, []);
+  }, [focusDealId]);
 
   async function refresh() {
     setBusy(true);

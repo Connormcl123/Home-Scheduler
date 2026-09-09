@@ -183,10 +183,10 @@ function decorate(cards: HomeCard[], ctx: Awaited<ReturnType<typeof collectConte
     if (card.kind === "news") {
       const match = ctx.news.find((article) => article.title.toLowerCase().includes(card.title.toLowerCase().slice(0, 20)))
         || ctx.news[0];
-      return { ...card, imageUrl: match?.imageUrl || null, link: match?.link };
+      return { ...card, imageUrl: match?.imageUrl || null, link: match?.link, source: match?.source };
     }
     if (card.kind === "travel" && ctx.deal) {
-      return { ...card, imageUrl: ctx.deal.imageUrl || null };
+      return { ...card, imageUrl: ctx.deal.imageUrl || null, dealId: ctx.deal.id };
     }
     if (card.kind === "event") {
       const match = ctx.events.find((event) => event.title.toLowerCase() === card.title.toLowerCase()) || ctx.events[0];
