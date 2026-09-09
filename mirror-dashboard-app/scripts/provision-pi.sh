@@ -42,14 +42,17 @@ done
 
 say "Node.js"
 node_major() { node -v 2>/dev/null | sed 's/^v//; s/\..*//'; }
-CURRENT="$(node_major)"
+# `|| true` matters: under `set -e` with pipefail, a command substitution whose
+# pipeline fails aborts the script. Without it this exits 127 on exactly the
+# machines this script exists to set up - the ones with no node installed.
+CURRENT="$(node_major || true)"
 if [ -n "$CURRENT" ] && [ "$CURRENT" -ge "$NODE_MIN_MAJOR" ] 2>/dev/null; then
   echo "Node v$(node -v | tr -d v) already present"
 else
   # Prefer the distribution's own package. NodeSource does not always have a
   # repo up for a newly released Debian, and a failed third-party repo leaves
   # apt in a worse state than not adding it at all.
-  APT_NODE="$(apt-cache policy nodejs 2>/dev/null | sed -n 's/.*Candidate: \([0-9]*\).*//p')"
+  APT_NODE="$(apt-cache policy nodejs 2>/dev/null | sed -n 's/.*Candidate: \([0-9]*\).*//p' || true)"
   if [ -n "$APT_NODE" ] && [ "$APT_NODE" -ge "$NODE_MIN_MAJOR" ] 2>/dev/null; then
     echo "installing nodejs ${APT_NODE}.x and npm from apt"
     sudo apt-get install -y -qq nodejs npm
