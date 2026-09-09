@@ -1,4 +1,4 @@
-import type { ApiIntegrationStatus, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, CalendarEvent, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -172,6 +172,10 @@ export function fetchTravelDeals() {
 
 export function refreshTravelDeals() {
   return request<TravelDealsResponse>("/api/travel/deals/refresh", { method: "POST" });
+}
+
+export function fetchCalendarEvents() {
+  return request<CalendarEvent[]>("/api/calendar/events");
 }
 
 export function fetchHomePulse() {

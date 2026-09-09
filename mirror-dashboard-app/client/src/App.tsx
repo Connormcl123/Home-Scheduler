@@ -36,6 +36,7 @@ import {
   updateTask,
   updateWatchlistItem,
   fetchAssistantStatus,
+  fetchCalendarEvents,
   fetchHomePulse,
   fetchMorningStory,
   fetchTravelDeals,
@@ -1427,7 +1428,11 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   const [newEventDate, setNewEventDate] = useState(today());
   const [newEventStart, setNewEventStart] = useState("09:00");
   const [newEventEnd, setNewEventEnd] = useState("10:00");
-  const weekStart = startOfWeek(new Date());
+  // Which week is on screen. 0 is this week; drag the grid sideways to move.
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [panDx, setPanDx] = useState(0);
+  const panRef = useRef<{ startX: number; moved: boolean } | null>(null);
+  const weekStart = addClientDays(startOfWeek(new Date()), weekOffset * 7);
   const days = Array.from({ length: 7 }, (_, index) => addClientDays(weekStart, index));
   const startHour = 6;
   const endHour = 22;
@@ -1437,6 +1442,18 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   useEffect(() => {
     setWeekEvents(events.map(normalizeEventEnd));
   }, [events]);
+
+  // The dashboard payload caps the calendar at eight events for the Home
+  // summary, which is not enough once you can page into other weeks.
+  useEffect(() => {
+    fetchCalendarEvents()
+      .then((all) => setWeekEvents(all.map(normalizeEventEnd)))
+      .catch(() => undefined);
+  }, []);
+
+  function panWeek(delta: number) {
+    setWeekOffset((current) => current + delta);
+  }
 
   function updateEventTime(id: string, patch: { start?: Date; end?: Date }) {
     setWeekEvents((current) =>
@@ -1574,6 +1591,31 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           >
             <Plus className="mr-2 h-7 w-7" /> Event
           </button>
+          {calendarMode === "Week" && (
+            <div className="rounded-2xl bg-slate-100 p-3 dark:bg-slate-800">
+              <div className="flex items-center justify-between gap-2">
+                <button onClick={() => panWeek(-1)} className="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-slate-700 active:scale-95 dark:bg-slate-900 dark:text-slate-200" aria-label="Previous week">
+                  <ChevronLeft className="h-7 w-7" />
+                </button>
+                <div className="min-w-0 flex-1 text-center">
+                  <p className="truncate text-base font-black text-slate-700 dark:text-slate-200">
+                    {weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {addClientDays(weekStart, 6).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    {weekOffset === 0 ? "This week" : weekOffset > 0 ? `${weekOffset} week${weekOffset > 1 ? "s" : ""} ahead` : `${Math.abs(weekOffset)} week${weekOffset < -1 ? "s" : ""} back`}
+                  </p>
+                </div>
+                <button onClick={() => panWeek(1)} className="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-slate-700 active:scale-95 dark:bg-slate-900 dark:text-slate-200" aria-label="Next week">
+                  <ChevronRight className="h-7 w-7" />
+                </button>
+              </div>
+              {weekOffset !== 0 && (
+                <button onClick={() => setWeekOffset(0)} className="mt-2 min-h-12 w-full rounded-xl bg-sky-600 text-lg font-black text-white active:scale-95">
+                  Back to today
+                </button>
+              )}
+            </div>
+          )}
           <div className="rounded-3xl bg-[#eef5ff] p-5 dark:bg-slate-800">
             <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString([], { weekday: "long" })}</p>
             <p className="text-6xl font-bold text-slate-900 dark:text-white">{new Date().getDate()}</p>
@@ -1609,7 +1651,34 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           </div>
         </aside>
 
-        <div className="relative min-h-0 overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900">
+        <div
+          className="relative min-h-0 overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900"
+          onPointerDown={(pointerEvent) => {
+            // Dragging an event moves the event; dragging the grid moves weeks.
+            if (calendarMode !== "Week") return;
+            const target = pointerEvent.target as HTMLElement | null;
+            if (target?.closest?.("[data-event-chip]")) return;
+            panRef.current = { startX: pointerEvent.clientX, moved: false };
+          }}
+          onPointerMove={(pointerEvent) => {
+            const pan = panRef.current;
+            if (!pan) return;
+            const dx = pointerEvent.clientX - pan.startX;
+            if (Math.abs(dx) > 8) pan.moved = true;
+            setPanDx(dx);
+          }}
+          onPointerUp={(pointerEvent) => {
+            const pan = panRef.current;
+            panRef.current = null;
+            setPanDx(0);
+            if (!pan) return;
+            const dx = pointerEvent.clientX - pan.startX;
+            // A quarter of the pane is a deliberate swipe rather than a wobble.
+            const threshold = pointerEvent.currentTarget.getBoundingClientRect().width / 4;
+            if (Math.abs(dx) > threshold) panWeek(dx < 0 ? 1 : -1);
+          }}
+          onPointerCancel={() => { panRef.current = null; setPanDx(0); }}
+        >
           {calendarMode !== "Week" && (
             <div className="absolute inset-0 z-20 bg-white p-5 dark:bg-slate-900">
               {calendarMode === "Day" && <CalendarDayView events={weekEvents} day={new Date()} />}
@@ -1617,7 +1686,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
               {calendarMode === "Schedule" && <CalendarScheduleView events={weekEvents} />}
             </div>
           )}
-          <div className="grid grid-cols-[86px_1fr] border-b border-mirror-line">
+          <div
+            className="grid grid-cols-[86px_1fr] border-b border-mirror-line"
+            style={{ transform: `translateX(${panDx * 0.25}px)`, transition: panRef.current ? "none" : "transform 200ms ease-out" }}
+          >
             <div className="flex items-center justify-center text-sm font-bold text-slate-400">Time</div>
             <div className="grid grid-cols-7">
               {days.map((day) => {
@@ -1664,6 +1736,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                   <div
                     key={calendarEvent.id}
                     onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
+                    data-event-chip
                     className="absolute overflow-hidden cursor-grab select-none rounded-xl border-l-[6px] px-2.5 py-1.5 shadow-sm active:cursor-grabbing"
                     style={{
                       left: `calc(${dayIndex * dayWidthPercent}% + 8px)`,
