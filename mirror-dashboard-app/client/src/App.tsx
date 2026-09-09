@@ -1652,7 +1652,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
         </aside>
 
         <div
-          className="relative min-h-0 overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900"
+          className="relative flex min-h-0 flex-col overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900"
           onPointerDown={(pointerEvent) => {
             // Dragging an event moves the event; dragging the grid moves weeks.
             if (calendarMode !== "Week") return;
@@ -1687,7 +1687,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
             </div>
           )}
           <div
-            className="grid grid-cols-[86px_1fr] border-b border-mirror-line"
+            className="grid shrink-0 grid-cols-[86px_1fr] border-b border-mirror-line"
             style={{ transform: `translateX(${panDx * 0.25}px)`, transition: panRef.current ? "none" : "transform 200ms ease-out" }}
           >
             <div className="flex items-center justify-center text-sm font-bold text-slate-400">Time</div>
@@ -1703,7 +1703,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
               })}
             </div>
           </div>
-          <div className="grid h-[64vh] grid-cols-[86px_1fr] overflow-y-auto">
+          <div className="grid min-h-0 flex-1 grid-cols-[86px_1fr] overflow-y-auto">
             <div className="relative bg-[#fbfbf7] dark:bg-slate-950" style={{ height: (endHour - startHour) * hourHeight }}>
               {Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index).map((hour) => (
                 <div key={hour} className="absolute left-0 right-3 -translate-y-3 text-right text-base font-bold text-slate-400" style={{ top: (hour - startHour) * hourHeight }}>
