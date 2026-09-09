@@ -157,6 +157,32 @@ export async function initializeSchema(database: Database) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS recipes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      summary TEXT,
+      servings INTEGER,
+      total_minutes INTEGER,
+      tags TEXT NOT NULL DEFAULT '[]',
+      ingredients TEXT NOT NULL DEFAULT '[]',
+      steps TEXT NOT NULL DEFAULT '[]',
+      image_url TEXT,
+      source TEXT NOT NULL DEFAULT 'manual',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS meal_plan (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      slot TEXT NOT NULL DEFAULT 'dinner',
+      recipe_id INTEGER,
+      note TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(date, slot),
+      FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS calendar_event_overrides (
       event_id TEXT PRIMARY KEY,
       start TEXT NOT NULL,

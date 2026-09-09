@@ -10,6 +10,7 @@ import { listTasks } from "./tasks.js";
 import { getWeather } from "./weather.js";
 import { listTravelDeals } from "./travelDeals.js";
 import { getFinanceSummary } from "./finance/index.js";
+import { getTonightsMeal } from "./recipes.js";
 import { todayIso } from "../utils/dates.js";
 
 function currency(value: number | null | undefined) {
@@ -26,7 +27,7 @@ function getClient() {
 /** Everything the model needs to judge what matters, gathered once. */
 async function collectContext() {
   const now = new Date();
-  const [events, tasks, grocery, weather, news, note, deals, finance] = await Promise.all([
+  const [events, tasks, grocery, weather, news, note, deals, finance, meal] = await Promise.all([
     getCalendarEvents().catch(() => []),
     listTasks().catch(() => []),
     listGroceryItems({ activeOnly: true }).catch(() => []),
@@ -34,7 +35,8 @@ async function collectContext() {
     getNews().catch(() => []),
     getNoteByDate(todayIso()).catch(() => null),
     listTravelDeals().catch(() => ({ deals: [] as Awaited<ReturnType<typeof listTravelDeals>>["deals"] })),
-    getFinanceSummary().catch(() => null)
+    getFinanceSummary().catch(() => null),
+    getTonightsMeal().catch(() => null)
   ]);
 
   const upcoming = events
@@ -42,7 +44,7 @@ async function collectContext() {
     .slice(0, 8);
   const openTasks = tasks.filter((task) => !task.completed).slice(0, 10);
 
-  return { now, events: upcoming, tasks: openTasks, grocery, weather, news, note, deal: deals.deals[0] || null, finance };
+  return { now, events: upcoming, tasks: openTasks, grocery, weather, news, note, deal: deals.deals[0] || null, finance, meal };
 }
 
 function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
@@ -70,6 +72,10 @@ function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
     "",
     ctx.note ? `Today's note: ${ctx.note.body}` : "No note today.",
     ctx.deal ? `Trip idea of the day: ${ctx.deal.destination} - ${ctx.deal.headline}` : "",
+    "",
+    ctx.meal?.recipe
+      ? `Tonight's dinner is planned: ${ctx.meal.recipe.title}${ctx.meal.recipe.totalMinutes ? `, about ${ctx.meal.recipe.totalMinutes} minutes` : ""}.`
+      : "No dinner planned for tonight.",
     "",
     "Markets:",
     (ctx.finance?.quotes || [])
@@ -99,7 +105,7 @@ const PULSE_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          kind: { type: "string", enum: ["event", "task", "grocery", "weather", "news", "note", "travel", "finance"] },
+          kind: { type: "string", enum: ["event", "task", "grocery", "weather", "news", "note", "travel", "finance", "meal"] },
           title: { type: "string", description: "Four to seven words." },
           detail: { type: "string", description: "One short supporting line." },
           bullets: {
@@ -187,6 +193,9 @@ function decorate(cards: HomeCard[], ctx: Awaited<ReturnType<typeof collectConte
     }
     if (card.kind === "travel" && ctx.deal) {
       return { ...card, imageUrl: ctx.deal.imageUrl || null, dealId: ctx.deal.id };
+    }
+    if (card.kind === "meal" && ctx.meal?.recipe) {
+      return { ...card, imageUrl: ctx.meal.recipe.imageUrl || null, recipeId: ctx.meal.recipe.id };
     }
     if (card.kind === "event") {
       const match = ctx.events.find((event) => event.title.toLowerCase() === card.title.toLowerCase()) || ctx.events[0];

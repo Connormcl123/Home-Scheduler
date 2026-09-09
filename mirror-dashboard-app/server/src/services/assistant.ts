@@ -8,6 +8,7 @@ import { getNoteByDate, upsertNote } from "./notes.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./tasks.js";
 import { getWeather } from "./weather.js";
 import { todayIso } from "../utils/dates.js";
+import { generateRecipe, getMealPlan, listRecipes, pushPlanToGrocery, setMeal } from "./recipes.js";
 
 export class AssistantError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -153,6 +154,44 @@ const tools: Anthropic.Tool[] = [
     }
   },
   {
+    name: "list_recipes",
+    description: "List the household's saved recipes, with their ids.",
+    input_schema: { type: "object", properties: {} }
+  },
+  {
+    name: "get_meal_plan",
+    description: "Get the dinner plan for the next seven days, including which nights are unplanned.",
+    input_schema: { type: "object", properties: {} }
+  },
+  {
+    name: "plan_meal",
+    description: "Put a saved recipe on the dinner plan for a date, or clear that night.",
+    input_schema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "Date as YYYY-MM-DD." },
+        recipeId: { type: "number", description: "Omit to clear the night." }
+      },
+      required: ["date"]
+    }
+  },
+  {
+    name: "create_recipe",
+    description: "Invent and save a new recipe from a description, then it can be planned. Use when nothing saved fits.",
+    input_schema: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "What the meal should be, e.g. something with chicken and rice in 30 minutes." }
+      },
+      required: ["prompt"]
+    }
+  },
+  {
+    name: "add_plan_to_grocery",
+    description: "Add the ingredients for the planned week to the grocery list, skipping anything already on it.",
+    input_schema: { type: "object", properties: {} }
+  },
+  {
     name: "get_weather",
     description: "Get current conditions and the multi-day forecast for home.",
     input_schema: { type: "object", properties: {} }
@@ -243,6 +282,36 @@ const handlers: Record<string, ToolHandler> = {
   },
   async get_weather() {
     return getWeather();
+  },
+  async list_recipes() {
+    const recipes = await listRecipes();
+    return recipes.map((recipe) => ({ id: recipe.id, title: recipe.title, totalMinutes: recipe.totalMinutes, tags: recipe.tags }));
+  },
+  async get_meal_plan() {
+    const plan = await getMealPlan();
+    return plan.map((entry) => ({ date: entry.date, dinner: entry.recipe ? { id: entry.recipe.id, title: entry.recipe.title } : null }));
+  },
+  async plan_meal(input, ctx) {
+    const recipeId = input.recipeId === undefined || input.recipeId === null ? null : Number(input.recipeId);
+    await setMeal(String(input.date), recipeId);
+    ctx.actions.push({
+      tool: "plan_meal",
+      summary: recipeId ? `Planned dinner for ${input.date}` : `Cleared dinner for ${input.date}`
+    });
+    ctx.refresh.add("dashboard");
+    return getMealPlan();
+  },
+  async create_recipe(input, ctx) {
+    const recipe = await generateRecipe(String(input.prompt));
+    ctx.actions.push({ tool: "create_recipe", summary: `Saved recipe: ${recipe.title}` });
+    ctx.refresh.add("dashboard");
+    return { id: recipe.id, title: recipe.title, totalMinutes: recipe.totalMinutes, ingredients: recipe.ingredients.length };
+  },
+  async add_plan_to_grocery(input, ctx) {
+    const result = await pushPlanToGrocery();
+    ctx.actions.push({ tool: "add_plan_to_grocery", summary: `Added ${result.added} ingredient${result.added === 1 ? "" : "s"} to the grocery list` });
+    ctx.refresh.add("grocery");
+    return result;
   }
 };
 
@@ -259,6 +328,9 @@ const SYSTEM_PROMPT = [
   "across the room. Skip preamble and do not restate the question. Use plain language and no markdown.",
   "If a request is ambiguous in a way that changes what you would do, ask one brief clarifying question.",
   "Otherwise make the sensible choice and say what you chose.",
+  "",
+  "You can also plan dinners. Saved recipes are planned by id, so list them before planning. If nothing saved suits,",
+  "invent one with create_recipe and then plan it.",
   "",
   "Only delete something when the person clearly asked for it to be removed."
 ].join("\n");

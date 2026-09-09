@@ -1,4 +1,4 @@
-import type { ApiIntegrationStatus, CalendarEvent, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -183,6 +183,30 @@ export function moveCalendarEvent(id: string, start: string, end?: string | null
 
 export function fetchCalendarEvents() {
   return request<CalendarEvent[]>("/api/calendar/events");
+}
+
+export function fetchRecipes() {
+  return request<Recipe[]>("/api/recipes");
+}
+
+export function generateRecipe(prompt: string) {
+  return request<Recipe>("/api/recipes/generate", { method: "POST", body: JSON.stringify({ prompt }) });
+}
+
+export function deleteRecipe(id: number) {
+  return request<void>(`/api/recipes/${id}`, { method: "DELETE" });
+}
+
+export function fetchMealPlan() {
+  return request<MealPlanEntry[]>("/api/meal-plan");
+}
+
+export function setMealPlan(date: string, recipeId: number | null) {
+  return request<MealPlanEntry[]>(`/api/meal-plan/${date}`, { method: "PUT", body: JSON.stringify({ recipeId }) });
+}
+
+export function pushPlanToGrocery() {
+  return request<GroceryPushResult>("/api/meal-plan/grocery", { method: "POST" });
 }
 
 export function fetchHomePulse() {

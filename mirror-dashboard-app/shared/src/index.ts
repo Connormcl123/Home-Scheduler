@@ -351,7 +351,41 @@ export interface TravelDealsResponse {
   reason?: string;
 }
 
-export type HomeCardKind = "event" | "task" | "grocery" | "weather" | "news" | "note" | "travel" | "finance";
+export interface RecipeIngredient {
+  name: string;
+  quantity?: string | null;
+  category?: string | null;
+}
+
+export interface Recipe {
+  id: number;
+  title: string;
+  summary?: string | null;
+  servings?: number | null;
+  totalMinutes?: number | null;
+  tags: string[];
+  ingredients: RecipeIngredient[];
+  steps: string[];
+  imageUrl?: string | null;
+  source: string;
+  createdAt: string;
+}
+
+export interface MealPlanEntry {
+  id: number;
+  date: string;
+  slot: string;
+  note?: string | null;
+  recipe: Recipe | null;
+}
+
+export interface GroceryPushResult {
+  added: number;
+  skipped: number;
+  items: string[];
+}
+
+export type HomeCardKind = "event" | "task" | "grocery" | "weather" | "news" | "note" | "travel" | "finance" | "meal";
 
 export interface HomeCard {
   kind: HomeCardKind;
@@ -364,6 +398,8 @@ export interface HomeCard {
   startsAt?: string;
   /** Set on travel cards so Home can open that specific trip. */
   dealId?: number;
+  /** Set on meal cards so Home can open tonight's recipe. */
+  recipeId?: number;
   /** Set on news cards so Home can show the article without leaving the kiosk. */
   source?: string;
 }

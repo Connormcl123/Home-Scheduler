@@ -24,6 +24,7 @@ import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } 
 import { AssistantError, getAssistantStatus, runAssistantTurn } from "./services/assistant.js";
 import { generateTravelDeals, listTravelDeals, startTravelDealScheduler } from "./services/travelDeals.js";
 import { generateMorningStory, getHomePulse, getMorningStory } from "./services/homeBrief.js";
+import { createRecipe, deleteRecipe, generateRecipe, getMealPlan, listRecipes, pushPlanToGrocery, setMeal, suggestWeek } from "./services/recipes.js";
 
 const app = express();
 
@@ -448,6 +449,76 @@ app.post("/api/voice/calendar-event", async (req, res, next) => {
     if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
     const event = await createCalendarEventFromVoice(req.body || {});
     res.status(201).json({ ok: true, message: `Added calendar event: ${event.title}`, event });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/recipes", async (_req, res, next) => {
+  try {
+    res.json(await listRecipes());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/recipes", async (req, res, next) => {
+  try {
+    if (!req.body?.title) return res.status(400).json({ error: "A title is required." });
+    res.status(201).json(await createRecipe(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/recipes/generate", async (req, res, next) => {
+  try {
+    const prompt = typeof req.body?.prompt === "string" ? req.body.prompt.trim() : "";
+    if (!prompt) return res.status(400).json({ error: "Describe the meal you want." });
+    res.status(201).json(await generateRecipe(prompt));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/recipes/:id", async (req, res, next) => {
+  try {
+    await deleteRecipe(Number(req.params.id));
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/meal-plan", async (req, res, next) => {
+  try {
+    res.json(await getMealPlan(typeof req.query.from === "string" ? req.query.from : undefined));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/meal-plan/:date", async (req, res, next) => {
+  try {
+    const recipeId = req.body?.recipeId === null ? null : Number(req.body?.recipeId);
+    await setMeal(req.params.date, recipeId === null || Number.isNaN(recipeId) ? null : recipeId);
+    res.json(await getMealPlan());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/meal-plan/suggest", async (_req, res, next) => {
+  try {
+    res.json(await suggestWeek());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/meal-plan/grocery", async (_req, res, next) => {
+  try {
+    res.json(await pushPlanToGrocery());
   } catch (error) {
     next(error);
   }

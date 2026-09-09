@@ -1,7 +1,7 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import type { ApiIntegrationStatus, HomeCard, HomeCardKind, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
+import type { ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -37,6 +37,12 @@ import {
   updateWatchlistItem,
   fetchAssistantStatus,
   fetchCalendarEvents,
+  fetchRecipes,
+  fetchMealPlan,
+  setMealPlan,
+  generateRecipe,
+  deleteRecipe,
+  pushPlanToGrocery,
   moveCalendarEvent,
   fetchHomePulse,
   fetchMorningStory,
@@ -45,7 +51,7 @@ import {
   sendAssistantMessage,
 } from "./api";
 
-type View = "home" | "calendar" | "grocery" | "tasks" | "notes" | "finance" | "travel" | "assistant" | "settings";
+type View = "home" | "calendar" | "grocery" | "recipes" | "tasks" | "notes" | "finance" | "travel" | "assistant" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
 type TravelTripType = "low-effort" | "beach" | "new-england" | "city" | "nature" | "splurge";
 
@@ -163,6 +169,7 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "home", label: "Home", icon: Home },
   { view: "calendar", label: "Calendar", icon: CalendarDays },
   { view: "grocery", label: "Grocery", icon: ShoppingBasket },
+  { view: "recipes", label: "Recipes", icon: ChefHat },
   { view: "tasks", label: "Tasks", icon: CheckCircle2 },
   { view: "notes", label: "Notes", icon: StickyNote },
   { view: "finance", label: "Finance", icon: Landmark },
@@ -645,6 +652,7 @@ function DashboardApp() {
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
     if (view === "grocery") return <GroceryPanel />;
+    if (view === "recipes") return <RecipesPanel onChanged={refreshDashboard} />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
@@ -886,7 +894,8 @@ const CARD_TARGET: Partial<Record<HomeCardKind, View>> = {
   grocery: "grocery",
   note: "notes",
   finance: "finance",
-  travel: "travel"
+  travel: "travel",
+  meal: "recipes"
 };
 
 const CARD_LOOK: Record<HomeCardKind, { icon: LucideIcon; tint: string; label: string }> = {
@@ -897,7 +906,8 @@ const CARD_LOOK: Record<HomeCardKind, { icon: LucideIcon; tint: string; label: s
   news: { icon: Newspaper, tint: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300", label: "News" },
   note: { icon: StickyNote, tint: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300", label: "Note" },
   travel: { icon: Plane, tint: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", label: "Travel" },
-  finance: { icon: Landmark, tint: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", label: "Finance" }
+  finance: { icon: Landmark, tint: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", label: "Finance" },
+  meal: { icon: UtensilsCrossed, tint: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", label: "Tonight" }
 };
 
 /** "in 25 min" / "in 2h 10m" — the thing you actually want from a wall display. */
@@ -2995,6 +3005,300 @@ const DEAL_ACCENTS: Record<string, { card: string; chip: string; ring: string }>
 
 function dealAccent(name: string) {
   return DEAL_ACCENTS[name] || DEAL_ACCENTS.sky;
+}
+
+function RecipesPanel({ onChanged }: { onChanged: () => void }) {
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [plan, setPlan] = useState<MealPlanEntry[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState<Recipe | null>(null);
+  // Which night we are choosing a meal for; null means the picker is closed.
+  const [assigning, setAssigning] = useState<string | null>(null);
+
+  async function load() {
+    const [allRecipes, weekPlan] = await Promise.all([fetchRecipes(), fetchMealPlan()]);
+    setRecipes(allRecipes);
+    setPlan(weekPlan);
+  }
+
+  useEffect(() => {
+    load().catch((err: Error) => setError(err.message));
+  }, []);
+
+  async function run(label: string, work: () => Promise<void>) {
+    setBusy(label);
+    setError("");
+    setMessage("");
+    try {
+      await work();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That did not work.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const generate = () =>
+    run("generate", async () => {
+      const recipe = await generateRecipe(prompt.trim() || "an easy family dinner for a weeknight");
+      setPrompt("");
+      await load();
+      setMessage(`Saved ${recipe.title}`);
+      setOpen(recipe);
+    });
+
+  const assign = (date: string, recipeId: number | null) =>
+    run("assign", async () => {
+      setPlan(await setMealPlan(date, recipeId));
+      setAssigning(null);
+      onChanged();
+    });
+
+  const toGrocery = () =>
+    run("grocery", async () => {
+      const result = await pushPlanToGrocery();
+      setMessage(
+        result.added
+          ? `Added ${result.added} item${result.added === 1 ? "" : "s"}${result.skipped ? `, skipped ${result.skipped} already on the list` : ""}.`
+          : "Everything for this week is already on the list."
+      );
+      onChanged();
+    });
+
+  const plannedCount = plan.filter((entry) => entry.recipe).length;
+
+  return (
+    <div className="flex h-full min-h-0 gap-4">
+      {/* The week, which is the point of the tab */}
+      <Card className="flex w-[420px] shrink-0 flex-col overflow-hidden">
+        <SectionTitle icon={UtensilsCrossed} title="This week" />
+        <p className="mt-2 shrink-0 text-lg text-slate-500 dark:text-slate-400">
+          {plannedCount} of 7 dinners planned
+        </p>
+
+        <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {plan.map((entry) => {
+            const day = new Date(`${entry.date}T12:00:00`);
+            const isToday = entry.date === new Date().toLocaleDateString("en-CA");
+            return (
+              <button
+                key={entry.date}
+                onClick={() => setAssigning(entry.date)}
+                className={`flex w-full items-center gap-4 rounded-2xl p-4 text-left transition active:scale-[0.98] ${
+                  isToday ? "bg-sky-100 dark:bg-sky-500/15" : "bg-white/70 dark:bg-slate-800"
+                }`}
+              >
+                <div className="w-16 shrink-0">
+                  <p className="text-sm font-black uppercase text-slate-500 dark:text-slate-400">
+                    {day.toLocaleDateString("en-US", { weekday: "short" })}
+                  </p>
+                  <p className="text-2xl font-black text-slate-800 dark:text-slate-100">{day.getDate()}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  {entry.recipe ? (
+                    <>
+                      <p className="truncate text-xl font-bold text-mirror-ink dark:text-slate-50">{entry.recipe.title}</p>
+                      <p className="text-base text-slate-500 dark:text-slate-400">
+                        {entry.recipe.totalMinutes ? `${entry.recipe.totalMinutes} min` : "Planned"}
+                        {entry.recipe.servings ? ` · serves ${entry.recipe.servings}` : ""}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xl font-semibold text-slate-400">Tap to plan</p>
+                  )}
+                </div>
+                {isToday && <span className="shrink-0 rounded-full bg-sky-600 px-3 py-1 text-xs font-black uppercase text-white">Tonight</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={toGrocery}
+          disabled={Boolean(busy) || !plannedCount}
+          className="mt-4 flex min-h-16 shrink-0 items-center justify-center rounded-2xl bg-[#ffcf5a] text-xl font-black text-slate-900 active:scale-95 disabled:opacity-40"
+        >
+          <ShoppingBasket className="mr-3 h-7 w-7" />
+          {busy === "grocery" ? "Adding..." : "Send week to grocery list"}
+        </button>
+      </Card>
+
+      {/* The library */}
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between gap-4">
+          <SectionTitle icon={ChefHat} title="Recipes" />
+          <p className="text-lg text-slate-500 dark:text-slate-400">{recipes.length} saved</p>
+        </div>
+
+        <div className="mt-4 flex shrink-0 gap-3">
+          <input
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") generate(); }}
+            placeholder="Describe a meal, e.g. something with chicken in 30 minutes"
+            className="touch-input min-w-0 flex-1"
+          />
+          <button
+            onClick={generate}
+            disabled={Boolean(busy)}
+            className="touch-button w-40 bg-sky-600 text-white disabled:opacity-40"
+          >
+            {busy === "generate" ? "Writing..." : "Create"}
+          </button>
+        </div>
+
+        {(message || error) && (
+          <p className={`mt-3 shrink-0 text-lg font-semibold ${error ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+            {error || message}
+          </p>
+        )}
+
+        <div className="mt-4 grid min-h-0 flex-1 grid-cols-3 gap-3 overflow-y-auto pr-1">
+          {recipes.map((recipe) => (
+            <button
+              key={recipe.id}
+              onClick={() => setOpen(recipe)}
+              className="flex flex-col rounded-2xl bg-white/75 p-4 text-left transition active:scale-[0.98] dark:bg-slate-800"
+            >
+              <p className="line-clamp-2 text-xl font-black leading-tight text-mirror-ink dark:text-slate-50">{recipe.title}</p>
+              <p className="mt-1 line-clamp-2 text-base text-slate-500 dark:text-slate-400">{recipe.summary}</p>
+              <div className="mt-auto flex flex-wrap gap-2 pt-3">
+                {recipe.totalMinutes ? (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                    {recipe.totalMinutes} min
+                  </span>
+                ) : null}
+                {recipe.tags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </button>
+          ))}
+          {!recipes.length && (
+            <p className="col-span-3 rounded-2xl bg-white/70 p-6 text-xl text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              No recipes yet. Describe a meal above and one will be written and saved.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      {assigning && (
+        <MealPicker
+          date={assigning}
+          recipes={recipes}
+          onPick={(recipeId) => assign(assigning, recipeId)}
+          onClose={() => setAssigning(null)}
+        />
+      )}
+      {open && <RecipeDialog recipe={open} onClose={() => setOpen(null)} onDeleted={() => { setOpen(null); load().catch(() => undefined); }} />}
+    </div>
+  );
+}
+
+function MealPicker({
+  date,
+  recipes,
+  onPick,
+  onClose
+}: {
+  date: string;
+  recipes: Recipe[];
+  onPick: (recipeId: number | null) => void;
+  onClose: () => void;
+}) {
+  const day = new Date(`${date}T12:00:00`);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
+      <div className="flex max-h-full w-full max-w-4xl flex-col rounded-[28px] bg-white p-8 dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
+        <h2 className="shrink-0 text-4xl font-black text-mirror-ink dark:text-slate-50">
+          Dinner for {day.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </h2>
+        <div className="mt-6 grid min-h-0 flex-1 grid-cols-3 gap-3 overflow-y-auto pr-1">
+          {recipes.map((recipe) => (
+            <button
+              key={recipe.id}
+              onClick={() => onPick(recipe.id)}
+              className="rounded-2xl bg-slate-100 p-4 text-left active:scale-95 dark:bg-slate-800"
+            >
+              <p className="line-clamp-2 text-xl font-black leading-tight text-mirror-ink dark:text-slate-50">{recipe.title}</p>
+              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">{recipe.totalMinutes ? `${recipe.totalMinutes} min` : ""}</p>
+            </button>
+          ))}
+          {!recipes.length && <p className="col-span-3 text-xl text-slate-500">Create a recipe first.</p>}
+        </div>
+        <div className="mt-6 flex shrink-0 gap-3">
+          <button onClick={() => onPick(null)} className="min-h-16 flex-1 rounded-2xl bg-rose-100 text-xl font-black text-rose-700 active:scale-95">
+            Clear this night
+          </button>
+          <button onClick={onClose} className="min-h-16 flex-1 rounded-2xl bg-slate-900 text-xl font-black text-white active:scale-95 dark:bg-slate-100 dark:text-slate-900">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose: () => void; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
+      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
+        <div className="shrink-0 border-b border-mirror-line p-8 pb-6">
+          <h2 className="text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">{recipe.title}</h2>
+          <p className="mt-2 text-xl text-slate-600 dark:text-slate-300">{recipe.summary}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {recipe.totalMinutes ? <span className="rounded-full bg-slate-100 px-4 py-2 text-base font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{recipe.totalMinutes} min</span> : null}
+            {recipe.servings ? <span className="rounded-full bg-slate-100 px-4 py-2 text-base font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">Serves {recipe.servings}</span> : null}
+            {recipe.tags.map((tag) => (
+              <span key={tag} className="rounded-full bg-emerald-100 px-4 py-2 text-base font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{tag}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-[340px_1fr] gap-8 overflow-y-auto p-8">
+          <div>
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Ingredients</p>
+            <ul className="mt-4 space-y-3">
+              {recipe.ingredients.map((ingredient, index) => (
+                <li key={index} className="text-xl leading-snug text-slate-700 dark:text-slate-200">
+                  <span className="font-bold">{ingredient.quantity}</span> {ingredient.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Method</p>
+            <ol className="mt-4 space-y-4">
+              {recipe.steps.map((step, index) => (
+                <li key={index} className="flex gap-4 text-xl leading-snug text-slate-700 dark:text-slate-200">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-600 text-base font-black text-white">{index + 1}</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 gap-3 border-t border-mirror-line p-6">
+          <button
+            onClick={() => (confirming ? deleteRecipe(recipe.id).then(onDeleted).catch(() => undefined) : setConfirming(true))}
+            className="min-h-16 w-56 rounded-2xl bg-rose-100 text-xl font-black text-rose-700 active:scale-95"
+          >
+            {confirming ? "Tap again to delete" : "Delete"}
+          </button>
+          <button onClick={onClose} className="min-h-16 flex-1 rounded-2xl bg-sky-600 text-2xl font-black text-white active:scale-95">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TravelPanel({ focusDealId }: { focusDealId?: number | null }) {
