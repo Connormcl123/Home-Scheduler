@@ -19,9 +19,20 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   return events.length ? events : mockCalendarEvents();
 }
 
+/**
+ * Calendar apps hand out subscription links as webcal://, which is a
+ * convention rather than a real scheme - fetch() rejects it outright. Every
+ * client is expected to swap it for https before requesting. Normalising here
+ * rather than at the config layer means a URL pasted into Settings gets the
+ * same treatment as one from .env.
+ */
+function normalizeFeedUrl(feedUrl: string) {
+  return feedUrl.trim().replace(/^webcals?:\/\//i, "https://");
+}
+
 async function fetchCalendarFeed(feedUrl: string, feedIndex: number, now: Date, horizon: Date): Promise<CalendarEvent[]> {
   try {
-    const response = await fetch(feedUrl);
+    const response = await fetch(normalizeFeedUrl(feedUrl));
     if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
 
     const text = await response.text();
