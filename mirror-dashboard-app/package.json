@@ -13,6 +13,7 @@
     "start": "npm run start -w server",
     "start:pi": "bash scripts/start-server-with-ngrok.sh",
     "db:init": "npm run db:init -w server",
+    "db:seed": "npm run db:seed -w server",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client"
   },
   "devDependencies": {
