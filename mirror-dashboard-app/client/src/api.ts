@@ -174,6 +174,13 @@ export function refreshTravelDeals() {
   return request<TravelDealsResponse>("/api/travel/deals/refresh", { method: "POST" });
 }
 
+export function moveCalendarEvent(id: string, start: string, end?: string | null) {
+  return request<CalendarEvent[]>(`/api/calendar/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ start, end })
+  });
+}
+
 export function fetchCalendarEvents() {
   return request<CalendarEvent[]>("/api/calendar/events");
 }

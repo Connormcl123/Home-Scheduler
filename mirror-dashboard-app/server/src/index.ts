@@ -5,7 +5,7 @@ import fs from "node:fs";
 import { config } from "./config.js";
 import { getDb } from "./db.js";
 import { getDashboard } from "./services/dashboard.js";
-import { getCalendarEvents } from "./services/calendar.js";
+import { getCalendarEvents, moveCalendarEvent } from "./services/calendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
 import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
 import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
@@ -38,6 +38,18 @@ app.get("/api/health", async (_req, res) => {
 app.get("/api/dashboard", async (_req, res, next) => {
   try {
     res.json(await getDashboard());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/calendar/events/:id", async (req, res, next) => {
+  try {
+    const { start, end } = req.body || {};
+    if (!start) return res.status(400).json({ error: "start is required." });
+    if (Number.isNaN(new Date(start).getTime())) return res.status(400).json({ error: "start must be a valid timestamp." });
+    await moveCalendarEvent(req.params.id, start, end);
+    res.json(await getCalendarEvents());
   } catch (error) {
     next(error);
   }

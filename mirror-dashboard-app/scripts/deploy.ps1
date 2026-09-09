@@ -75,14 +75,17 @@ Note ("shared, server and client dist copied ({0:N1} MB)" -f $sizeMb)
 Step "Syncing runtime dependencies"
 # Only reinstalls when package.json actually changed, so a normal deploy does
 # no npm work on the Pi at all.
-$deps = & ssh -o BatchMode=yes $Target @"
+# The -replace matters: a PowerShell here-string carries CRLF, and bash then
+# sees the carriage return as part of the last token on every line.
+$depScript = (@"
 cd $RemoteApp
 if [ package.json -nt node_modules/.install-stamp ] || [ server/package.json -nt node_modules/.install-stamp ] || [ ! -f node_modules/.install-stamp ]; then
   npm install --omit=dev --no-audit --no-fund >/dev/null 2>&1 && touch node_modules/.install-stamp && echo "dependencies updated"
 else
   echo "dependencies unchanged"
 fi
-"@
+"@) -replace "`r`n", "`n"
+$deps = & ssh -o BatchMode=yes $Target $depScript
 Note $deps
 
 if (-not $NoRestart) {

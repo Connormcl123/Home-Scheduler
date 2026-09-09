@@ -37,6 +37,7 @@ import {
   updateWatchlistItem,
   fetchAssistantStatus,
   fetchCalendarEvents,
+  moveCalendarEvent,
   fetchHomePulse,
   fetchMorningStory,
   fetchTravelDeals,
@@ -1431,6 +1432,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   // Which week is on screen. 0 is this week; drag the grid sideways to move.
   const [weekOffset, setWeekOffset] = useState(0);
   const [panDx, setPanDx] = useState(0);
+  const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
   const panRef = useRef<{ startX: number; moved: boolean } | null>(null);
   const weekStart = addClientDays(startOfWeek(new Date()), weekOffset * 7);
   const days = Array.from({ length: 7 }, (_, index) => addClientDays(weekStart, index));
@@ -1682,7 +1684,14 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           {calendarMode !== "Week" && (
             <div className="absolute inset-0 z-20 bg-white p-5 dark:bg-slate-900">
               {calendarMode === "Day" && <CalendarDayView events={weekEvents} day={new Date()} />}
-              {calendarMode === "Month" && <CalendarMonthView events={weekEvents} monthDate={new Date()} />}
+              {calendarMode === "Month" && (
+                <CalendarMonthView
+                  events={weekEvents}
+                  monthDate={new Date()}
+                  onOpenEvent={setDetailEvent}
+                  onMoved={setWeekEvents}
+                />
+              )}
               {calendarMode === "Schedule" && <CalendarScheduleView events={weekEvents} />}
             </div>
           )}
@@ -1764,6 +1773,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           </div>
         </div>
       </div>
+      {detailEvent && <EventDetailDialog calendarEvent={detailEvent} onClose={() => setDetailEvent(null)} />}
       {isEventModalOpen && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-8">
           <div className="w-full max-w-3xl rounded-[28px] bg-white p-7 shadow-xl dark:bg-slate-900">
@@ -1815,31 +1825,232 @@ function CalendarDayView({ events, day }: { events: CalendarEvent[]; day: Date }
   );
 }
 
-function CalendarMonthView({ events, monthDate }: { events: CalendarEvent[]; monthDate: Date }) {
+function EventDetailDialog({ calendarEvent, onClose }: { calendarEvent: CalendarEvent; onClose: () => void }) {
+  const colors = eventColor(calendarEvent);
+  const start = new Date(calendarEvent.start);
+  const end = calendarEvent.end ? new Date(calendarEvent.end) : null;
+  const sourceLabel: Record<string, string> = {
+    ical: "Subscribed calendar",
+    google: "Google Calendar",
+    local: "Added here",
+    voice: "Added by voice",
+    demo: "Example"
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
+      <div
+        className="w-full max-w-2xl overflow-hidden rounded-[28px] bg-white dark:bg-slate-900"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="p-8" style={{ borderTop: `10px solid ${colors.color}` }}>
+          <p className="text-sm font-black uppercase tracking-widest" style={{ color: colors.text }}>
+            {sourceLabel[calendarEvent.source] || calendarEvent.source}
+          </p>
+          <h2 className="mt-3 text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">{calendarEvent.title}</h2>
+
+          <div className="mt-6 space-y-3 border-t border-mirror-line pt-5 text-2xl">
+            <p className="font-bold text-slate-700 dark:text-slate-200">
+              {start.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            </p>
+            <p className="text-slate-600 dark:text-slate-300">
+              {formatTimeOnly(calendarEvent.start)}{end ? ` - ${formatTimeOnly(end.toISOString())}` : ""}
+            </p>
+            {calendarEvent.location && (
+              <p className="text-slate-600 dark:text-slate-300">{calendarEvent.location}</p>
+            )}
+            {calendarEvent.moved && (
+              <p className="rounded-2xl bg-amber-100 p-4 text-lg font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+                Moved on this dashboard. The original calendar still has it at its old time.
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="mt-7 min-h-16 w-full rounded-2xl bg-sky-600 text-2xl font-black text-white active:scale-95"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarMonthView({
+  events,
+  monthDate,
+  onOpenEvent,
+  onMoved
+}: {
+  events: CalendarEvent[];
+  monthDate: Date;
+  onOpenEvent: (event: CalendarEvent) => void;
+  onMoved: (events: CalendarEvent[]) => void;
+}) {
   const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const gridStart = startOfWeek(first);
   const monthDays = Array.from({ length: 35 }, (_, index) => addClientDays(gridStart, index));
+
+  // A press only becomes a drag after being held, so a tap still opens the
+  // event and a scroll does not pick one up by accident.
+  const HOLD_MS = 320;
+  const [dragging, setDragging] = useState<{ event: CalendarEvent; x: number; y: number } | null>(null);
+  const [hoverDay, setHoverDay] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const holdRef = useRef<{ timer: number; event: CalendarEvent; startX: number; startY: number; held: boolean } | null>(null);
+
+  function clearHold() {
+    if (holdRef.current) window.clearTimeout(holdRef.current.timer);
+    holdRef.current = null;
+  }
+
+  function dayUnderPointer(x: number, y: number) {
+    const element = document.elementFromPoint(x, y) as HTMLElement | null;
+    return element?.closest?.("[data-month-day]")?.getAttribute("data-month-day") || null;
+  }
+
+  function beginPress(pointerEvent: ReactPointerEvent<HTMLButtonElement>, calendarEvent: CalendarEvent) {
+    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
+    const startX = pointerEvent.clientX;
+    const startY = pointerEvent.clientY;
+    const timer = window.setTimeout(() => {
+      if (!holdRef.current) return;
+      holdRef.current.held = true;
+      setDragging({ event: calendarEvent, x: startX, y: startY });
+    }, HOLD_MS);
+    holdRef.current = { timer, event: calendarEvent, startX, startY, held: false };
+  }
+
+  function movePress(pointerEvent: ReactPointerEvent<HTMLButtonElement>) {
+    const hold = holdRef.current;
+    if (!hold) return;
+    const dx = Math.abs(pointerEvent.clientX - hold.startX);
+    const dy = Math.abs(pointerEvent.clientY - hold.startY);
+    // Moving before the hold completes means they are scrolling, not dragging.
+    if (!hold.held && (dx > 12 || dy > 12)) {
+      clearHold();
+      return;
+    }
+    if (!hold.held) return;
+    setDragging({ event: hold.event, x: pointerEvent.clientX, y: pointerEvent.clientY });
+    setHoverDay(dayUnderPointer(pointerEvent.clientX, pointerEvent.clientY));
+  }
+
+  async function endPress(pointerEvent: ReactPointerEvent<HTMLButtonElement>, calendarEvent: CalendarEvent) {
+    const hold = holdRef.current;
+    clearHold();
+    const wasDragging = Boolean(hold?.held);
+    setDragging(null);
+    setHoverDay(null);
+
+    if (!wasDragging) {
+      onOpenEvent(calendarEvent);
+      return;
+    }
+
+    const targetDay = dayUnderPointer(pointerEvent.clientX, pointerEvent.clientY);
+    if (!targetDay) return;
+
+    const start = new Date(calendarEvent.start);
+    const target = new Date(targetDay);
+    if (isSameClientDate(start, target)) return;
+
+    // Keep the time of day; only the date changes.
+    const nextStart = new Date(target);
+    nextStart.setHours(start.getHours(), start.getMinutes(), 0, 0);
+    const duration = calendarEvent.end
+      ? new Date(calendarEvent.end).getTime() - start.getTime()
+      : 60 * 60 * 1000;
+
+    setSaving(true);
+    try {
+      const updated = await moveCalendarEvent(
+        calendarEvent.id,
+        nextStart.toISOString(),
+        new Date(nextStart.getTime() + duration).toISOString()
+      );
+      onMoved(updated.map(normalizeEventEnd));
+    } catch {
+      // Leave the event where it was; the list is refetched on the next load.
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-mirror-line pb-4">
-        <p className="text-lg font-bold uppercase text-slate-500">Month View</p>
-        <h3 className="text-5xl font-bold text-slate-900 dark:text-white">{monthDate.toLocaleDateString([], { month: "long", year: "numeric" })}</h3>
+      <div className="flex shrink-0 items-end justify-between border-b border-mirror-line pb-4">
+        <div>
+          <p className="text-lg font-bold uppercase text-slate-500">Month View</p>
+          <h3 className="text-5xl font-bold text-slate-900 dark:text-white">
+            {monthDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+          </h3>
+        </div>
+        <p className="text-base font-semibold text-slate-400">
+          {saving ? "Moving..." : "Tap an event for details, or hold to drag it to another day"}
+        </p>
       </div>
-      <div className="mt-5 grid flex-1 grid-cols-7 gap-3">
+
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-7 gap-2">
         {monthDays.map((day) => {
+          const key = day.toISOString();
           const dayEvents = events.filter((event) => isSameClientDate(new Date(event.start), day));
           const muted = day.getMonth() !== monthDate.getMonth();
+          const today = isSameClientDate(day, new Date());
+          const isTarget = hoverDay === key && Boolean(dragging);
           return (
-            <div key={day.toISOString()} className={`min-h-28 rounded-2xl bg-[#fbfbf7] p-3 dark:bg-slate-800 ${muted ? "opacity-45" : ""}`}>
-              <p className="text-xl font-bold text-slate-700 dark:text-slate-200">{day.getDate()}</p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {dayEvents.slice(0, 4).map((event) => <span key={event.id} className="h-3 w-3 rounded-full" style={{ background: eventColor(event).color }} />)}
+            <div
+              key={key}
+              data-month-day={key}
+              className={`flex min-h-0 flex-col overflow-hidden rounded-2xl p-2 transition-colors ${
+                isTarget ? "bg-sky-100 ring-4 ring-sky-400 dark:bg-sky-500/20" : "bg-[#fbfbf7] dark:bg-slate-800"
+              } ${muted ? "opacity-45" : ""}`}
+            >
+              <p className={`shrink-0 text-lg font-bold ${today ? "text-sky-600 dark:text-sky-400" : "text-slate-700 dark:text-slate-200"}`}>
+                {day.getDate()}
+              </p>
+              <div className="mt-1 min-h-0 flex-1 space-y-1 overflow-y-auto">
+                {dayEvents.map((calendarEvent) => {
+                  const colors = eventColor(calendarEvent);
+                  const isHeld = dragging?.event.id === calendarEvent.id;
+                  return (
+                    <button
+                      key={calendarEvent.id}
+                      type="button"
+                      onPointerDown={(pointerEvent) => beginPress(pointerEvent, calendarEvent)}
+                      onPointerMove={movePress}
+                      onPointerUp={(pointerEvent) => endPress(pointerEvent, calendarEvent)}
+                      onPointerCancel={clearHold}
+                      className={`w-full touch-none rounded-lg px-2 py-1 text-left transition ${isHeld ? "opacity-30" : "active:scale-95"}`}
+                      style={{ background: colors.soft, borderLeft: `4px solid ${colors.color}` }}
+                    >
+                      <p className="truncate text-xs font-bold" style={{ color: colors.text }}>
+                        {formatTimeOnly(calendarEvent.start)}
+                      </p>
+                      <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-800 dark:text-slate-100">
+                        {calendarEvent.title}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
-              {dayEvents[0] && <p className="mt-2 truncate text-sm font-bold text-slate-500">{dayEvents[0].title}</p>}
             </div>
           );
         })}
       </div>
+
+      {/* Follows the finger so it is obvious what is being carried. */}
+      {dragging && (
+        <div
+          className="pointer-events-none fixed z-50 w-44 rounded-xl bg-white p-2 shadow-2xl ring-2 ring-sky-400 dark:bg-slate-900"
+          style={{ left: dragging.x - 88, top: dragging.y - 28 }}
+        >
+          <p className="truncate text-xs font-bold text-slate-500">{formatTimeOnly(dragging.event.start)}</p>
+          <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-900 dark:text-slate-100">{dragging.event.title}</p>
+        </div>
+      )}
     </div>
   );
 }

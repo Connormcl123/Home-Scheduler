@@ -8,6 +8,8 @@ export interface CalendarEvent {
   end?: string;
   location?: string;
   source: "ical" | "google" | "demo" | "local" | "voice";
+  /** True when this event has been repositioned on the dashboard. */
+  moved?: boolean;
 }
 
 export interface Task {

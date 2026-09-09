@@ -3,6 +3,7 @@ import type { CalendarEvent } from "@mirror-dashboard/shared";
 import { addDays } from "../utils/dates.js";
 import { listLocalCalendarEvents } from "./localCalendar.js";
 import { getSettings } from "./settings.js";
+import { getDb } from "../db.js";
 
 export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const settings = await getSettings();
@@ -14,7 +15,8 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
     listLocalCalendarEvents({ from: addDays(now, -1), to: horizon }),
     Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index, now, horizon)))
   ]);
-  const events = [...localEvents, ...eventGroups.flat()].sort((a, b) => a.start.localeCompare(b.start));
+  const events = applyOverrides([...localEvents, ...eventGroups.flat()], await loadOverrides())
+    .sort((a, b) => a.start.localeCompare(b.start));
 
   return events.length ? events : mockCalendarEvents();
 }
@@ -28,6 +30,53 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
  */
 function normalizeFeedUrl(feedUrl: string) {
   return feedUrl.trim().replace(/^webcals?:\/\//i, "https://");
+}
+
+type OverrideRow = { event_id: string; start: string; end: string | null };
+
+async function loadOverrides(): Promise<Map<string, OverrideRow>> {
+  try {
+    const db = await getDb();
+    const rows = await db.all<OverrideRow[]>("SELECT event_id, start, end FROM calendar_event_overrides");
+    return new Map(rows.map((row) => [row.event_id, row]));
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * A subscribed calendar is read-only, so moving one of its events cannot be
+ * written back to the source. The new time is kept here instead and reapplied
+ * on every read, so the change survives a restart and a feed refresh while the
+ * upstream calendar is left alone.
+ */
+function applyOverrides(events: CalendarEvent[], overrides: Map<string, OverrideRow>): CalendarEvent[] {
+  if (!overrides.size) return events;
+  return events.map((event) => {
+    const override = overrides.get(event.id);
+    if (!override) return event;
+    return { ...event, start: override.start, end: override.end || undefined, moved: true };
+  });
+}
+
+export async function moveCalendarEvent(id: string, start: string, end?: string | null) {
+  const db = await getDb();
+  const startIso = new Date(start).toISOString();
+  const endIso = end ? new Date(end).toISOString() : null;
+
+  // Local events are ours to edit outright; anything from a feed gets an override.
+  const localMatch = /^local-(\d+)$/.exec(id);
+  if (localMatch) {
+    await db.run("UPDATE local_calendar_events SET start = ?, end = ? WHERE id = ?", startIso, endIso, Number(localMatch[1]));
+    return;
+  }
+
+  await db.run(
+    `INSERT INTO calendar_event_overrides (event_id, start, end, updated_at)
+     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(event_id) DO UPDATE SET start = excluded.start, end = excluded.end, updated_at = CURRENT_TIMESTAMP`,
+    id, startIso, endIso
+  );
 }
 
 async function fetchCalendarFeed(feedUrl: string, feedIndex: number, now: Date, horizon: Date): Promise<CalendarEvent[]> {
