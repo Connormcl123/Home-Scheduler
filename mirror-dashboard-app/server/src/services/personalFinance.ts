@@ -158,7 +158,25 @@ async function applyCategoryRule(input: { matchText: string; category: string })
   );
 }
 
+let seedInFlight: Promise<void> | null = null;
+
+/**
+ * Guards against concurrent seeding. Each table is gated on its own COUNT, so
+ * two callers arriving together both read zero and both insert - which threw
+ * "UNIQUE constraint failed: finance_budgets.category" on a cold start, because
+ * /api/dashboard and /api/home/pulse both reach finance at once. Sharing one
+ * in-flight promise makes the first caller do the work and the rest wait.
+ */
 async function seedPersonalFinanceDemoData() {
+  if (!seedInFlight) {
+    seedInFlight = seedPersonalFinanceDemoDataOnce().finally(() => {
+      seedInFlight = null;
+    });
+  }
+  return seedInFlight;
+}
+
+async function seedPersonalFinanceDemoDataOnce() {
   const db = await getDb();
   const accountCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM finance_accounts");
   if (!accountCount?.count) {
@@ -176,7 +194,7 @@ async function seedPersonalFinanceDemoData() {
   const budgetCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM finance_budgets");
   if (!budgetCount?.count) {
     for (const [category, limit, color] of demoBudgets) {
-      await db.run("INSERT INTO finance_budgets (category, limit_amount, color) VALUES (?, ?, ?)", category, limit, color);
+      await db.run("INSERT OR IGNORE INTO finance_budgets (category, limit_amount, color) VALUES (?, ?, ?)", category, limit, color);
     }
   }
 
