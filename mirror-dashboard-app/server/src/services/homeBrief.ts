@@ -69,7 +69,20 @@ function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
     ctx.news.slice(0, 5).map((article) => `- ${article.title} (${article.source})`).join("\n") || "- none",
     "",
     ctx.note ? `Today's note: ${ctx.note.body}` : "No note today.",
-    ctx.deal ? `Trip idea of the day: ${ctx.deal.destination} - ${ctx.deal.headline}` : ""
+    ctx.deal ? `Trip idea of the day: ${ctx.deal.destination} - ${ctx.deal.headline}` : "",
+    "",
+    "Markets:",
+    (ctx.finance?.quotes || [])
+      .filter((quote) => quote.price !== null)
+      .map((quote) => {
+        const move = quote.changePercent ?? 0;
+        return `- ${quote.symbol} at ${quote.price?.toFixed(2)}, ${move >= 0 ? "up" : "down"} ${Math.abs(move).toFixed(2)}% today`;
+      })
+      .join("\n") || "- market data unavailable",
+    "",
+    ctx.finance?.personal
+      ? `Household money for ${ctx.finance.personal.monthLabel}: ${ctx.finance.personal.budgetSpent} spent of a ${ctx.finance.personal.budgetLimit} budget, cash flow ${ctx.finance.personal.cashFlow}, cash on hand ${ctx.finance.personal.totalCash}.`
+      : "Household money unavailable."
   ].join("\n");
 }
 
