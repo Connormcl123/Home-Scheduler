@@ -1337,7 +1337,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   const days = Array.from({ length: 7 }, (_, index) => addClientDays(weekStart, index));
   const startHour = 6;
   const endHour = 22;
-  const hourHeight = 72;
+  const hourHeight = 64;
   const dayWidthPercent = 100 / 7;
 
   useEffect(() => {
@@ -1562,7 +1562,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                 const dayIndex = days.findIndex((day) => isSameClientDate(day, start));
                 if (dayIndex < 0) return null;
                 const top = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * hourHeight;
-                const height = Math.max(50, (end.getTime() - start.getTime()) / (60 * 60 * 1000) * hourHeight);
+                const height = Math.max(58, (end.getTime() - start.getTime()) / (60 * 60 * 1000) * hourHeight);
                 if (top < 0 || top > (endHour - startHour) * hourHeight) return null;
                 const colors = eventColor(calendarEvent);
 
@@ -1570,7 +1570,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                   <div
                     key={calendarEvent.id}
                     onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
-                    className="absolute cursor-grab select-none rounded-2xl border-l-[10px] px-4 py-3 shadow-sm active:cursor-grabbing"
+                    className="absolute overflow-hidden cursor-grab select-none rounded-xl border-l-[6px] px-2.5 py-1.5 shadow-sm active:cursor-grabbing"
                     style={{
                       left: `calc(${dayIndex * dayWidthPercent}% + 8px)`,
                       top,
@@ -1580,11 +1580,11 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                       borderColor: colors.color
                     }}
                   >
-                    <p className="text-sm font-bold" style={{ color: colors.text }}>{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
-                    <p className="mt-1 truncate text-xl font-bold text-slate-900">{calendarEvent.title}</p>
+                    <p className="text-xs font-bold leading-tight" style={{ color: colors.text }}>{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
+                    <p className="mt-0.5 line-clamp-2 text-base font-bold leading-tight text-slate-900">{calendarEvent.title}</p>
                     <div
                       onPointerDown={(pointerEvent) => beginResize(pointerEvent, calendarEvent)}
-                      className="absolute bottom-1 left-1/2 h-4 w-16 -translate-x-1/2 rounded-full opacity-70"
+                      className="absolute bottom-0.5 left-1/2 h-2 w-10 -translate-x-1/2 rounded-full opacity-60"
                       style={{ background: colors.color }}
                     />
                   </div>
