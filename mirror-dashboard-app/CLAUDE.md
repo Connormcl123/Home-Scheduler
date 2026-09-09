@@ -28,6 +28,8 @@ Run from the repo root (`mirror-dashboard-app/`):
 
 - Server is ESM: relative imports need `.js` extensions in TS source (`./config.js`).
 - Dark mode uses Tailwind's **class** strategy (`darkMode: "class"` in `client/tailwind.config.ts`) because the nav rail toggles a `dark` class on `<main>`. Never remove that setting — every `dark:` variant in the app silently stops working.
+- **The Pi never compiles.** Running vite/tsc on-device pins all four cores while it drives the display; sustained builds on the first board preceded a hardware failure. `scripts/deploy.ps1` builds on the dev machine and ships `shared/dist`, `server/dist`, `client/dist` over one tar stream, then restarts the service. The Pi only runs `npm install --omit=dev` when a package.json actually changed. A fresh board is set up with `scripts/provision-pi.sh` (idempotent).
+- After a deploy: server code needs `systemctl restart mirror-dashboard`; UI changes additionally need the browser reloaded (`systemctl --user restart mirror-kiosk`), because Express serves `client/dist` from disk and Chromium holds the old bundle in memory.
 - Config is centralized in `server/src/config.ts`, reading `.env` at repo root (copy from `.env.example`). Never commit real keys.
 - Every external provider (iCal, Open-Meteo weather, RSS, Yahoo finance, Plaid, Google Places, OpenAI travel itineraries) must degrade gracefully to mock/local fallback data when unconfigured or offline — the Pi should never show a broken panel.
 - `data/mirror-dashboard.sqlite` holds Plaid access tokens and personal finance data — treat as sensitive, never commit.

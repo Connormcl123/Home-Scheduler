@@ -204,6 +204,29 @@ Then restart:
 sudo systemctl restart mirror-dashboard
 ```
 
+## Deploying to the Raspberry Pi
+
+Set up a fresh board once:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Connormcl123/Home-Scheduler/feature/standalone-mirror-dashboard/mirror-dashboard-app/scripts/provision-pi.sh | bash
+```
+
+That installs Node, clones the repo, installs runtime dependencies, creates
+`.env`, initialises the database, and registers both the dashboard service and
+the kiosk browser so they come back after a reboot. It is safe to re-run.
+
+Afterwards, deploy from the dev machine:
+
+```powershell
+.\scripts\deploy.ps1
+```
+
+The Pi never compiles anything. Builds run here and only the compiled output
+crosses the wire - running vite and tsc on-device pins all four cores while it
+is also driving the display, and sustained builds on the first board preceded a
+hardware failure.
+
 ## Household Assistant (Claude)
 
 The Assistant tab is a chat panel backed by a Claude agent that can read and change the
