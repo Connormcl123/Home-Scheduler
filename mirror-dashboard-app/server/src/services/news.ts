@@ -22,6 +22,25 @@ type FeedItemWithMedia = {
   content?: string;
 };
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+  hellip: "…", mdash: "—", ndash: "–",
+  lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”"
+};
+
+/**
+ * Feed titles arrive with HTML entities in them - publishers routinely emit
+ * &#8217; for an apostrophe - and React escapes on render, so without this the
+ * raw entity shows up on the wall display.
+ */
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&([a-zA-Z]+);/g, (match, name: string) => NAMED_ENTITIES[name.toLowerCase()] ?? match)
+    .trim();
+}
+
 function extractImage(item: FeedItemWithMedia): string | null {
   if (item.enclosure?.url && (item.enclosure.type || "").startsWith("image")) {
     return item.enclosure.url;
@@ -48,8 +67,8 @@ export async function getNews(): Promise<NewsArticle[]> {
         const link = item.link || feedUrl;
         articles.push({
           id: crypto.createHash("sha1").update(link).digest("hex"),
-          title: item.title || "Untitled article",
-          source: feed.title || new URL(feedUrl).hostname,
+          title: decodeEntities(item.title || "Untitled article"),
+          source: decodeEntities(feed.title || new URL(feedUrl).hostname),
           link,
           publishedAt: item.isoDate || item.pubDate,
           imageUrl: extractImage(item as FeedItemWithMedia)
