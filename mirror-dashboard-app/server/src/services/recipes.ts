@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { GroceryPushResult, MealPlanEntry, Recipe, RecipeIngredient } from "@mirror-dashboard/shared";
 import { config } from "../config.js";
 import { getDb } from "../db.js";
-import { createGroceryItem, listGroceryItems } from "./grocery.js";
+import { createGroceryItem, listGroceryItems, updateGroceryItem } from "./grocery.js";
 import { todayIso } from "../utils/dates.js";
 
 type RecipeRow = {
@@ -154,7 +154,7 @@ export async function getTonightsMeal(): Promise<MealPlanEntry | null> {
  */
 export async function pushPlanToGrocery(from = todayIso()): Promise<GroceryPushResult> {
   const [plan, existing] = await Promise.all([getMealPlan(from), listGroceryItems()]);
-  const have = new Set(existing.filter((item) => !item.purchased).map((item) => item.name.trim().toLowerCase()));
+  const byName = new Map(existing.map((item) => [item.name.trim().toLowerCase(), item]));
 
   // Collapse repeats across the week so three chicken dinners ask for chicken once.
   const wanted = new Map<string, RecipeIngredient>();
@@ -169,10 +169,25 @@ export async function pushPlanToGrocery(from = todayIso()): Promise<GroceryPushR
   const added: string[] = [];
   let skipped = 0;
   for (const [key, ingredient] of wanted) {
-    if (have.has(key)) {
+    const match = byName.get(key);
+
+    if (match && !match.purchased) {
       skipped += 1;
       continue;
     }
+
+    if (match?.purchased) {
+      // Bought last week and ticked off. Next week's plan needs it again, so
+      // put that same row back on the list instead of adding a second one.
+      await updateGroceryItem(match.id, {
+        purchased: false,
+        status: "low",
+        quantity: ingredient.quantity || match.quantity
+      });
+      added.push(ingredient.name.trim());
+      continue;
+    }
+
     await createGroceryItem({
       name: ingredient.name.trim(),
       quantity: ingredient.quantity || undefined,
