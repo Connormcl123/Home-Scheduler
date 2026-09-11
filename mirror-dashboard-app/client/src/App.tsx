@@ -3374,8 +3374,10 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (!deals.length) return;
-    // Capture so the drag survives the finger leaving the rail.
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // Deliberately no pointer capture yet. Capturing here retargets the
+    // pointerup to the rail, so the browser fires click on the rail rather than
+    // the card and a plain tap never opens the trip. Capture is taken only once
+    // the gesture has actually become a drag (see onPointerMove).
     dragRef.current = { startX: event.clientX, startIndex: index, moved: false };
     setDragDx(0);
   }
@@ -3384,8 +3386,17 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
     const drag = dragRef.current;
     if (!drag) return;
     const dx = event.clientX - drag.startX;
-    // Past this the gesture is a drag, not a tap.
-    if (Math.abs(dx) > 8) drag.moved = true;
+    // Past this the gesture is a drag, not a tap - and now it is safe to
+    // capture, so the drag survives the finger sliding off the rail.
+    if (!drag.moved && Math.abs(dx) > 8) {
+      drag.moved = true;
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Capture is a nicety - if the pointer has already gone, the drag
+        // still works while the finger stays on the rail.
+      }
+    }
     // Set straight from the event rather than deferring to rAF: the browser
     // already coalesces pointermove to one per frame, so a rAF hop only adds a
     // frame of lag between finger and card - and if rAF is throttled the rail
