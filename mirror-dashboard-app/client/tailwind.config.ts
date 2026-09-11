@@ -10,9 +10,23 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "Segoe UI", "sans-serif"]
+        sans: ["Instrument Sans", "Inter", "ui-sans-serif", "system-ui", "Segoe UI", "sans-serif"],
+        display: ["Instrument Serif", "Georgia", "Times New Roman", "serif"]
       },
       colors: {
+        // The Ambient palette. Values live in CSS variables set on <main> from
+        // src/ambient.ts, so they follow the time of day.
+        amb: {
+          ink: "var(--amb-ink)",
+          muted: "var(--amb-muted)",
+          card: "var(--amb-card)",
+          rail: "var(--amb-rail)",
+          well: "var(--amb-well)",
+          sheet: "var(--amb-sheet)",
+          border: "var(--amb-border)",
+          accent: "var(--amb-accent)",
+          "accent-ink": "var(--amb-accent-ink)"
+        },
         mirror: {
           ink: "#18212f",
           soft: "#f4f7fb",
@@ -40,7 +54,8 @@ export default {
         sm: "calc(var(--radius) - 4px)"
       },
       boxShadow: {
-        panel: "0 20px 55px rgba(35, 55, 82, 0.14)"
+        panel: "0 20px 55px rgba(35, 55, 82, 0.14)",
+        ambient: "var(--amb-shadow)"
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },

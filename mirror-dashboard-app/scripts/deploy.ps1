@@ -24,7 +24,19 @@ param(
   [switch]$NoRestart
 )
 
-$ErrorActionPreference = "Stop"
+# Not "Stop": Windows PowerShell 5.1 turns any stderr from a native command
+# (ssh, scp, tar) into an error record, and under Stop a harmless ssh warning
+# aborted the whole deploy. Failures are caught by exit code and thrown.
+$ErrorActionPreference = "Continue"
+# Windows' own OpenSSH, by full path. Launched from Git Bash, PATH puts Git's
+# ssh first; it reads a different known_hosts and cannot reach the Pi.
+$Ssh = Join-Path $env:SystemRoot "System32\OpenSSH\ssh.exe"
+$Scp = Join-Path $env:SystemRoot "System32\OpenSSH\scp.exe"
+if (-not (Test-Path $Ssh)) { $Ssh = "ssh"; $Scp = "scp" }
+# Same for tar: Git's tar reads "C:\..." as a remote host and refuses.
+$Tar = Join-Path $env:SystemRoot "System32\tar.exe"
+if (-not (Test-Path $Tar)) { $Tar = "tar" }
+
 $AppDir = Split-Path -Parent $PSScriptRoot
 Set-Location $AppDir
 
@@ -35,26 +47,26 @@ function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Note($msg) { Write-Host "    $msg" -ForegroundColor DarkGray }
 
 Step "Checking the Pi is reachable"
-$probe = & ssh -o BatchMode=yes -o ConnectTimeout=10 $Target "echo ok" 2>&1
+$probe = & $Ssh -o BatchMode=yes -o ConnectTimeout=10 $Target "echo ok" 2>&1
 if ($LASTEXITCODE -ne 0) {
-  Write-Error "Cannot reach $Target over SSH.`n$probe`nCheck the host is on and your key is authorised."
+  throw "Cannot reach $Target over SSH.`n$probe`nCheck the host is on and your key is authorised."
 }
 Note "connected to $Target"
 
 if (-not $SkipBuild) {
   Step "Building locally"
   npm run build
-  if ($LASTEXITCODE -ne 0) { Write-Error "Build failed - nothing was deployed." }
+  if ($LASTEXITCODE -ne 0) { throw "Build failed - nothing was deployed." }
 }
 
 foreach ($d in @("shared\dist", "server\dist", "client\dist")) {
-  if (-not (Test-Path $d)) { Write-Error "$d is missing. Run without -SkipBuild." }
+  if (-not (Test-Path $d)) { throw "$d is missing. Run without -SkipBuild." }
 }
 
 Step "Updating source on the Pi"
 # Source only: package.json changes matter for runtime deps, and the service
 # reads scripts/ from the checkout. No build happens there.
-$pull = & ssh -o BatchMode=yes $Target "cd $RemoteApp/.. && git pull --ff-only 2>&1 | tail -2"
+$pull = & $Ssh -o BatchMode=yes $Target "cd $RemoteApp/.. && git pull --ff-only 2>&1 | tail -2"
 Note $pull
 
 Step "Shipping compiled output"
@@ -62,16 +74,16 @@ Step "Shipping compiled output"
 # converts native-command pipelines to text, which corrupts a gzip stream. One
 # archive still beats three scp directory walks for round trips.
 $archive = Join-Path $env:TEMP "mirror-dist.tar.gz"
-& tar -czf $archive shared/dist server/dist client/dist
-if ($LASTEXITCODE -ne 0) { Write-Error "Could not create the archive." }
+& $Tar -czf $archive shared/dist server/dist client/dist
+if ($LASTEXITCODE -ne 0) { throw "Could not create the archive." }
 
 $sizeMb = (Get-Item $archive).Length / 1MB
 
-& scp -o BatchMode=yes -q $archive "${Target}:/tmp/mirror-dist.tar.gz"
-if ($LASTEXITCODE -ne 0) { Write-Error "Transfer failed." }
+& $Scp -o BatchMode=yes -q $archive "${Target}:/tmp/mirror-dist.tar.gz"
+if ($LASTEXITCODE -ne 0) { throw "Transfer failed." }
 
-& ssh -o BatchMode=yes $Target "cd $RemoteApp && tar -xzf /tmp/mirror-dist.tar.gz && rm -f /tmp/mirror-dist.tar.gz"
-if ($LASTEXITCODE -ne 0) { Write-Error "Extract failed on the Pi." }
+& $Ssh -o BatchMode=yes $Target "cd $RemoteApp && tar -xzf /tmp/mirror-dist.tar.gz && rm -f /tmp/mirror-dist.tar.gz"
+if ($LASTEXITCODE -ne 0) { throw "Extract failed on the Pi." }
 Remove-Item $archive -Force -ErrorAction SilentlyContinue
 Note ("shared, server and client dist copied ({0:N1} MB)" -f $sizeMb)
 
@@ -88,15 +100,15 @@ else
   echo "dependencies unchanged"
 fi
 "@) -replace "`r`n", "`n"
-$deps = & ssh -o BatchMode=yes $Target $depScript
+$deps = & $Ssh -o BatchMode=yes $Target $depScript
 Note $deps
 
 if (-not $NoRestart) {
   Step "Restarting the dashboard"
-  & ssh -o BatchMode=yes $Target "sudo systemctl restart mirror-dashboard" 2>&1 | Out-Null
+  & $Ssh -o BatchMode=yes $Target "sudo systemctl restart mirror-dashboard" 2>&1 | Out-Null
   Start-Sleep -Seconds 5
 
-  $health = & ssh -o BatchMode=yes $Target "curl -fsS -o /dev/null -w '%{http_code}' http://localhost:4174/api/health || echo down"
+  $health = & $Ssh -o BatchMode=yes $Target "curl -fsS -o /dev/null -w '%{http_code}' http://localhost:4174/api/health || echo down"
   if ($health -eq "200") {
     Note "service healthy"
   } else {
@@ -106,7 +118,7 @@ if (-not $NoRestart) {
   Step "Reloading the kiosk"
   # Express serves client/dist from disk, so the browser needs a reload to pick
   # up a new bundle even though the service restart does not require it.
-  & ssh -o BatchMode=yes $Target "systemctl --user restart mirror-kiosk" 2>&1 | Out-Null
+  & $Ssh -o BatchMode=yes $Target "systemctl --user restart mirror-kiosk" 2>&1 | Out-Null
   Note "browser reloaded"
 }
 

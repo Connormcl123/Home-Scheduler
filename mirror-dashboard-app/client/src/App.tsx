@@ -1,5 +1,7 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { motion } from "motion/react";
+import { greetingFor, useAmbient } from "./ambient";
 import type { ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
@@ -484,7 +486,8 @@ function DashboardApp() {
   const [now, setNow] = useState(new Date());
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
-  const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-theme") === "dark");
+  // The moon button pins the night palette; otherwise it follows the clock.
+  const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-force-night") === "yes");
   const [burnInStep, setBurnInStep] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [externalLink, setExternalLink] = useState<string | null>(null);
@@ -568,10 +571,7 @@ function DashboardApp() {
   }, []);
 
   useEffect(() => {
-    safeStorageSet("mirror-dashboard-theme", darkMode ? "dark" : "light");
-    // shadcn/Radix dialogs portal into <body>, outside <main> where the dark
-    // class lives, so mirror it on the root or they always open light.
-    document.documentElement.classList.toggle("dark", darkMode);
+    safeStorageSet("mirror-dashboard-force-night", darkMode ? "yes" : "no");
   }, [darkMode]);
 
   useEffect(() => {
@@ -684,6 +684,15 @@ function DashboardApp() {
     };
   }, [now]);
 
+  const ambient = useAmbient(now, darkMode);
+
+  // Dusk and night palettes are dark, so the dark: styles switch on with them.
+  // Mirrored onto <html> as well: shadcn/Radix dialogs portal into <body>,
+  // outside <main>, and would otherwise always open light.
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", ambient.palette.dark);
+  }, [ambient.palette.dark]);
+
   const shift = burnInOffsets[burnInStep];
   const orderedNavItems = useMemo(() => {
     return navOrder
@@ -793,7 +802,16 @@ function DashboardApp() {
   }
 
   return (
-    <main className={`min-h-screen overflow-hidden transition-colors duration-700 ${darkMode ? "dark bg-slate-950 text-slate-100" : "bg-[radial-gradient(circle_at_top_left,#e7f3ff_0,#f9fbfe_36%,#eef5ef_100%)] text-mirror-ink"}`}>
+    <main
+      className={`relative min-h-screen overflow-hidden text-amb-ink ${ambient.palette.dark ? "dark" : ""}`}
+      style={{ ...ambient.style, background: "var(--amb-bg)" }}
+    >
+      {/* The sun (or moon). One static gradient: no blur, nothing animated. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-[120px] top-[-260px] h-[760px] w-[760px] rounded-full"
+        style={{ background: "var(--amb-sun)" }}
+      />
       <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center">
         {(!isOnline || error) && (
           <div className="mt-3 flex items-center gap-3 rounded-full bg-amber-100 px-5 py-3 text-lg font-bold text-amber-900 shadow-lg">
@@ -803,17 +821,17 @@ function DashboardApp() {
         )}
       </div>
       <div className={`mx-auto flex h-screen max-h-screen max-w-[1920px] gap-4 overflow-hidden px-5 py-4 transition-transform duration-700 ${keyboardVisible ? "pb-80" : ""}`} style={{ transform: `translate(${shift.x}px, ${shift.y}px)` }}>
-        <aside className="flex w-32 shrink-0 flex-col items-center gap-2 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+        <aside className="flex w-32 shrink-0 flex-col items-center gap-2 rounded-[32px] border border-amb-border bg-amb-rail p-3">
           <div className="w-full pb-1 text-center">
-            <p className="text-3xl font-black leading-none text-mirror-ink dark:text-slate-100">{clock.time}</p>
-            <p className="text-sm font-bold leading-tight text-slate-500 dark:text-slate-400">{clock.period}</p>
-            <p className="mt-1 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">{clock.date}</p>
+            <p className="font-display text-4xl leading-none">{clock.time}</p>
+            <p className="text-sm font-semibold leading-tight text-amb-muted">{clock.period}</p>
+            <p className="mt-1 text-xs font-medium leading-tight text-amb-muted">{clock.date}</p>
           </div>
-          <div className="h-px w-14 bg-mirror-line" />
-          <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full bg-amber-100 text-amber-700 dark:bg-slate-800 dark:text-sky-200" aria-label="Toggle dark mode">
+          <div className="h-px w-14 bg-amb-border" />
+          <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full border border-amb-border bg-amb-card text-amb-ink" aria-label="Toggle dark mode">
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
           </button>
-          <div className="h-px w-14 bg-mirror-line" />
+          <div className="h-px w-14 bg-amb-border" />
           {orderedNavItems.map((item) => {
             const Icon = item.icon;
             const active = view === item.view;
@@ -829,7 +847,7 @@ function DashboardApp() {
                 onClick={(event) => clickNavItem(event, item.view)}
                 onDoubleClick={doubleClickNavItem}
                 className={`nav-app-button flex h-20 w-full flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold transition active:scale-95 ${
-                  active ? "bg-sky-600 text-white shadow-lg shadow-sky-300/40" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
+                  active ? "bg-amb-card text-amb-ink shadow-ambient" : "text-amb-muted"
                 } ${navEditMode ? "nav-app-edit cursor-grab shadow-xl" : ""} ${dragging ? "nav-app-dragging z-10" : ""} ${
                   navEditMode && !dragging ? "scale-[1.03]" : ""
                 }`}
@@ -843,7 +861,7 @@ function DashboardApp() {
           {navEditMode && (
             <button
               onClick={exitNavEditMode}
-              className="mt-auto min-h-14 rounded-2xl bg-slate-900 px-3 text-base font-black text-white active:scale-95 dark:bg-slate-100 dark:text-slate-900"
+              className="mt-auto min-h-14 rounded-2xl bg-amb-accent px-3 text-base font-black text-amb-accent-ink active:scale-95"
             >
               Done
             </button>
@@ -864,12 +882,12 @@ function DashboardApp() {
       </div>
       {externalLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-8">
-          <div className="w-full max-w-3xl rounded-[28px] bg-white p-8 dark:bg-slate-900">
-            <h2 className="text-3xl font-bold text-mirror-ink dark:text-slate-100">Opens outside the dashboard</h2>
-            <p className="mt-3 text-xl text-slate-600 dark:text-slate-300">
+          <div className="w-full max-w-3xl rounded-[28px] bg-amb-sheet p-8">
+            <h2 className="text-3xl font-bold text-amb-ink">Opens outside the dashboard</h2>
+            <p className="mt-3 text-xl text-amb-muted">
               The wall display stays on the dashboard. Open this on your phone instead:
             </p>
-            <p className="mt-4 break-all rounded-2xl bg-slate-100 p-5 text-2xl font-semibold text-sky-700 dark:bg-slate-800 dark:text-sky-300">
+            <p className="mt-4 break-all rounded-2xl bg-amb-well p-5 text-2xl font-semibold text-sky-700 dark:text-sky-300">
               {externalLink}
             </p>
             <button
@@ -909,7 +927,7 @@ const CARD_LOOK: Record<HomeCardKind, { icon: LucideIcon; tint: string; label: s
   news: { icon: Newspaper, tint: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300", label: "News" },
   note: { icon: StickyNote, tint: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300", label: "Note" },
   travel: { icon: Plane, tint: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", label: "Travel" },
-  finance: { icon: Landmark, tint: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", label: "Finance" },
+  finance: { icon: Landmark, tint: "bg-slate-200 text-amb-ink dark:bg-slate-700", label: "Finance" },
   meal: { icon: UtensilsCrossed, tint: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", label: "Tonight" }
 };
 
@@ -925,6 +943,12 @@ function countdownTo(iso: string, now: Date) {
   const rest = minutes % 60;
   return rest ? `in ${hours}h ${rest}m` : `in ${hours}h`;
 }
+
+/**
+ * Shared entrance: a short rise, staggered by position. Transform and opacity
+ * only, so the Pi composites it rather than repainting.
+ */
+const rise = (step: number) => ({ duration: 0.76, ease: [0.2, 0.7, 0.2, 1] as const, delay: step * 0.1 });
 
 function HomePanel({
   dashboard,
@@ -964,53 +988,61 @@ function HomePanel({
   const weather = dashboard.weather;
   const today = weather.daily[0];
   const cards = pulse?.cards ?? [];
+  const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
+  const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? "";
+  const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      {/* Hero: the one line worth walking over for. */}
-      <Card className="shrink-0">
-        <div className="flex items-start justify-between gap-6">
-          <div className="min-w-0">
-            <p className="text-sm font-black uppercase tracking-widest text-sky-600 dark:text-sky-400">Right now</p>
-            <p className="mt-2 text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">
-              {pulse?.headline ?? "Reading the day..."}
+    <div className="flex h-full min-h-0 flex-col gap-6 px-2 pt-2">
+      <div className="flex shrink-0 items-end justify-between gap-8">
+        <motion.div className="flex flex-col gap-1.5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(0)}>
+          <p className="text-[26px] font-medium text-amb-muted">{greetingFor(now)}&nbsp;&nbsp;·&nbsp;&nbsp;{dateLine}</p>
+          <p className="font-display text-[184px] leading-[0.86] tracking-[-0.02em]">
+            {part("hour")}:{part("minute")}
+            <span className="ml-3.5 text-[66px] italic tracking-normal">{part("dayPeriod")}</span>
+          </p>
+        </motion.div>
+        <motion.div className="flex items-center gap-7" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(1)}>
+          <div className="flex flex-col items-end gap-1">
+            <p className="font-display text-[120px] leading-[0.9]">{Math.round(weather.current.temperature)}&deg;</p>
+            <p className="text-[22px] font-medium text-amb-muted">
+              {weather.current.description}
+              {today ? `  ·  ${Math.round(today.high)}° / ${Math.round(today.low)}°` : ""}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-5">
-            {/* Weather demoted to a strip: temperature and the forecast, nothing more. */}
-            <div className="text-right">
-              <p className="text-4xl font-black leading-none text-mirror-ink dark:text-slate-50">{Math.round(weather.current.temperature)}&deg;</p>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">{weather.current.description}</p>
-              {today && (
-                <p className="text-base text-slate-400 dark:text-slate-500">
-                  {Math.round(today.high)}&deg; / {Math.round(today.low)}&deg;
-                </p>
-              )}
-            </div>
-            {story && (
-              <button
-                onClick={() => setStoryOpen(true)}
-                className="touch-button w-20 bg-sky-600 text-white"
-                aria-label="Play the morning briefing"
-              >
-                <Sparkles className="h-7 w-7" />
-              </button>
-            )}
-          </div>
-        </div>
-      </Card>
+          {story && (
+            <button
+              onClick={() => setStoryOpen(true)}
+              className="flex h-16 items-center gap-2.5 rounded-full border border-amb-border bg-amb-card px-6 text-xl font-semibold active:scale-95"
+              aria-label="Play the morning briefing"
+            >
+              <Sparkles className="h-5 w-5" />
+              Morning briefing
+            </button>
+          )}
+        </motion.div>
+      </div>
+
+      {/* The one line worth walking over for. */}
+      <motion.div className="flex max-w-[1480px] shrink-0 flex-col gap-2.5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(2)}>
+        <p className="text-base font-bold uppercase tracking-[0.18em] text-amb-muted">Right now</p>
+        <p className="text-pretty text-[46px] font-semibold leading-[1.12] tracking-[-0.01em]">{pulse?.headline ?? "Reading the day..."}</p>
+      </motion.div>
 
       {/* Ranked cards. The model decides what appears and in what order. */}
-      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-6">
         {cards.slice(0, 6).map((card, index) => {
           const look = CARD_LOOK[card.kind] || CARD_LOOK.note;
           const Icon = look.icon;
           const countdown = card.startsAt ? countdownTo(card.startsAt, now) : null;
-          const lead = index === 0;
           return (
-            <button
+            <motion.button
               key={`${card.kind}-${index}`}
               type="button"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...rise(0), delay: 0.32 + index * 0.06 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 // News opens here rather than navigating: the kiosk has no way
                 // back from an external site.
@@ -1018,64 +1050,27 @@ function HomePanel({
                 const target = CARD_TARGET[card.kind];
                 if (target) onNavigate(target, card.dealId);
               }}
-              className={`relative flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/70 bg-white/85 p-5 text-left shadow-sm transition active:scale-[0.98] dark:border-white/10 dark:bg-slate-900/90 ${
-                lead ? "col-span-2" : ""
-              }`}
+              className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-[30px] border border-amb-border bg-amb-card px-[30px] py-7 text-left shadow-ambient"
             >
-              {card.imageUrl && (
-                <>
-                  <img
-                    src={card.imageUrl}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover"
-                    onError={(event) => { event.currentTarget.style.display = "none"; }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/20" />
-                </>
-              )}
-              {!card.imageUrl && (
-                <Icon className="pointer-events-none absolute -bottom-8 -right-6 h-44 w-44 text-slate-900/[0.05] dark:text-white/[0.05]" />
-              )}
-              <div className="relative flex items-center gap-3">
-                <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${card.imageUrl ? "bg-white/20 text-white" : look.tint}`}>
-                  <Icon className="h-6 w-6" />
-                </span>
-                <span className={`text-sm font-black uppercase tracking-widest ${card.imageUrl ? "text-white/80" : "text-slate-400 dark:text-slate-500"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2.5 text-[15px] font-bold uppercase tracking-[0.16em] text-amb-muted">
+                  <Icon className="h-5 w-5" />
                   {look.label}
                 </span>
                 {card.urgency === "now" && (
-                  <span className="ml-auto rounded-full bg-rose-600 px-3 py-1 text-xs font-black uppercase text-white">Now</span>
+                  <span className="rounded-full bg-amb-accent px-3.5 py-1.5 text-sm font-bold tracking-[0.08em] text-amb-accent-ink">NOW</span>
                 )}
               </div>
-              <div className="relative mt-4 min-h-0 flex-1">
-                <p className={`font-black leading-tight ${lead ? "text-4xl" : "text-2xl"} ${card.imageUrl ? "text-white" : "text-mirror-ink dark:text-slate-50"}`}>
-                  {card.title}
-                </p>
-                <p className={`mt-2 text-xl leading-snug ${card.imageUrl ? "text-white/85" : "text-slate-500 dark:text-slate-400"}`}>
-                  {countdown ? `${countdown} · ${card.detail}` : card.detail}
-                </p>
-                {card.bullets && card.bullets.length > 0 && (
-                  <ul className={`mt-4 space-y-2 border-t pt-3 ${card.imageUrl ? "border-white/25" : "border-mirror-line"}`}>
-                    {card.bullets.slice(0, lead ? 3 : 2).map((bullet, position) => (
-                      <li
-                        key={position}
-                        className={`flex gap-2 text-lg leading-snug ${card.imageUrl ? "text-white/80" : "text-slate-600 dark:text-slate-300"}`}
-                      >
-                        <span className={card.imageUrl ? "text-white/50" : "text-sky-500"}>&middot;</span>
-                        <span className="line-clamp-2">{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </button>
+              <p className="line-clamp-3 font-display text-[44px] leading-[1.02]">{card.title}</p>
+              <p className="line-clamp-3 text-[21px] leading-[1.4] text-amb-muted">
+                {countdown ? `${countdown} · ${card.detail}` : card.detail}
+              </p>
+            </motion.button>
           );
         })}
 
         {!cards.length && (
-          <div className="col-span-3 row-span-2 flex items-center justify-center rounded-[24px] bg-white/70 text-2xl text-slate-500 dark:bg-slate-900/70 dark:text-slate-400">
+          <div className="col-span-3 row-span-2 flex items-center justify-center rounded-[30px] border border-amb-border bg-amb-card text-2xl text-amb-muted">
             Working out what matters today...
           </div>
         )}
@@ -1096,7 +1091,7 @@ function ArticleReader({ card, onClose }: { card: HomeCard; onClose: () => void 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
       <div
-        className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900"
+        className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet"
         onClick={(event) => event.stopPropagation()}
       >
         {card.imageUrl && (
@@ -1112,12 +1107,12 @@ function ArticleReader({ card, onClose }: { card: HomeCard; onClose: () => void 
             <p className="text-sm font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
               {card.source || "News"}
             </p>
-            <h2 className="mt-3 text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">{card.title}</h2>
-            <p className="mt-4 text-2xl leading-snug text-slate-600 dark:text-slate-300">{card.detail}</p>
+            <h2 className="mt-3 text-4xl font-black leading-tight text-amb-ink">{card.title}</h2>
+            <p className="mt-4 text-2xl leading-snug text-amb-muted">{card.detail}</p>
             {card.bullets && card.bullets.length > 0 && (
               <ul className="mt-6 space-y-3 border-t border-mirror-line pt-5">
                 {card.bullets.map((bullet, position) => (
-                  <li key={position} className="flex gap-3 text-xl leading-snug text-slate-600 dark:text-slate-300">
+                  <li key={position} className="flex gap-3 text-xl leading-snug text-amb-muted">
                     <span className="text-violet-500">&middot;</span>
                     <span>{bullet}</span>
                   </li>
@@ -1196,7 +1191,7 @@ function SlideQr({ url }: { url: string }) {
   return (
     <div className="flex items-center gap-4 rounded-2xl bg-white/95 p-4">
       <img src={src} alt="" className="h-28 w-28" />
-      <p className="max-w-[9rem] text-lg font-bold leading-tight text-slate-700">Scan to open on your phone</p>
+      <p className="max-w-[9rem] text-lg font-bold leading-tight text-amb-ink">Scan to open on your phone</p>
     </div>
   );
 }
@@ -1360,7 +1355,7 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
               <div className="space-y-3">
                 {slide.checklist.map((entry, position) => (
                   <div key={position} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4">
-                    <span className="h-6 w-6 shrink-0 rounded-full border-4 border-white/50" />
+                    <span className="h-6 w-6 shrink-0 rounded-full border-4 border-amb-border" />
                     <span className="min-w-0 flex-1 truncate text-2xl font-bold text-white">{entry.title}</span>
                   </div>
                 ))}
@@ -1394,7 +1389,7 @@ function NavDragPreview({ item, drag, active }: { item?: { view: View; label: st
   return (
     <div
       className={`pointer-events-none fixed z-[90] flex flex-col items-center justify-center gap-1 rounded-2xl text-base font-semibold shadow-2xl ring-4 ring-white/70 ${
-        active ? "bg-sky-600 text-white" : "bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        active ? "bg-sky-600 text-white" : "bg-amb-card text-amb-ink"
       }`}
       style={{
         left: drag.x - drag.offsetX,
@@ -1418,15 +1413,15 @@ function WeatherCard({ dashboard }: { dashboard: DashboardSummary }) {
       <div className="mt-5 flex items-end justify-between">
         <div>
           <p className="text-8xl font-bold">{dashboard.weather.current.temperature} deg</p>
-          <p className="text-2xl text-slate-600">Feels like {dashboard.weather.current.apparentTemperature} deg</p>
+          <p className="text-2xl text-amb-muted">Feels like {dashboard.weather.current.apparentTemperature} deg</p>
         </div>
         <p className="mb-3 rounded-full bg-sky-100 px-5 py-3 text-lg font-semibold text-sky-800">{dashboard.weather.current.description}</p>
       </div>
       <div className="mt-8 grid grid-cols-2 gap-3">
         {dashboard.weather.daily.slice(0, 4).map((day) => (
-          <div key={day.date} className="rounded-2xl bg-white/70 p-4">
+          <div key={day.date} className="rounded-2xl bg-amb-well p-4">
             <p className="font-bold">{formatShortDate(day.date)}</p>
-            <p className="text-slate-600">{day.high} deg / {day.low} deg</p>
+            <p className="text-amb-muted">{day.high} deg / {day.low} deg</p>
           </div>
         ))}
       </div>
@@ -1582,9 +1577,9 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   }
 
   return (
-    <section className="relative flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/75 bg-[#f7f8f4] p-5 shadow-sm dark:border-white/10 dark:bg-slate-950">
+    <section className="relative flex flex-1 flex-col overflow-hidden rounded-[28px] border border-amb-border bg-amb-card p-5 shadow-sm">
       <div className="grid min-h-0 flex-1 grid-cols-[300px_1fr] gap-5">
-        <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] bg-white p-5 shadow-sm dark:bg-slate-900">
+        <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] bg-amb-card p-5 shadow-sm">
           <div className="grid grid-cols-2 gap-2">
             {(["Day", "Week", "Month", "Schedule"] as CalendarMode[]).map((label) => (
               <button
@@ -1592,8 +1587,8 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                 onClick={() => setCalendarMode(label)}
                 className={`h-16 rounded-xl text-xl font-bold ${
                   label === calendarMode
-                    ? "bg-slate-900 text-white dark:bg-sky-500"
-                    : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300"
+                    ? "bg-amb-accent text-amb-accent-ink"
+                    : "bg-amb-well text-amb-muted"
                 }`}
               >
                 {label}
@@ -1607,20 +1602,20 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
             <Plus className="mr-2 h-7 w-7" /> Event
           </button>
           {calendarMode === "Week" && (
-            <div className="rounded-2xl bg-slate-100 p-3 dark:bg-slate-800">
+            <div className="rounded-2xl bg-amb-well p-3">
               <div className="flex items-center justify-between gap-2">
-                <button onClick={() => panWeek(-1)} className="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-slate-700 active:scale-95 dark:bg-slate-900 dark:text-slate-200" aria-label="Previous week">
+                <button onClick={() => panWeek(-1)} className="flex h-14 w-14 items-center justify-center rounded-xl bg-amb-card text-amb-ink active:scale-95" aria-label="Previous week">
                   <ChevronLeft className="h-7 w-7" />
                 </button>
                 <div className="min-w-0 flex-1 text-center">
-                  <p className="truncate text-base font-black text-slate-700 dark:text-slate-200">
+                  <p className="truncate text-base font-black text-amb-ink">
                     {weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {addClientDays(weekStart, 6).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <p className="text-xs font-bold uppercase tracking-wider text-amb-muted">
                     {weekOffset === 0 ? "This week" : weekOffset > 0 ? `${weekOffset} week${weekOffset > 1 ? "s" : ""} ahead` : `${Math.abs(weekOffset)} week${weekOffset < -1 ? "s" : ""} back`}
                   </p>
                 </div>
-                <button onClick={() => panWeek(1)} className="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-slate-700 active:scale-95 dark:bg-slate-900 dark:text-slate-200" aria-label="Next week">
+                <button onClick={() => panWeek(1)} className="flex h-14 w-14 items-center justify-center rounded-xl bg-amb-card text-amb-ink active:scale-95" aria-label="Next week">
                   <ChevronRight className="h-7 w-7" />
                 </button>
               </div>
@@ -1632,42 +1627,42 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
             </div>
           )}
           <div className="rounded-3xl bg-[#eef5ff] p-5 dark:bg-slate-800">
-            <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString([], { weekday: "long" })}</p>
-            <p className="text-6xl font-bold text-slate-900 dark:text-white">{new Date().getDate()}</p>
-            <p className="mt-2 text-xl font-semibold text-slate-600 dark:text-slate-300">{new Date().toLocaleDateString([], { month: "long", year: "numeric" })}</p>
+            <p className="text-lg font-bold text-amb-muted">{new Date().toLocaleDateString([], { weekday: "long" })}</p>
+            <p className="text-6xl font-bold text-amb-ink">{new Date().getDate()}</p>
+            <p className="mt-2 text-xl font-semibold text-amb-muted">{new Date().toLocaleDateString([], { month: "long", year: "numeric" })}</p>
           </div>
           <div className="rounded-3xl bg-[#fff7df] p-5 dark:bg-slate-800">
-            <p className="text-xl font-bold text-slate-900 dark:text-white">Calendars</p>
+            <p className="text-xl font-bold text-amb-ink">Calendars</p>
             <div className="mt-4 space-y-3">
               {profilePalette.map((profile) => (
                 <div key={profile.name} className="flex items-center gap-3">
                   <span className="h-5 w-5 rounded-full" style={{ background: profile.color }} />
-                  <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{profile.name}</span>
+                  <span className="text-lg font-semibold text-amb-muted">{profile.name}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="min-h-0 flex-1 rounded-3xl bg-white p-4 shadow-inner dark:bg-slate-800">
-            <p className="mb-3 text-xl font-bold text-slate-900 dark:text-white">Today</p>
+          <div className="min-h-0 flex-1 rounded-3xl bg-amb-card p-4 shadow-inner">
+            <p className="mb-3 text-xl font-bold text-amb-ink">Today</p>
             <div className="space-y-3 overflow-y-auto pr-1">
               {weekEvents.filter((item) => isSameClientDate(new Date(item.start), new Date())).slice(0, 5).map((item) => {
                 const colors = eventColor(item);
                 return (
                   <div key={item.id} className="rounded-2xl p-3" style={{ background: colors.soft }}>
                     <p className="text-sm font-bold" style={{ color: colors.text }}>{formatTimeOnly(item.start)}</p>
-                    <p className="truncate text-lg font-bold text-slate-800">{item.title}</p>
+                    <p className="truncate text-lg font-bold text-amb-ink">{item.title}</p>
                   </div>
                 );
               })}
               {!weekEvents.some((item) => isSameClientDate(new Date(item.start), new Date())) && (
-                <p className="rounded-2xl bg-slate-50 p-4 text-lg font-semibold text-slate-500">No events today.</p>
+                <p className="rounded-2xl bg-amb-well p-4 text-lg font-semibold text-amb-muted">No events today.</p>
               )}
             </div>
           </div>
         </aside>
 
         <div
-          className="relative flex min-h-0 flex-col overflow-hidden rounded-[24px] bg-white shadow-sm dark:bg-slate-900"
+          className="relative flex min-h-0 flex-col overflow-hidden rounded-[24px] bg-amb-card shadow-sm"
           onPointerDown={(pointerEvent) => {
             // Dragging an event moves the event; dragging the grid moves weeks.
             if (calendarMode !== "Week") return;
@@ -1695,7 +1690,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           onPointerCancel={() => { panRef.current = null; setPanDx(0); }}
         >
           {calendarMode !== "Week" && (
-            <div className="absolute inset-0 z-20 bg-white p-5 dark:bg-slate-900">
+            <div className="absolute inset-0 z-20 bg-amb-sheet p-5">
               {calendarMode === "Day" && <CalendarDayView events={weekEvents} day={new Date()} />}
               {calendarMode === "Month" && (
                 <CalendarMonthView
@@ -1712,28 +1707,28 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
             className="grid shrink-0 grid-cols-[86px_1fr] border-b border-mirror-line"
             style={{ transform: `translateX(${panDx * 0.25}px)`, transition: panRef.current ? "none" : "transform 200ms ease-out" }}
           >
-            <div className="flex items-center justify-center text-sm font-bold text-slate-400">Time</div>
+            <div className="flex items-center justify-center text-sm font-bold text-amb-muted">Time</div>
             <div className="grid grid-cols-7">
               {days.map((day) => {
                 const active = isSameClientDate(day, new Date());
                 return (
-                  <div key={day.toISOString()} className={`border-r border-mirror-line px-3 py-4 last:border-r-0 ${active ? "bg-[#fff3c4]" : ""}`}>
-                    <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{day.toLocaleDateString([], { weekday: "short" })}</p>
-                    <p className="text-4xl font-bold text-slate-900 dark:text-white">{day.getDate()}</p>
+                  <div key={day.toISOString()} className={`border-r border-mirror-line px-3 py-4 last:border-r-0 ${active ? "bg-amb-accent [&_p]:text-amb-accent-ink" : ""}`}>
+                    <p className="text-lg font-bold text-amb-muted">{day.toLocaleDateString([], { weekday: "short" })}</p>
+                    <p className="text-4xl font-bold text-amb-ink">{day.getDate()}</p>
                   </div>
                 );
               })}
             </div>
           </div>
           <div className="grid min-h-0 flex-1 grid-cols-[86px_1fr] overflow-y-auto">
-            <div className="relative bg-[#fbfbf7] dark:bg-slate-950" style={{ height: (endHour - startHour) * hourHeight }}>
+            <div className="relative bg-amb-card" style={{ height: (endHour - startHour) * hourHeight }}>
               {Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index).map((hour) => (
-                <div key={hour} className="absolute left-0 right-3 -translate-y-3 text-right text-base font-bold text-slate-400" style={{ top: (hour - startHour) * hourHeight }}>
+                <div key={hour} className="absolute left-0 right-3 -translate-y-3 text-right text-base font-bold text-amb-muted" style={{ top: (hour - startHour) * hourHeight }}>
                   {formatHour(hour)}
                 </div>
               ))}
             </div>
-            <div data-week-grid className="relative touch-none bg-[#fbfbf7] dark:bg-slate-950" style={{ height: (endHour - startHour) * hourHeight }}>
+            <div data-week-grid className="relative touch-none bg-amb-card" style={{ height: (endHour - startHour) * hourHeight }}>
               <div className="absolute inset-0 grid grid-cols-7">
                 {days.map((day) => (
                   <div key={day.toISOString()} className="border-r border-mirror-line last:border-r-0" />
@@ -1770,7 +1765,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                     }}
                   >
                     <p className="text-xs font-bold leading-tight" style={{ color: colors.text }}>{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
-                    <p className="mt-0.5 line-clamp-2 text-base font-bold leading-tight text-slate-900">{calendarEvent.title}</p>
+                    <p className="mt-0.5 line-clamp-2 text-base font-bold leading-tight text-amb-ink">{calendarEvent.title}</p>
                     <div
                       onPointerDown={(pointerEvent) => beginResize(pointerEvent, calendarEvent)}
                       className="absolute bottom-0.5 left-1/2 h-2 w-10 -translate-x-1/2 rounded-full opacity-60"
@@ -1780,7 +1775,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                 );
               })}
               {!weekEvents.length && (
-                <div className="absolute inset-x-0 top-10 text-center text-2xl font-semibold text-slate-500">No events this week.</div>
+                <div className="absolute inset-x-0 top-10 text-center text-2xl font-semibold text-amb-muted">No events this week.</div>
               )}
             </div>
           </div>
@@ -1789,10 +1784,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       {detailEvent && <EventDetailDialog calendarEvent={detailEvent} onClose={() => setDetailEvent(null)} />}
       {isEventModalOpen && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-8">
-          <div className="w-full max-w-3xl rounded-[28px] bg-white p-7 shadow-xl dark:bg-slate-900">
+          <div className="w-full max-w-3xl rounded-[28px] bg-amb-sheet p-7 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-4xl font-bold text-slate-900 dark:text-white">Add Event</h3>
-              <button onClick={() => setIsEventModalOpen(false)} className="touch-button bg-slate-100 px-6 text-slate-700 dark:bg-slate-800 dark:text-slate-100">Close</button>
+              <h3 className="text-4xl font-bold text-amb-ink">Add Event</h3>
+              <button onClick={() => setIsEventModalOpen(false)} className="touch-button bg-amb-well px-6 text-amb-ink">Close</button>
             </div>
             <div className="mt-6 grid gap-4">
               <input value={newEventTitle} onChange={(event) => setNewEventTitle(event.target.value)} className="touch-input" placeholder="Event title" autoFocus />
@@ -1802,7 +1797,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                 <input value={newEventEnd} onChange={(event) => setNewEventEnd(event.target.value)} className="touch-input" type="time" />
               </div>
               <button onClick={addLocalEvent} className="touch-button bg-[#ffcf5a] text-slate-900"><Plus className="mr-2 h-7 w-7" /> Add to Calendar</button>
-              <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">This adds a local display event for now. Google/iCloud write-back comes in the calendar persistence phase.</p>
+              <p className="text-lg font-semibold text-amb-muted">This adds a local display event for now. Google/iCloud write-back comes in the calendar persistence phase.</p>
             </div>
           </div>
         </div>
@@ -1817,8 +1812,8 @@ function CalendarDayView({ events, day }: { events: CalendarEvent[]; day: Date }
     <div className="flex h-full flex-col">
       <div className="flex items-end justify-between border-b border-mirror-line pb-4">
         <div>
-          <p className="text-lg font-bold uppercase text-slate-500">Day View</p>
-          <h3 className="text-5xl font-bold text-slate-900 dark:text-white">{day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</h3>
+          <p className="text-lg font-bold uppercase text-amb-muted">Day View</p>
+          <h3 className="text-5xl font-bold text-amb-ink">{day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</h3>
         </div>
         <p className="rounded-full bg-[#fff3c4] px-5 py-3 text-xl font-bold text-slate-700">{dayEvents.length} events</p>
       </div>
@@ -1828,11 +1823,11 @@ function CalendarDayView({ events, day }: { events: CalendarEvent[]; day: Date }
           return (
             <div key={event.id} className="rounded-3xl border-l-[12px] p-5" style={{ background: colors.soft, borderColor: colors.color }}>
               <p className="text-lg font-bold" style={{ color: colors.text }}>{formatTimeOnly(event.start)} - {formatTimeOnly(event.end || event.start)}</p>
-              <p className="text-3xl font-bold text-slate-900">{event.title}</p>
+              <p className="text-3xl font-bold text-amb-ink">{event.title}</p>
             </div>
           );
         })}
-        {!dayEvents.length && <p className="rounded-3xl bg-slate-50 p-8 text-2xl font-bold text-slate-500">No events today.</p>}
+        {!dayEvents.length && <p className="rounded-3xl bg-amb-well p-8 text-2xl font-bold text-amb-muted">No events today.</p>}
       </div>
     </div>
   );
@@ -1853,24 +1848,24 @@ function EventDetailDialog({ calendarEvent, onClose }: { calendarEvent: Calendar
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-[28px] bg-white dark:bg-slate-900"
+        className="w-full max-w-2xl overflow-hidden rounded-[28px] bg-amb-sheet"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="p-8" style={{ borderTop: `10px solid ${colors.color}` }}>
           <p className="text-sm font-black uppercase tracking-widest" style={{ color: colors.text }}>
             {sourceLabel[calendarEvent.source] || calendarEvent.source}
           </p>
-          <h2 className="mt-3 text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">{calendarEvent.title}</h2>
+          <h2 className="mt-3 text-4xl font-black leading-tight text-amb-ink">{calendarEvent.title}</h2>
 
           <div className="mt-6 space-y-3 border-t border-mirror-line pt-5 text-2xl">
-            <p className="font-bold text-slate-700 dark:text-slate-200">
+            <p className="font-bold text-amb-ink">
               {start.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <p className="text-slate-600 dark:text-slate-300">
+            <p className="text-amb-muted">
               {formatTimeOnly(calendarEvent.start)}{end ? ` - ${formatTimeOnly(end.toISOString())}` : ""}
             </p>
             {calendarEvent.location && (
-              <p className="text-slate-600 dark:text-slate-300">{calendarEvent.location}</p>
+              <p className="text-amb-muted">{calendarEvent.location}</p>
             )}
             {calendarEvent.moved && (
               <p className="rounded-2xl bg-amber-100 p-4 text-lg font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
@@ -1996,12 +1991,12 @@ function CalendarMonthView({
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-end justify-between border-b border-mirror-line pb-4">
         <div>
-          <p className="text-lg font-bold uppercase text-slate-500">Month View</p>
-          <h3 className="text-5xl font-bold text-slate-900 dark:text-white">
+          <p className="text-lg font-bold uppercase text-amb-muted">Month View</p>
+          <h3 className="text-5xl font-bold text-amb-ink">
             {monthDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </h3>
         </div>
-        <p className="text-base font-semibold text-slate-400">
+        <p className="text-base font-semibold text-amb-muted">
           {saving ? "Moving..." : "Tap an event for details, or hold to drag it to another day"}
         </p>
       </div>
@@ -2018,10 +2013,10 @@ function CalendarMonthView({
               key={key}
               data-month-day={key}
               className={`flex min-h-0 flex-col overflow-hidden rounded-2xl p-2 transition-colors ${
-                isTarget ? "bg-sky-100 ring-4 ring-sky-400 dark:bg-sky-500/20" : "bg-[#fbfbf7] dark:bg-slate-800"
+                isTarget ? "bg-sky-100 ring-4 ring-sky-400 dark:bg-sky-500/20" : "bg-amb-card"
               } ${muted ? "opacity-45" : ""}`}
             >
-              <p className={`shrink-0 text-lg font-bold ${today ? "text-sky-600 dark:text-sky-400" : "text-slate-700 dark:text-slate-200"}`}>
+              <p className={`shrink-0 text-lg font-bold ${today ? "text-sky-600 dark:text-sky-400" : "text-amb-ink"}`}>
                 {day.getDate()}
               </p>
               <div className="mt-1 min-h-0 flex-1 space-y-1 overflow-y-auto">
@@ -2042,7 +2037,7 @@ function CalendarMonthView({
                       <p className="truncate text-xs font-bold" style={{ color: colors.text }}>
                         {formatTimeOnly(calendarEvent.start)}
                       </p>
-                      <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-900">
+                      <p className="line-clamp-2 text-sm font-bold leading-tight text-amb-ink">
                         {calendarEvent.title}
                       </p>
                     </button>
@@ -2057,11 +2052,11 @@ function CalendarMonthView({
       {/* Follows the finger so it is obvious what is being carried. */}
       {dragging && (
         <div
-          className="pointer-events-none fixed z-50 w-44 rounded-xl bg-white p-2 shadow-2xl ring-2 ring-sky-400 dark:bg-slate-900"
+          className="pointer-events-none fixed z-50 w-44 rounded-xl bg-amb-sheet p-2 shadow-2xl ring-2 ring-sky-400"
           style={{ left: dragging.x - 88, top: dragging.y - 28 }}
         >
-          <p className="truncate text-xs font-bold text-slate-500">{formatTimeOnly(dragging.event.start)}</p>
-          <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-900 dark:text-slate-100">{dragging.event.title}</p>
+          <p className="truncate text-xs font-bold text-amb-muted">{formatTimeOnly(dragging.event.start)}</p>
+          <p className="line-clamp-2 text-sm font-bold leading-tight text-amb-ink">{dragging.event.title}</p>
         </div>
       )}
     </div>
@@ -2073,20 +2068,20 @@ function CalendarScheduleView({ events }: { events: CalendarEvent[] }) {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-mirror-line pb-4">
-        <p className="text-lg font-bold uppercase text-slate-500">Schedule View</p>
-        <h3 className="text-5xl font-bold text-slate-900 dark:text-white">Upcoming Events</h3>
+        <p className="text-lg font-bold uppercase text-amb-muted">Schedule View</p>
+        <h3 className="text-5xl font-bold text-amb-ink">Upcoming Events</h3>
       </div>
       <div className="mt-5 space-y-3 overflow-y-auto pr-2">
         {sorted.map((event) => {
           const colors = eventColor(event);
           return (
-            <div key={event.id} className="grid grid-cols-[180px_1fr] items-center gap-4 rounded-3xl bg-[#fbfbf7] p-4 dark:bg-slate-800">
+            <div key={event.id} className="grid grid-cols-[180px_1fr] items-center gap-4 rounded-3xl bg-amb-card p-4">
               <div>
-                <p className="text-lg font-bold text-slate-500">{new Date(event.start).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</p>
+                <p className="text-lg font-bold text-amb-muted">{new Date(event.start).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</p>
                 <p className="text-xl font-bold" style={{ color: colors.text }}>{formatTimeOnly(event.start)}</p>
               </div>
               <div className="rounded-2xl border-l-[10px] p-4" style={{ background: colors.soft, borderColor: colors.color }}>
-                <p className="text-2xl font-bold text-slate-900">{event.title}</p>
+                <p className="text-2xl font-bold text-amb-ink">{event.title}</p>
               </div>
             </div>
           );
@@ -2173,18 +2168,18 @@ function GroceryPanel() {
       </div>
 
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-[1fr_320px] gap-4">
-        <div className="min-h-0 overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+        <div className="min-h-0 overflow-y-auto rounded-3xl bg-amb-card p-4">
           <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
           <div className="space-y-3">
             {activeItems.map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} />)}
-            {!activeItems.length && <p className="rounded-2xl bg-slate-50 p-6 text-2xl font-bold text-slate-500">Nothing on the grocery list yet.</p>}
+            {!activeItems.length && <p className="rounded-2xl bg-amb-well p-6 text-2xl font-bold text-amb-muted">Nothing on the grocery list yet.</p>}
           </div>
         </div>
-        <div className="min-h-0 overflow-y-auto rounded-3xl bg-white/70 p-4 dark:bg-slate-800">
+        <div className="min-h-0 overflow-y-auto rounded-3xl bg-amb-card p-4">
           <h3 className="mb-4 text-2xl font-bold">Purchased</h3>
           <div className="space-y-3">
             {purchasedItems.slice(0, 12).map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} compact />)}
-            {!purchasedItems.length && <p className="rounded-2xl bg-slate-50 p-5 text-lg font-bold text-slate-500">Purchased items appear here.</p>}
+            {!purchasedItems.length && <p className="rounded-2xl bg-amb-well p-5 text-lg font-bold text-amb-muted">Purchased items appear here.</p>}
           </div>
         </div>
       </div>
@@ -2197,10 +2192,10 @@ function GroceryPanel() {
 function GroceryItemRow({ item, onChanged, compact = false }: { item: GroceryItem; onChanged: () => Promise<void>; compact?: boolean }) {
   const badge = groceryStatusStyle(item.status);
   return (
-    <div className={`grid items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900 ${compact ? "grid-cols-[1fr_92px]" : "grid-cols-[1fr_150px_130px_90px_90px]"}`}>
+    <div className={`grid items-center gap-3 rounded-2xl bg-amb-card p-4 shadow-sm ${compact ? "grid-cols-[1fr_92px]" : "grid-cols-[1fr_150px_130px_90px_90px]"}`}>
       <div className={item.purchased ? "opacity-50" : ""}>
         <p className={`font-bold ${compact ? "text-xl" : "text-3xl"} ${item.purchased ? "line-through" : ""}`}>{item.name}</p>
-        <p className="text-lg font-semibold text-slate-500">
+        <p className="text-lg font-semibold text-amb-muted">
           {[item.quantity, item.category, item.supplier].filter(Boolean).join(" - ") || "No details"}
         </p>
       </div>
@@ -2217,7 +2212,7 @@ function GroceryItemRow({ item, onChanged, compact = false }: { item: GroceryIte
           <button onClick={() => updateGroceryItem(item.id, { status: "out" }).then(onChanged)} className="touch-button bg-rose-100 text-rose-700">Out</button>
         </>
       )}
-      <button onClick={() => deleteGroceryItem(item.id).then(onChanged)} className="touch-button bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><Trash2 className="h-6 w-6" /></button>
+      <button onClick={() => deleteGroceryItem(item.id).then(onChanged)} className="touch-button bg-amb-well text-amb-muted"><Trash2 className="h-6 w-6" /></button>
     </div>
   );
 }
@@ -2235,14 +2230,14 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
-      <div className="flex max-h-[86vh] w-[980px] flex-col rounded-3xl bg-[#fbfbf7] p-7 shadow-2xl dark:bg-slate-900">
+      <div className="flex max-h-[86vh] w-[980px] flex-col rounded-3xl bg-amb-sheet p-7 shadow-2xl">
         <div className="flex items-center justify-between border-b border-mirror-line pb-5">
           <div>
-            <p className="text-lg font-bold uppercase text-slate-500">Quick Add</p>
+            <p className="text-lg font-bold uppercase text-amb-muted">Quick Add</p>
             <h3 className="text-4xl font-black">{selectedCategory ? selectedCategory.category : "Choose a category"}</h3>
           </div>
           <div className="flex gap-3">
-            {selectedCategory && <button onClick={() => setSelectedCategory(null)} className="touch-button bg-slate-100 px-6 text-slate-700">Back</button>}
+            {selectedCategory && <button onClick={() => setSelectedCategory(null)} className="touch-button bg-amb-well px-6 text-amb-ink">Back</button>}
             <button onClick={onClose} className="touch-button bg-rose-100 px-6 text-rose-700">Close</button>
           </div>
         </div>
@@ -2250,12 +2245,12 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
         {!selectedCategory ? (
           <div className="mt-6 grid grid-cols-4 gap-4 overflow-y-auto pr-1">
             {groceryQuickCategories.map((group) => (
-              <button key={group.category} onClick={() => setSelectedCategory(group)} className="min-h-40 rounded-3xl bg-white p-5 text-left shadow-sm transition active:scale-95 dark:bg-slate-800">
+              <button key={group.category} onClick={() => setSelectedCategory(group)} className="min-h-40 rounded-3xl bg-amb-card p-5 text-left shadow-sm transition active:scale-95">
                 <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${group.color}24` }}>
                   <GroceryThumbnail name={group.category} alt={group.category} />
                 </span>
                 <span className="mt-5 block text-3xl font-black">{group.category}</span>
-                <span className="mt-1 block text-lg font-bold text-slate-500">{group.items.length} common items</span>
+                <span className="mt-1 block text-lg font-bold text-amb-muted">{group.items.length} common items</span>
               </button>
             ))}
           </div>
@@ -2280,13 +2275,13 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
 
 function QuickGroceryButton({ name, category, color, busy, onAdd }: { name: string; category: string; color: string; busy: boolean; onAdd: () => void }) {
   return (
-    <button onClick={onAdd} disabled={busy} className="grid min-h-32 grid-cols-[76px_1fr] items-center gap-4 rounded-3xl bg-white p-5 text-left shadow-sm transition active:scale-95 disabled:opacity-60 dark:bg-slate-800">
+    <button onClick={onAdd} disabled={busy} className="grid min-h-32 grid-cols-[76px_1fr] items-center gap-4 rounded-3xl bg-amb-card p-5 text-left shadow-sm transition active:scale-95 disabled:opacity-60">
       <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${color}24` }}>
         <GroceryThumbnail name={name} alt={name} />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-3xl font-black text-slate-900 dark:text-slate-100">{name}</span>
-        <span className="block truncate text-lg font-bold uppercase text-slate-500">{busy ? "Adding..." : category}</span>
+        <span className="block truncate text-3xl font-black text-amb-ink">{name}</span>
+        <span className="block truncate text-lg font-bold uppercase text-amb-muted">{busy ? "Adding..." : category}</span>
       </span>
     </button>
   );
@@ -2322,25 +2317,25 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
-      <div className="flex max-h-[86vh] w-[860px] flex-col rounded-3xl bg-[#fbfbf7] p-7 shadow-2xl dark:bg-slate-900">
+      <div className="flex max-h-[86vh] w-[860px] flex-col rounded-3xl bg-amb-sheet p-7 shadow-2xl">
         <div className="flex items-center justify-between border-b border-mirror-line pb-5">
           <div>
-            <p className="text-lg font-bold uppercase text-slate-500">Shopping Package</p>
+            <p className="text-lg font-bold uppercase text-amb-muted">Shopping Package</p>
             <h3 className="text-4xl font-black">{items.length} item{items.length === 1 ? "" : "s"} ready</h3>
           </div>
           <button onClick={onClose} className="touch-button bg-rose-100 px-6 text-rose-700">Close</button>
         </div>
 
         <div className="mt-6 grid min-h-0 flex-1 grid-cols-[1fr_250px] gap-5">
-          <textarea readOnly value={listText} className="min-h-[440px] resize-none rounded-3xl border border-mirror-line bg-white/90 p-5 text-2xl font-semibold leading-relaxed text-slate-800 outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-100" />
+          <textarea readOnly value={listText} className="min-h-[440px] resize-none rounded-3xl border border-mirror-line bg-amb-card p-5 text-2xl font-semibold leading-relaxed text-amb-ink outline-none dark:border-white/10" />
           <div className="space-y-3">
             <button onClick={shareList} className="touch-button w-full bg-emerald-600 px-5 text-white">Share</button>
             <button onClick={copyList} className="touch-button w-full bg-sky-600 px-5 text-white">Copy</button>
-            <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-slate-900 px-5 text-white dark:bg-slate-100 dark:text-slate-900">Document QR</button>
+            <button onClick={() => setShowQr((value) => !value)} className="touch-button w-full bg-amb-accent px-5 text-amb-accent-ink">Document QR</button>
             <a className="touch-button w-full bg-green-100 px-5 text-green-800" href={`https://wa.me/${groceryWhatsappPhone}?text=${encodedList}`}>WhatsApp Phone</a>
             <a className="touch-button w-full bg-indigo-100 px-5 text-indigo-700" href={`sms:?&body=${encodedList}`}>Text</a>
             <a className="touch-button w-full bg-amber-100 px-5 text-amber-700" href={`mailto:?subject=Shopping%20List&body=${encodedList}`}>Email</a>
-            <p className="rounded-2xl bg-white/80 p-4 text-lg font-bold text-slate-500 dark:bg-slate-800">
+            <p className="rounded-2xl bg-amb-card p-4 text-lg font-bold text-amb-muted">
               Use Document QR to open an organized grocery-list page on your phone, then share it into Notes.
             </p>
             {message && <p className="rounded-2xl bg-emerald-100 p-4 text-lg font-bold text-emerald-800">{message}</p>}
@@ -2350,9 +2345,9 @@ function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: 
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-8">
             <div className="rounded-[2rem] bg-white p-8 text-center shadow-2xl">
               <img className="mx-auto h-[52vh] max-h-[560px] min-h-80 w-[52vh] min-w-80 max-w-[560px]" src={`https://api.qrserver.com/v1/create-qr-code/?size=720x720&data=${encodedDocumentUrl}`} alt="Shopping list document QR code" />
-              <p className="mt-5 text-3xl font-black text-slate-800">Scan with your phone</p>
-              <p className="mt-2 text-xl font-bold text-slate-500">This opens a grocery document, not a phone search.</p>
-              <button onClick={() => setShowQr(false)} className="touch-button mx-auto mt-5 bg-slate-900 px-8 text-white">Done</button>
+              <p className="mt-5 text-3xl font-black text-amb-ink">Scan with your phone</p>
+              <p className="mt-2 text-xl font-bold text-amb-muted">This opens a grocery document, not a phone search.</p>
+              <button onClick={() => setShowQr(false)} className="touch-button mx-auto mt-5 bg-amb-accent px-8 text-amb-accent-ink">Done</button>
             </div>
           </div>
         )}
@@ -2387,7 +2382,7 @@ function GroceryDocumentPage() {
       <section className="mx-auto max-w-3xl rounded-[28px] bg-white p-6 shadow-xl">
         <p className="text-sm font-black uppercase tracking-normal text-teal-700">Home Scheduler</p>
         <h1 className="mt-1 text-4xl font-black">{title}</h1>
-        <p className="mt-2 text-lg font-bold text-slate-500">Organized for your next grocery trip.</p>
+        <p className="mt-2 text-lg font-bold text-amb-muted">Organized for your next grocery trip.</p>
 
         <div className="mt-6 flex gap-3">
           <button onClick={shareList} className="min-h-14 flex-1 rounded-2xl bg-teal-700 px-5 text-xl font-black text-white">Share</button>
@@ -2397,8 +2392,8 @@ function GroceryDocumentPage() {
 
         <div className="mt-6 grid gap-4">
           {sections.map((section) => (
-            <div key={section.heading} className="rounded-3xl bg-slate-50 p-5">
-              <h2 className="text-2xl font-black text-slate-800">{section.heading}</h2>
+            <div key={section.heading} className="rounded-3xl bg-amb-well p-5">
+              <h2 className="text-2xl font-black text-amb-ink">{section.heading}</h2>
               <div className="mt-3 grid gap-2">
                 {section.items.map((item) => (
                   <label key={item} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-xl font-bold">
@@ -2459,13 +2454,13 @@ function TaskPanel({ initialTasks, onChanged }: { initialTasks: Task[]; onChange
       </div>
       <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
         {tasks.map((task) => (
-          <div key={task.id} className="grid grid-cols-[72px_1fr_170px_90px] items-center gap-3 rounded-2xl bg-white/75 p-4">
-            <button onClick={() => updateTask(task.id, { completed: !task.completed }).then(reload)} className={`h-14 rounded-2xl ${task.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>
+          <div key={task.id} className="grid grid-cols-[72px_1fr_170px_90px] items-center gap-3 rounded-2xl bg-amb-well p-4">
+            <button onClick={() => updateTask(task.id, { completed: !task.completed }).then(reload)} className={`h-14 rounded-2xl ${task.completed ? "bg-emerald-500 text-white" : "bg-amb-well text-amb-muted"}`}>
               <CheckCircle2 className="mx-auto h-7 w-7" />
             </button>
             <div>
               <p className={`text-3xl font-semibold ${task.completed ? "line-through opacity-60" : ""}`}>{task.title}</p>
-              <p className="text-slate-500">{task.dueDate || "No due date"} - {task.priority} priority</p>
+              <p className="text-amb-muted">{task.dueDate || "No due date"} - {task.priority} priority</p>
             </div>
             <select value={task.priority} onChange={(event) => updateTask(task.id, { priority: event.target.value as Priority }).then(reload)} className="touch-input text-xl">
               <option value="low">Low</option>
@@ -2516,12 +2511,12 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
         <button onClick={save} className="touch-button bg-sky-600 text-white"><Save className="h-6 w-6" /></button>
         <button onClick={remove} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
       </div>
-      <textarea className="mt-4 min-h-0 flex-1 w-full resize-none rounded-2xl border border-mirror-line bg-white/70 p-5 text-3xl leading-relaxed outline-none focus:ring-4 focus:ring-sky-200" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write today's note..." />
+      <textarea className="mt-4 min-h-0 flex-1 w-full resize-none rounded-2xl border border-amb-border bg-amb-well p-5 text-3xl text-amb-ink leading-relaxed outline-none focus:ring-4 focus:ring-sky-200" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write today's note..." />
       <div className="mt-4 flex shrink-0 gap-3 overflow-x-auto pb-2">
         {notes.map((note) => (
-          <button key={note.id} onClick={() => { setDate(note.date); setBody(note.body); }} className="min-w-48 rounded-2xl bg-white/75 p-4 text-left">
+          <button key={note.id} onClick={() => { setDate(note.date); setBody(note.body); }} className="min-w-48 rounded-2xl bg-amb-well p-4 text-left">
             <p className="font-bold">{note.date}</p>
-            <p className="truncate text-slate-500">{note.body || "Empty note"}</p>
+            <p className="truncate text-amb-muted">{note.body || "Empty note"}</p>
           </button>
         ))}
       </div>
@@ -2578,7 +2573,7 @@ function AssistantPanel({ onChanged }: { onChanged: () => void }) {
 
       <div ref={scrollRef} className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
         {!messages.length && (
-          <div className="rounded-2xl bg-white/70 p-6 text-2xl text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
+          <div className="rounded-2xl bg-amb-card p-6 text-2xl text-amb-muted">
             Ask about the day, or tell me what to add. I can update tasks, groceries, the calendar, and today's note.
           </div>
         )}
@@ -2588,12 +2583,12 @@ function AssistantPanel({ onChanged }: { onChanged: () => void }) {
               className={`max-w-[80%] rounded-3xl px-6 py-4 text-2xl leading-relaxed ${
                 message.role === "user"
                   ? "bg-sky-600 text-white"
-                  : "bg-white/80 text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                  : "bg-amb-card text-amb-ink"
               }`}
             >
               <p className="whitespace-pre-wrap">{message.content}</p>
               {message.actions?.length ? (
-                <div className="mt-3 space-y-1 border-t border-white/40 pt-3 text-lg font-semibold text-emerald-700 dark:border-white/10 dark:text-emerald-300">
+                <div className="mt-3 space-y-1 border-t border-amb-border pt-3 text-lg font-semibold text-emerald-700 dark:text-emerald-300">
                   {message.actions.map((action, actionIndex) => (
                     <p key={actionIndex}>{action.summary}</p>
                   ))}
@@ -2604,7 +2599,7 @@ function AssistantPanel({ onChanged }: { onChanged: () => void }) {
         ))}
         {busy && (
           <div className="flex justify-start">
-            <div className="rounded-3xl bg-white/80 px-6 py-4 text-2xl text-slate-500 dark:bg-slate-800 dark:text-slate-400">Thinking...</div>
+            <div className="rounded-3xl bg-amb-card px-6 py-4 text-2xl text-amb-muted">Thinking...</div>
           </div>
         )}
         {error && <p className="text-xl font-semibold text-rose-600 dark:text-rose-400">{error}</p>}
@@ -2616,7 +2611,7 @@ function AssistantPanel({ onChanged }: { onChanged: () => void }) {
             <button
               key={suggestion}
               onClick={() => send(suggestion)}
-              className="min-h-14 rounded-2xl bg-white/75 px-5 text-xl font-semibold text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200"
+              className="min-h-14 rounded-2xl bg-amb-card px-5 text-xl font-semibold text-amb-muted active:scale-95"
             >
               {suggestion}
             </button>
@@ -2756,21 +2751,21 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
       <div className="flex shrink-0 items-start justify-between gap-4">
         <div>
           <SectionTitle icon={Landmark} title="Finance" />
-          <p className="mt-2 text-xl font-semibold text-slate-500">Family money dashboard - {summary.monthLabel}</p>
+          <p className="mt-2 text-xl font-semibold text-amb-muted">Family money dashboard - {summary.monthLabel}</p>
         </div>
-        <div className="rounded-3xl bg-white/80 px-5 py-4 text-right shadow-sm dark:bg-slate-900">
-          <p className="text-lg font-bold text-slate-500">Data provider</p>
+        <div className="rounded-3xl bg-amb-card px-5 py-4 text-right shadow-sm">
+          <p className="text-lg font-bold text-amb-muted">Data provider</p>
           <p className="text-2xl font-black">{summary.provider}</p>
         </div>
       </div>
 
-      <div className="mt-3 grid shrink-0 grid-cols-[1fr_150px_150px_170px] items-center gap-3 rounded-3xl bg-white/70 p-3 shadow-sm dark:bg-slate-900">
+      <div className="mt-3 grid shrink-0 grid-cols-[1fr_150px_150px_170px] items-center gap-3 rounded-3xl bg-amb-card p-3 shadow-sm">
         <div>
           <p className="text-xl font-black">Bank connections</p>
-          <p className="text-lg font-semibold text-slate-500">
+          <p className="text-lg font-semibold text-amb-muted">
             {plaidStatus?.configured ? `${plaidStatus.itemCount} Plaid connection${plaidStatus.itemCount === 1 ? "" : "s"} - ${plaidStatus.environment}` : "Set Plaid sandbox keys in .env to connect accounts."}
           </p>
-          {lastPlaidSync && <p className="text-base font-bold text-slate-500">Last Plaid sync {formatServerDateTime(lastPlaidSync)}</p>}
+          {lastPlaidSync && <p className="text-base font-bold text-amb-muted">Last Plaid sync {formatServerDateTime(lastPlaidSync)}</p>}
           {plaidMessage && <p className="mt-1 text-base font-bold text-sky-700">{plaidMessage}</p>}
         </div>
         <button onClick={connectPlaid} disabled={plaidBusy || plaidStatus?.configured === false} className="touch-button bg-emerald-600 px-5 text-white">Connect</button>
@@ -2786,22 +2781,22 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
       </div>
 
       <div className="mt-3 grid min-h-0 flex-1 grid-cols-[300px_1fr_1.15fr] gap-4">
-        <div className="rounded-3xl bg-white/80 p-4 text-center shadow-sm dark:bg-slate-900">
+        <div className="rounded-3xl bg-amb-card p-4 text-center shadow-sm">
           <BudgetCircle percent={budgetPercent} spent={summary.budgetSpent} limit={summary.budgetLimit} />
-          <p className="mt-4 text-xl font-bold text-slate-500">Monthly Budget</p>
+          <p className="mt-4 text-xl font-bold text-amb-muted">Monthly Budget</p>
           <p className={`text-3xl font-black ${summary.cashFlow >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{money(summary.cashFlow)} cash flow</p>
         </div>
 
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white/80 p-4 shadow-sm dark:bg-slate-900">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-black">Budget Checks</h3>
-            <p className="rounded-full bg-slate-100 px-4 py-2 text-lg font-bold text-slate-600">{summary.budgets.length} groups</p>
+            <p className="rounded-full bg-amb-well px-4 py-2 text-lg font-bold text-amb-muted">{summary.budgets.length} groups</p>
           </div>
           <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {summary.budgets.map((budget) => {
               const percent = budget.limitAmount ? Math.min(100, Math.round((budget.spentAmount / budget.limitAmount) * 100)) : 0;
               return (
-                <div key={budget.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                <div key={budget.id} className="rounded-2xl bg-amb-well p-4">
                   <div className="mb-2 flex items-center justify-between text-xl font-bold">
                     <span>{budget.category}</span>
                     <span>{percent}%</span>
@@ -2809,18 +2804,18 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
                   <div className="h-4 overflow-hidden rounded-full bg-slate-200">
                     <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: budget.color }} />
                   </div>
-                  <p className="mt-2 text-lg font-semibold text-slate-500">{money(budget.spentAmount)} of {money(budget.limitAmount)}</p>
+                  <p className="mt-2 text-lg font-semibold text-amb-muted">{money(budget.spentAmount)} of {money(budget.limitAmount)}</p>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white/80 p-4 shadow-sm dark:bg-slate-900">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-2xl font-black">Transactions</h3>
-              <p className="text-lg font-semibold text-slate-500">{summary.recentTransactions.length} recent - {summary.uncategorizedTransactions.length} need review</p>
+              <p className="text-lg font-semibold text-amb-muted">{summary.recentTransactions.length} recent - {summary.uncategorizedTransactions.length} need review</p>
             </div>
             <button onClick={() => syncPlaid(false)} disabled={plaidBusy || !plaidStatus?.itemCount} className="touch-button h-16 bg-sky-600 px-5 text-white">Sync</button>
           </div>
@@ -2839,12 +2834,12 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
       </div>
 
       <div className="mt-3 grid h-44 shrink-0 grid-cols-[1fr_1fr_1fr] gap-4">
-        <div className="overflow-hidden rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
+        <div className="overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
           <h3 className="text-2xl font-black">Accounts</h3>
           <div className="mt-2 grid max-h-28 grid-cols-2 gap-2 overflow-y-auto pr-1">
             {summary.accounts.slice(0, 6).map((account) => (
-              <div key={account.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
-                <p className="truncate text-lg font-bold text-slate-500">{account.institution}</p>
+              <div key={account.id} className="rounded-2xl bg-amb-well p-4">
+                <p className="truncate text-lg font-bold text-amb-muted">{account.institution}</p>
                 <p className="truncate text-xl font-black">{account.name}</p>
                 <p className={`mt-2 text-2xl font-black ${account.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(account.balance)}</p>
               </div>
@@ -2852,7 +2847,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
+        <div className="overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
           <div className="h-full rounded-3xl bg-slate-950 p-4 text-white shadow-sm dark:bg-black/40">
             <div className="flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-emerald-300" />
@@ -2866,19 +2861,19 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
+        <div className="overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
           <h3 className="text-2xl font-black">Rules & Markets</h3>
           <div className="mt-2 max-h-20 space-y-2 overflow-y-auto pr-1">
             {summary.categoryRules.slice(0, 4).map((rule) => (
-              <p key={rule.id} className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold dark:bg-slate-800">{rule.matchText} to {rule.category}</p>
+              <p key={rule.id} className="rounded-2xl bg-amb-well px-4 py-3 text-lg font-bold">{rule.matchText} to {rule.category}</p>
             ))}
-            {!summary.categoryRules.length && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-lg font-bold text-slate-500 dark:bg-slate-800">No custom rules yet.</p>}
+            {!summary.categoryRules.length && <p className="rounded-2xl bg-amb-well px-4 py-3 text-lg font-bold text-amb-muted">No custom rules yet.</p>}
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {quotes.slice(0, 4).map((quote) => (
-              <div key={quote.symbol} className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+              <div key={quote.symbol} className="rounded-2xl bg-amb-well p-4">
                 <p className="text-xl font-black">{quote.symbol}</p>
-                <p className="truncate text-base font-semibold text-slate-500">{quote.name}</p>
+                <p className="truncate text-base font-semibold text-amb-muted">{quote.name}</p>
                 <p className="mt-2 text-2xl font-black">{money(quote.price)}</p>
                 <p className={quote.changePercent && quote.changePercent < 0 ? "font-bold text-rose-600" : "font-bold text-emerald-600"}>{signed(quote.changePercent)}%</p>
               </div>
@@ -2889,9 +2884,9 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
 
       {ruleTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
-          <div className="w-[720px] rounded-3xl bg-white p-7 shadow-2xl dark:bg-slate-900">
+          <div className="w-[720px] rounded-3xl bg-amb-sheet p-7 shadow-2xl">
             <h3 className="text-3xl font-black">Create Category Rule</h3>
-            <p className="mt-2 text-xl font-semibold text-slate-500">Apply this category whenever a merchant contains this text.</p>
+            <p className="mt-2 text-xl font-semibold text-amb-muted">Apply this category whenever a merchant contains this text.</p>
             <div className="mt-5 grid gap-4">
               <input value={ruleMatch} onChange={(event) => setRuleMatch(event.target.value)} className="touch-input" placeholder="Merchant text to match" />
               <select value={ruleCategory} onChange={(event) => setRuleCategory(event.target.value)} className="touch-input">
@@ -2899,7 +2894,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
               </select>
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setRuleTransaction(null)} className="touch-button bg-slate-100 px-6 text-slate-700">Cancel</button>
+              <button onClick={() => setRuleTransaction(null)} className="touch-button bg-amb-well px-6 text-amb-ink">Cancel</button>
               <button onClick={saveRule} className="touch-button bg-emerald-600 px-6 text-white">Save Rule</button>
             </div>
           </div>
@@ -2917,11 +2912,11 @@ function FinanceMetric({ icon: Icon, label, value, tone }: { icon: LucideIcon; l
     amber: "bg-amber-100 text-amber-700"
   };
   return (
-    <div className="rounded-3xl bg-white/75 p-4 shadow-sm dark:bg-slate-900">
+    <div className="rounded-3xl bg-amb-card p-4 shadow-sm">
       <div className={`mb-2 flex h-11 w-11 items-center justify-center rounded-2xl ${tones[tone]}`}>
         <Icon className="h-6 w-6" />
       </div>
-      <p className="text-base font-bold text-slate-500">{label}</p>
+      <p className="text-base font-bold text-amb-muted">{label}</p>
       <p className="mt-1 text-3xl font-black">{value}</p>
     </div>
   );
@@ -2946,11 +2941,11 @@ function BudgetCircle({ percent, spent, limit }: { percent: number; spent: numbe
   const color = clamped >= 90 ? "#e11d48" : clamped >= 75 ? "#f59e0b" : "#10b981";
   return (
     <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-full p-3" style={{ background: `conic-gradient(${color} ${clamped * 3.6}deg, #e2e8f0 0deg)` }}>
-      <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white shadow-inner dark:bg-slate-900">
+      <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-amb-card shadow-inner">
         <p className="text-5xl font-black" style={{ color }}>{clamped}%</p>
-        <p className="mt-1 text-lg font-bold text-slate-500">used</p>
+        <p className="mt-1 text-lg font-bold text-amb-muted">used</p>
         <p className="mt-2 text-xl font-black">{money(spent)}</p>
-        <p className="text-base font-bold text-slate-500">of {money(limit)}</p>
+        <p className="text-base font-bold text-amb-muted">of {money(limit)}</p>
       </div>
     </div>
   );
@@ -2959,17 +2954,17 @@ function BudgetCircle({ percent, spent, limit }: { percent: number; spent: numbe
 function FinanceTransactionRow({ transaction, categories, onCategoryChange, onRule }: { transaction: FinanceTransaction; categories: string[]; onCategoryChange: (category: string) => void; onRule: () => void }) {
   const needsReview = transaction.category === "Uncategorized";
   return (
-    <div className={`grid grid-cols-[1fr_180px_96px] items-center gap-3 rounded-2xl p-4 ${needsReview ? "bg-amber-50 ring-2 ring-amber-200" : "bg-white/80 dark:bg-slate-800"}`}>
+    <div className={`grid grid-cols-[1fr_180px_96px] items-center gap-3 rounded-2xl p-4 ${needsReview ? "bg-amber-50 ring-2 ring-amber-200" : "bg-amb-card"}`}>
       <div>
         <p className="truncate text-xl font-black">{transaction.merchant}</p>
-        <p className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-500">
+        <p className="flex flex-wrap items-center gap-2 text-base font-semibold text-amb-muted">
           <span>{transaction.transactionDate}</span>
           <span>- {transaction.categorizedBy || "provider"}</span>
           {transaction.pending && <span className="rounded-full bg-amber-100 px-2 py-1 text-sm font-black text-amber-800">Pending</span>}
         </p>
-        <p className={`mt-1 text-2xl font-black ${transaction.amount < 0 ? "text-slate-800 dark:text-slate-100" : "text-emerald-600"}`}>{money(transaction.amount)}</p>
+        <p className={`mt-1 text-2xl font-black ${transaction.amount < 0 ? "text-amb-ink" : "text-emerald-600"}`}>{money(transaction.amount)}</p>
       </div>
-      <select value={transaction.category} onChange={(event) => onCategoryChange(event.target.value)} className="h-16 rounded-2xl border border-mirror-line bg-white px-3 text-lg font-bold text-slate-800 outline-none focus:ring-4 focus:ring-sky-200 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
+      <select value={transaction.category} onChange={(event) => onCategoryChange(event.target.value)} className="h-16 rounded-2xl border border-mirror-line bg-amb-card px-3 text-lg font-bold text-amb-ink outline-none focus:ring-4 focus:ring-sky-200 dark:border-white/10">
         {categories.map((category) => <option key={category} value={category}>{category}</option>)}
       </select>
       <button onClick={onRule} className="touch-button h-16 bg-emerald-100 text-emerald-700">Rule</button>
@@ -3078,7 +3073,7 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
       {/* The week, which is the point of the tab */}
       <Card className="flex w-[420px] shrink-0 flex-col overflow-hidden">
         <SectionTitle icon={UtensilsCrossed} title="This week" />
-        <p className="mt-2 shrink-0 text-lg text-slate-500 dark:text-slate-400">
+        <p className="mt-2 shrink-0 text-lg text-amb-muted">
           {plannedCount} of 7 dinners planned
         </p>
 
@@ -3091,26 +3086,26 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
                 key={entry.date}
                 onClick={() => setAssigning(entry.date)}
                 className={`flex w-full items-center gap-4 rounded-2xl p-4 text-left transition active:scale-[0.98] ${
-                  isToday ? "bg-sky-100 dark:bg-sky-500/15" : "bg-white/70 dark:bg-slate-800"
+                  isToday ? "bg-sky-100 dark:bg-sky-500/15" : "bg-amb-card"
                 }`}
               >
                 <div className="w-16 shrink-0">
-                  <p className="text-sm font-black uppercase text-slate-500 dark:text-slate-400">
+                  <p className="text-sm font-black uppercase text-amb-muted">
                     {day.toLocaleDateString("en-US", { weekday: "short" })}
                   </p>
-                  <p className="text-2xl font-black text-slate-800 dark:text-slate-100">{day.getDate()}</p>
+                  <p className="text-2xl font-black text-amb-ink">{day.getDate()}</p>
                 </div>
                 <div className="min-w-0 flex-1">
                   {entry.recipe ? (
                     <>
-                      <p className="truncate text-xl font-bold text-mirror-ink dark:text-slate-50">{entry.recipe.title}</p>
-                      <p className="text-base text-slate-500 dark:text-slate-400">
+                      <p className="truncate text-xl font-bold text-amb-ink">{entry.recipe.title}</p>
+                      <p className="text-base text-amb-muted">
                         {entry.recipe.totalMinutes ? `${entry.recipe.totalMinutes} min` : "Planned"}
                         {entry.recipe.servings ? ` · serves ${entry.recipe.servings}` : ""}
                       </p>
                     </>
                   ) : (
-                    <p className="text-xl font-semibold text-slate-400">Tap to plan</p>
+                    <p className="text-xl font-semibold text-amb-muted">Tap to plan</p>
                   )}
                 </div>
                 {isToday && <span className="shrink-0 rounded-full bg-sky-600 px-3 py-1 text-xs font-black uppercase text-white">Tonight</span>}
@@ -3133,7 +3128,7 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex shrink-0 items-center justify-between gap-4">
           <SectionTitle icon={ChefHat} title="Recipes" />
-          <p className="text-lg text-slate-500 dark:text-slate-400">{recipes.length} saved</p>
+          <p className="text-lg text-amb-muted">{recipes.length} saved</p>
         </div>
 
         <div className="mt-4 flex shrink-0 gap-3">
@@ -3164,13 +3159,13 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
             <button
               key={recipe.id}
               onClick={() => setOpen(recipe)}
-              className="flex flex-col rounded-2xl bg-white/75 p-4 text-left transition active:scale-[0.98] dark:bg-slate-800"
+              className="flex flex-col rounded-2xl bg-amb-card p-4 text-left transition active:scale-[0.98]"
             >
-              <p className="line-clamp-2 text-xl font-black leading-tight text-mirror-ink dark:text-slate-50">{recipe.title}</p>
-              <p className="mt-1 line-clamp-2 text-base text-slate-500 dark:text-slate-400">{recipe.summary}</p>
+              <p className="line-clamp-2 text-xl font-black leading-tight text-amb-ink">{recipe.title}</p>
+              <p className="mt-1 line-clamp-2 text-base text-amb-muted">{recipe.summary}</p>
               <div className="mt-auto flex flex-wrap gap-2 pt-3">
                 {recipe.totalMinutes ? (
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                  <span className="rounded-full bg-amb-well px-3 py-1 text-sm font-bold text-amb-muted">
                     {recipe.totalMinutes} min
                   </span>
                 ) : null}
@@ -3183,7 +3178,7 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
             </button>
           ))}
           {!recipes.length && (
-            <p className="col-span-3 rounded-2xl bg-white/70 p-6 text-xl text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <p className="col-span-3 rounded-2xl bg-amb-card p-6 text-xl text-amb-muted">
               No recipes yet. Describe a meal above and one will be written and saved.
             </p>
           )}
@@ -3217,8 +3212,8 @@ function MealPicker({
   const day = new Date(`${date}T12:00:00`);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
-      <div className="flex max-h-full w-full max-w-4xl flex-col rounded-[28px] bg-white p-8 dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
-        <h2 className="shrink-0 text-4xl font-black text-mirror-ink dark:text-slate-50">
+      <div className="flex max-h-full w-full max-w-4xl flex-col rounded-[28px] bg-amb-sheet p-8" onClick={(event) => event.stopPropagation()}>
+        <h2 className="shrink-0 text-4xl font-black text-amb-ink">
           Dinner for {day.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </h2>
         <div className="mt-6 grid min-h-0 flex-1 grid-cols-3 gap-3 overflow-y-auto pr-1">
@@ -3226,19 +3221,19 @@ function MealPicker({
             <button
               key={recipe.id}
               onClick={() => onPick(recipe.id)}
-              className="rounded-2xl bg-slate-100 p-4 text-left active:scale-95 dark:bg-slate-800"
+              className="rounded-2xl bg-amb-well p-4 text-left active:scale-95"
             >
-              <p className="line-clamp-2 text-xl font-black leading-tight text-mirror-ink dark:text-slate-50">{recipe.title}</p>
-              <p className="mt-1 text-base text-slate-500 dark:text-slate-400">{recipe.totalMinutes ? `${recipe.totalMinutes} min` : ""}</p>
+              <p className="line-clamp-2 text-xl font-black leading-tight text-amb-ink">{recipe.title}</p>
+              <p className="mt-1 text-base text-amb-muted">{recipe.totalMinutes ? `${recipe.totalMinutes} min` : ""}</p>
             </button>
           ))}
-          {!recipes.length && <p className="col-span-3 text-xl text-slate-500">Create a recipe first.</p>}
+          {!recipes.length && <p className="col-span-3 text-xl text-amb-muted">Create a recipe first.</p>}
         </div>
         <div className="mt-6 flex shrink-0 gap-3">
           <button onClick={() => onPick(null)} className="min-h-16 flex-1 rounded-2xl bg-rose-100 text-xl font-black text-rose-700 active:scale-95">
             Clear this night
           </button>
-          <button onClick={onClose} className="min-h-16 flex-1 rounded-2xl bg-slate-900 text-xl font-black text-white active:scale-95 dark:bg-slate-100 dark:text-slate-900">
+          <button onClick={onClose} className="min-h-16 flex-1 rounded-2xl bg-amb-accent text-xl font-black text-amb-accent-ink active:scale-95">
             Cancel
           </button>
         </div>
@@ -3251,13 +3246,13 @@ function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose:
   const [confirming, setConfirming] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
-      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900" onClick={(event) => event.stopPropagation()}>
+      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet" onClick={(event) => event.stopPropagation()}>
         <div className="shrink-0 border-b border-mirror-line p-8 pb-6">
-          <h2 className="text-4xl font-black leading-tight text-mirror-ink dark:text-slate-50">{recipe.title}</h2>
-          <p className="mt-2 text-xl text-slate-600 dark:text-slate-300">{recipe.summary}</p>
+          <h2 className="text-4xl font-black leading-tight text-amb-ink">{recipe.title}</h2>
+          <p className="mt-2 text-xl text-amb-muted">{recipe.summary}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {recipe.totalMinutes ? <span className="rounded-full bg-slate-100 px-4 py-2 text-base font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{recipe.totalMinutes} min</span> : null}
-            {recipe.servings ? <span className="rounded-full bg-slate-100 px-4 py-2 text-base font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">Serves {recipe.servings}</span> : null}
+            {recipe.totalMinutes ? <span className="rounded-full bg-amb-well px-4 py-2 text-base font-bold text-amb-ink">{recipe.totalMinutes} min</span> : null}
+            {recipe.servings ? <span className="rounded-full bg-amb-well px-4 py-2 text-base font-bold text-amb-ink">Serves {recipe.servings}</span> : null}
             {recipe.tags.map((tag) => (
               <span key={tag} className="rounded-full bg-emerald-100 px-4 py-2 text-base font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{tag}</span>
             ))}
@@ -3266,20 +3261,20 @@ function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose:
 
         <div className="grid min-h-0 flex-1 grid-cols-[340px_1fr] gap-8 overflow-y-auto p-8">
           <div>
-            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Ingredients</p>
+            <p className="text-sm font-black uppercase tracking-widest text-amb-muted">Ingredients</p>
             <ul className="mt-4 space-y-3">
               {recipe.ingredients.map((ingredient, index) => (
-                <li key={index} className="text-xl leading-snug text-slate-700 dark:text-slate-200">
+                <li key={index} className="text-xl leading-snug text-amb-ink">
                   <span className="font-bold">{ingredient.quantity}</span> {ingredient.name}
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Method</p>
+            <p className="text-sm font-black uppercase tracking-widest text-amb-muted">Method</p>
             <ol className="mt-4 space-y-4">
               {recipe.steps.map((step, index) => (
-                <li key={index} className="flex gap-4 text-xl leading-snug text-slate-700 dark:text-slate-200">
+                <li key={index} className="flex gap-4 text-xl leading-snug text-amb-ink">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-600 text-base font-black text-white">{index + 1}</span>
                   <span>{step}</span>
                 </li>
@@ -3316,7 +3311,7 @@ function TravelPanel({ focusDealId }: { focusDealId?: number | null }) {
             className={`min-h-14 rounded-2xl px-7 text-xl font-black capitalize active:scale-95 ${
               tab === entry
                 ? "bg-sky-600 text-white"
-                : "bg-white/75 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                : "bg-amb-card text-amb-muted"
             }`}
           >
             {entry}
@@ -3436,12 +3431,12 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
         <SectionTitle icon={Luggage} title="Trip ideas today" />
         <div className="flex items-center gap-3">
           {state?.generatedFor && (
-            <span className="text-lg font-semibold text-slate-500 dark:text-slate-400">{state.generatedFor}</span>
+            <span className="text-lg font-semibold text-amb-muted">{state.generatedFor}</span>
           )}
           <button
             onClick={refresh}
             disabled={busy}
-            className="touch-button w-20 bg-white/80 text-slate-600 disabled:opacity-40 dark:bg-slate-800 dark:text-slate-200"
+            className="touch-button w-20 bg-amb-card text-amb-muted disabled:opacity-40"
             aria-label="Refresh trip ideas"
           >
             <RefreshCw className={`h-7 w-7 ${busy ? "animate-spin" : ""}`} />
@@ -3458,7 +3453,7 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
       )}
 
       {busy && !deals.length && (
-        <p className="mt-6 text-2xl text-slate-500 dark:text-slate-400">Planning fresh trips...</p>
+        <p className="mt-6 text-2xl text-amb-muted">Planning fresh trips...</p>
       )}
 
       {deals.length > 0 && (
@@ -3532,7 +3527,7 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
             <button
               onClick={() => step(-1)}
               disabled={index === 0}
-              className="touch-button w-20 bg-white/80 text-slate-600 disabled:opacity-30 dark:bg-slate-800 dark:text-slate-200"
+              className="touch-button w-20 bg-amb-card text-amb-muted disabled:opacity-30"
               aria-label="Previous trip"
             >
               <ChevronLeft className="h-8 w-8" />
@@ -3550,13 +3545,13 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
             <button
               onClick={() => step(1)}
               disabled={index >= deals.length - 1}
-              className="touch-button w-20 bg-white/80 text-slate-600 disabled:opacity-30 dark:bg-slate-800 dark:text-slate-200"
+              className="touch-button w-20 bg-amb-card text-amb-muted disabled:opacity-30"
               aria-label="Next trip"
             >
               <ChevronRight className="h-8 w-8" />
             </button>
           </div>
-          <p className="mt-2 shrink-0 text-center text-lg text-slate-500 dark:text-slate-400">
+          <p className="mt-2 shrink-0 text-center text-lg text-amb-muted">
             Tap the front card for the full breakdown
           </p>
         </>
@@ -3571,7 +3566,7 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
   const accent = dealAccent(deal.accent);
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-6">
-      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-900">
+      <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet">
         <div className={`relative flex shrink-0 items-start justify-between overflow-hidden bg-gradient-to-br p-7 text-white ${accent.card}`}>
           {deal.imageUrl && (
             <>
@@ -3596,7 +3591,7 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-7 text-slate-700 dark:text-slate-200">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-7 text-amb-ink">
           <p className="text-2xl leading-relaxed">{deal.detail.overview || deal.hook}</p>
 
           <div className="flex flex-wrap gap-3 text-lg font-bold">
@@ -3621,7 +3616,7 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
               <h3 className="text-2xl font-bold">Rough plan</h3>
               <div className="mt-3 space-y-3">
                 {deal.detail.itinerary.map((entry, i) => (
-                  <div key={i} className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-800">
+                  <div key={i} className="rounded-2xl bg-amb-well p-5">
                     <p className="text-xl font-bold">{entry.day}</p>
                     <p className="mt-1 text-xl leading-relaxed">{entry.plan}</p>
                   </div>
@@ -3632,13 +3627,13 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
 
           <div className="grid gap-4 md:grid-cols-2">
             {deal.detail.stay && (
-              <section className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-800">
+              <section className="rounded-2xl bg-amb-well p-5">
                 <h3 className="text-xl font-bold">Where to stay</h3>
                 <p className="mt-2 text-xl leading-relaxed">{deal.detail.stay}</p>
               </section>
             )}
             {deal.detail.gettingThere && (
-              <section className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-800">
+              <section className="rounded-2xl bg-amb-well p-5">
                 <h3 className="text-xl font-bold">Getting there</h3>
                 <p className="mt-2 text-xl leading-relaxed">{deal.detail.gettingThere}</p>
               </section>
@@ -3749,16 +3744,16 @@ function TravelHubPanel() {
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[290px_minmax(0,1fr)] gap-4 overflow-hidden">
-      <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] border border-teal-100 bg-white/90 p-4 shadow-sm dark:border-teal-500/20 dark:bg-slate-900/90">
+      <aside className="flex min-h-0 flex-col gap-4 rounded-[24px] border border-teal-100 bg-amb-card p-4 shadow-sm dark:border-teal-500/20">
         <div className="flex items-center gap-4">
           <span className="grid h-16 w-16 place-items-center rounded-2xl bg-teal-700 text-2xl font-black text-white">TH</span>
           <div>
-            <p className="text-3xl font-black text-slate-900 dark:text-white">Travel Hub</p>
-            <p className="text-lg font-semibold text-slate-500 dark:text-slate-400">Family trip autopilot</p>
+            <p className="text-3xl font-black text-amb-ink">Travel Hub</p>
+            <p className="text-lg font-semibold text-amb-muted">Family trip autopilot</p>
           </div>
         </div>
-        <div className="grid gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
-          <label className="text-lg font-black text-slate-700 dark:text-slate-200">
+        <div className="grid gap-3 border-t border-amb-border pt-4">
+          <label className="text-lg font-black text-amb-ink">
             Trip type
             <select value={tripType} onChange={(event) => setTripType(event.target.value as TravelTripType)} className="touch-input mt-2 text-xl">
               <option value="low-effort">Low-effort with baby</option>
@@ -3769,7 +3764,7 @@ function TravelHubPanel() {
               <option value="splurge">Splurge week</option>
             </select>
           </label>
-          <label className="text-lg font-black text-slate-700 dark:text-slate-200">
+          <label className="text-lg font-black text-amb-ink">
             Duration
             <select value={duration} onChange={(event) => setDuration(Number(event.target.value))} className="touch-input mt-2 text-xl">
               <option value={3}>Long weekend</option>
@@ -3778,7 +3773,7 @@ function TravelHubPanel() {
               <option value={10}>Slow 10-day trip</option>
             </select>
           </label>
-          <label className="text-lg font-black text-slate-700 dark:text-slate-200">
+          <label className="text-lg font-black text-amb-ink">
             Weekly budget
             <input value={budget} onChange={(event) => setBudget(Number(event.target.value))} type="range" min={1500} max={12000} step={250} className="mt-4 w-full accent-teal-700" />
             <span className="mt-2 block text-3xl text-teal-700 dark:text-teal-300">{money(budget)}</span>
@@ -3791,11 +3786,11 @@ function TravelHubPanel() {
         </div>
       </aside>
 
-      <section className="flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/75 bg-[#f8faf7]/95 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/90">
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-amb-border bg-[#f8faf7]/95 p-4 shadow-sm dark:bg-slate-950/90">
         <div className="flex items-end justify-between gap-5">
           <div>
             <p className="text-lg font-black uppercase tracking-normal text-teal-700 dark:text-teal-300">June 15 - August 15, 2026</p>
-            <h2 className="mt-1 text-4xl font-black text-slate-950 dark:text-white">Planned Trip Builder</h2>
+            <h2 className="mt-1 text-4xl font-black text-amb-ink">Planned Trip Builder</h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <TravelMetric label="best fit" value={`${rankedTrips[0]?.score ?? 0}%`} />
@@ -3804,11 +3799,11 @@ function TravelHubPanel() {
           </div>
         </div>
 
-        <div className="mt-3 shrink-0 rounded-[20px] border border-teal-100 bg-white p-3 shadow-sm dark:border-teal-500/20 dark:bg-slate-900">
+        <div className="mt-3 shrink-0 rounded-[20px] border border-teal-100 bg-amb-card p-3 shadow-sm dark:border-teal-500/20">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white">Build trip candidates</h3>
-              <p className="mt-1 text-lg font-semibold text-slate-500 dark:text-slate-400">Ranked by ease, family fit, timing, budget, and deal strength.</p>
+              <h3 className="text-2xl font-black text-amb-ink">Build trip candidates</h3>
+              <p className="mt-1 text-lg font-semibold text-amb-muted">Ranked by ease, family fit, timing, budget, and deal strength.</p>
             </div>
             <button type="button" onClick={buildItinerary} disabled={travelBusy} className="h-14 rounded-2xl bg-teal-700 px-6 text-lg font-black text-white disabled:opacity-60">
               <Sparkles className="mr-2 inline h-6 w-6" />
@@ -3821,8 +3816,8 @@ function TravelHubPanel() {
                 key={trip.id}
                 type="button"
                 onClick={() => setSelectedId(trip.id)}
-                className={`overflow-hidden rounded-[20px] border bg-white text-left shadow-sm transition active:scale-[0.98] dark:bg-slate-800 ${
-                  selected?.id === trip.id ? "border-teal-500 ring-4 ring-teal-200 dark:ring-teal-500/30" : "border-slate-200 dark:border-slate-700"
+                className={`overflow-hidden rounded-[20px] border bg-amb-card text-left shadow-sm transition active:scale-[0.98] ${
+                  selected?.id === trip.id ? "border-teal-500 ring-4 ring-teal-200 dark:ring-teal-500/30" : "border-amb-border"
                 }`}
               >
                 <div className="h-14 p-3 text-white" style={{ background: trip.visual }}>
@@ -3832,8 +3827,8 @@ function TravelHubPanel() {
                   </div>
                 </div>
                 <div className="p-3">
-                  <p className="truncate text-lg font-black text-slate-900 dark:text-white">{trip.name}</p>
-                  <p className="truncate text-base font-bold text-slate-500 dark:text-slate-400">{trip.location}</p>
+                  <p className="truncate text-lg font-black text-amb-ink">{trip.name}</p>
+                  <p className="truncate text-base font-bold text-amb-muted">{trip.location}</p>
                 </div>
               </button>
             ))}
@@ -3841,16 +3836,16 @@ function TravelHubPanel() {
         </div>
 
         <div className="mt-4 grid min-h-0 flex-1 grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] gap-4">
-          <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex min-h-0 flex-col rounded-[20px] border border-amb-border bg-amb-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Instagram ideas</h3>
+              <h3 className="text-3xl font-black text-amb-ink">Instagram ideas</h3>
               {travelMessage && <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-black text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">{travelMessage}</span>}
             </div>
             <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
               {inspirations.length ? (
                 <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
                   {inspirations.map((item) => (
-                    <div key={item.id} className="group overflow-hidden rounded-2xl bg-slate-50 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                    <div key={item.id} className="group overflow-hidden rounded-2xl bg-amb-well shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
                       <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")} className="block w-full text-left active:scale-[0.99]">
                         <div className="relative aspect-[4/3] overflow-hidden bg-teal-50 dark:bg-slate-700">
                           {item.thumbnailUrl ? (
@@ -3860,16 +3855,16 @@ function TravelHubPanel() {
                               <MapPinned className="h-12 w-12" />
                             </div>
                           )}
-                          <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-700 shadow-sm dark:bg-slate-950/80 dark:text-slate-200">
+                          <span className="absolute left-3 top-3 rounded-full bg-amb-card px-3 py-1 text-xs font-black uppercase tracking-wide text-amb-ink shadow-sm">
                             Instagram
                           </span>
                         </div>
                         <div className="p-3">
-                          <p className="line-clamp-2 min-h-[3.5rem] text-lg font-black leading-tight text-slate-900 dark:text-white">{item.title}</p>
+                          <p className="line-clamp-2 min-h-[3.5rem] text-lg font-black leading-tight text-amb-ink">{item.title}</p>
                         </div>
                       </button>
-                      <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
-                        <span className="truncate text-sm font-bold text-slate-500 dark:text-slate-400">{item.location || "Saved idea"}</span>
+                      <div className="flex items-center justify-between gap-2 border-t border-amb-border px-3 py-2">
+                        <span className="truncate text-sm font-bold text-amb-muted">{item.location || "Saved idea"}</span>
                         <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
                           <Trash2 className="h-5 w-5" />
                         </button>
@@ -3878,17 +3873,17 @@ function TravelHubPanel() {
                   ))}
                 </div>
               ) : (
-                <div className="grid h-full place-items-center rounded-2xl bg-slate-50 p-4 text-center text-2xl font-black text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                <div className="grid h-full place-items-center rounded-2xl bg-amb-well p-4 text-center text-2xl font-black text-amb-muted">
                   Send Instagram links from your phone shortcut.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-col rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex min-h-0 flex-col rounded-[20px] border border-amb-border bg-amb-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white">AI itinerary</h3>
-                <button type="button" onClick={buildItinerary} disabled={travelBusy} className="h-12 rounded-2xl bg-slate-900 px-4 text-base font-black text-white active:scale-[0.98] disabled:opacity-60 dark:bg-white dark:text-slate-900">
+                <h3 className="text-2xl font-black text-amb-ink">AI itinerary</h3>
+                <button type="button" onClick={buildItinerary} disabled={travelBusy} className="h-12 rounded-2xl bg-amb-accent px-4 text-base font-black text-amb-accent-ink active:scale-[0.98] disabled:opacity-60">
                   <Sparkles className="mr-2 inline h-5 w-5" />
                   Build
                 </button>
@@ -3899,30 +3894,30 @@ function TravelHubPanel() {
                     <button type="button" onClick={() => setItineraryDetailsOpen(true)} className="rounded-2xl bg-teal-50 p-4 text-left active:scale-[0.99] dark:bg-teal-500/15">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xl font-black text-slate-900 dark:text-white">{itinerary.title}</p>
+                          <p className="text-xl font-black text-amb-ink">{itinerary.title}</p>
                           {itinerary.destination && <p className="mt-1 text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{itinerary.destination}</p>}
                         </div>
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-teal-800 shadow-sm dark:bg-slate-800 dark:text-teal-200">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amb-card text-teal-800 shadow-sm dark:text-teal-200">
                           <ExternalLink className="h-5 w-5" />
                         </span>
                       </div>
-                      <p className="mt-1 text-base font-bold text-slate-600 dark:text-slate-300">{itinerary.summary}</p>
+                      <p className="mt-1 text-base font-bold text-amb-muted">{itinerary.summary}</p>
                       <p className="mt-3 text-sm font-black text-teal-800 dark:text-teal-200">Tap for map, lodging, travel links, and full day breakdown</p>
                     </button>
                     {itinerary.days.map((day) => (
-                      <button key={day.day} type="button" onClick={() => setItineraryDetailsOpen(true)} className="rounded-2xl bg-slate-50 p-4 text-left active:scale-[0.99] dark:bg-slate-800">
-                        <p className="text-lg font-black text-slate-900 dark:text-white">Day {day.day}: {day.title}</p>
-                        <p className="mt-1 text-base font-bold text-slate-500 dark:text-slate-400">{day.notes}</p>
+                      <button key={day.day} type="button" onClick={() => setItineraryDetailsOpen(true)} className="rounded-2xl bg-amb-well p-4 text-left active:scale-[0.99]">
+                        <p className="text-lg font-black text-amb-ink">Day {day.day}: {day.title}</p>
+                        <p className="mt-1 text-base font-bold text-amb-muted">{day.notes}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {day.stops.map((stop) => (
-                            <span key={stop} className="rounded-full bg-white px-3 py-1 text-sm font-black text-slate-700 shadow-sm dark:bg-slate-700 dark:text-slate-200">{stop}</span>
+                            <span key={stop} className="rounded-full bg-amb-card px-3 py-1 text-sm font-black text-amb-ink shadow-sm">{stop}</span>
                           ))}
                         </div>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="grid h-full place-items-center rounded-2xl bg-slate-50 p-4 text-center text-lg font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <div className="grid h-full place-items-center rounded-2xl bg-amb-well p-4 text-center text-lg font-bold text-amb-muted">
                     Generate an itinerary after saving a few creator posts.
                   </div>
                 )}
@@ -3937,7 +3932,7 @@ function TravelHubPanel() {
 
 function TripBadge({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <span className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+    <span className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-amb-well px-3 text-sm font-black text-amb-ink">
       <span className="text-teal-700 dark:text-teal-300">{icon}</span>
       {label}
     </span>
@@ -3950,19 +3945,19 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
 
   return (
     <div className="presentation-backdrop fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="presentation-window flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
-        <div className="presentation-header flex items-start justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+      <div className="presentation-window flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700">
+        <div className="presentation-header flex items-start justify-between gap-4 border-b border-amb-border p-4">
           <div className="min-w-0">
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{itinerary.destination || "Trip breakdown"}</p>
-            <h3 className="mt-1 text-3xl font-black leading-tight text-slate-950 dark:text-white">{itinerary.title}</h3>
-            <p className="mt-1 line-clamp-2 max-w-4xl text-base font-bold text-slate-600 dark:text-slate-300">{itinerary.summary}</p>
+            <h3 className="mt-1 text-3xl font-black leading-tight text-amb-ink">{itinerary.title}</h3>
+            <p className="mt-1 line-clamp-2 max-w-4xl text-base font-bold text-amb-muted">{itinerary.summary}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <TripBadge icon={<MapPinned className="h-5 w-5" />} label={itinerary.destination || "Destination"} />
               <TripBadge icon={<Sparkles className="h-5 w-5" />} label={itinerary.provider === "openai" ? "ChatGPT planned" : "Draft planned"} />
               {priceSummary && <TripBadge icon={<DollarSign className="h-5 w-5" />} label={formatTripPriceRange(priceSummary)} />}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close itinerary details">
+          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-amb-well text-amb-ink active:scale-95" aria-label="Close itinerary details">
             <X className="h-7 w-7" />
           </button>
         </div>
@@ -3977,14 +3972,14 @@ function ItineraryDetailModal({ itinerary, onClose }: { itinerary: TravelItinera
 
 function SelectedItineraryDetail({ detail }: { detail: ItinerarySelectedDetail }) {
   return (
-    <div className="presentation-detail min-h-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="presentation-detail min-h-0 rounded-3xl border border-amb-border bg-amb-card p-4 shadow-sm">
       <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">{detail.eyebrow}</p>
-      <h4 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{detail.title}</h4>
-      <p className="mt-2 line-clamp-4 text-base font-bold leading-relaxed text-slate-600 dark:text-slate-300">{detail.body}</p>
+      <h4 className="mt-1 text-2xl font-black text-amb-ink">{detail.title}</h4>
+      <p className="mt-2 line-clamp-4 text-base font-bold leading-relaxed text-amb-muted">{detail.body}</p>
       {detail.chips?.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {detail.chips.slice(0, 8).map((chip) => (
-            <span key={`${detail.title}-${chip}`} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">{chip}</span>
+            <span key={`${detail.title}-${chip}`} className="rounded-full bg-amb-well px-3 py-2 text-sm font-black text-amb-ink">{chip}</span>
           ))}
         </div>
       ) : null}
@@ -3996,12 +3991,12 @@ function ItineraryPlanningPanel({ planning, onSelect }: { planning: NonNullable<
   return (
     <div className="min-h-0 overflow-y-auto rounded-3xl border border-teal-100 bg-teal-50 p-4 shadow-sm dark:border-teal-500/20 dark:bg-teal-500/10">
       <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-teal-800 shadow-sm dark:bg-slate-900 dark:text-teal-200">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-amb-card text-teal-800 shadow-sm dark:text-teal-200">
           <Sparkles className="h-6 w-6" />
         </span>
         <div>
-          <p className="text-2xl font-black text-slate-950 dark:text-white">AI trip options</p>
-          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Organized before you click links</p>
+          <p className="text-2xl font-black text-amb-ink">AI trip options</p>
+          <p className="text-sm font-bold text-amb-muted">Organized before you click links</p>
         </div>
       </div>
       <div className="mt-4 grid gap-3">
@@ -4018,13 +4013,13 @@ function ItineraryPlanningPanel({ planning, onSelect }: { planning: NonNullable<
 function TripOptionsModal({ planning, onClose, onSelect }: { planning: NonNullable<TravelItineraryResult["planning"]>; onClose: () => void; onSelect: (detail: ItinerarySelectedDetail) => void }) {
   return (
     <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="presentation-window flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+      <div className="presentation-window flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700">
+        <div className="flex items-center justify-between gap-4 border-b border-amb-border p-4">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">AI planning</p>
-            <h3 className="text-3xl font-black text-slate-950 dark:text-white">Trip Options</h3>
+            <h3 className="text-3xl font-black text-amb-ink">Trip Options</h3>
           </div>
-          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close trip options">
+          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-amb-well text-amb-ink active:scale-95" aria-label="Close trip options">
             <X className="h-7 w-7" />
           </button>
         </div>
@@ -4062,11 +4057,11 @@ function TripAddOnsContent({ addOns, priceSummary, onSelect }: { addOns: NonNull
     <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <div className="presentation-card rounded-3xl border border-amber-100 bg-amber-50 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
         <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Estimate</p>
-        <p className="mt-2 text-4xl font-black text-slate-950 dark:text-white">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
-        <p className="mt-2 rounded-2xl bg-white/80 p-3 text-sm font-black text-amber-800 shadow-sm dark:bg-slate-900/80 dark:text-amber-200">{selectedIds.size} selected add-on{selectedIds.size === 1 ? "" : "s"}</p>
+        <p className="mt-2 text-4xl font-black text-amb-ink">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
+        <p className="mt-2 rounded-2xl bg-amb-card p-3 text-sm font-black text-amber-800 shadow-sm dark:text-amber-200">{selectedIds.size} selected add-on{selectedIds.size === 1 ? "" : "s"}</p>
         <div className="mt-4 grid gap-2">
           {(priceSummary?.pricingNotes || ["Estimates are planning numbers, not confirmed quotes."]).slice(0, 4).map((note, index) => (
-            <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900/80 dark:text-slate-300">{note}</p>
+            <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-amb-card p-3 text-sm font-bold text-amb-muted shadow-sm">{note}</p>
           ))}
         </div>
       </div>
@@ -4118,14 +4113,14 @@ function TripAddOnsModal({ addOns, priceSummary, onClose, onSelect }: { addOns: 
 
   return (
     <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="presentation-window flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+      <div className="presentation-window flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700">
+        <div className="flex items-center justify-between gap-4 border-b border-amb-border p-4">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Trip package pricing</p>
-            <h3 className="text-3xl font-black text-slate-950 dark:text-white">Add-ons</h3>
-            <p className="mt-1 text-base font-bold text-slate-500 dark:text-slate-400">{priceSummary ? formatTripPriceRange(priceSummary) : "Pricing estimates"} across selected trip options.</p>
+            <h3 className="text-3xl font-black text-amb-ink">Add-ons</h3>
+            <p className="mt-1 text-base font-bold text-amb-muted">{priceSummary ? formatTripPriceRange(priceSummary) : "Pricing estimates"} across selected trip options.</p>
           </div>
-          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close trip add-ons">
+          <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-amb-well text-amb-ink active:scale-95" aria-label="Close trip add-ons">
             <X className="h-7 w-7" />
           </button>
         </div>
@@ -4134,11 +4129,11 @@ function TripAddOnsModal({ addOns, priceSummary, onClose, onSelect }: { addOns: 
           <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
             <div className="presentation-card rounded-3xl border border-amber-100 bg-amber-50 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
               <p className="text-sm font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">Estimate</p>
-              <p className="mt-2 text-4xl font-black text-slate-950 dark:text-white">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
-              <p className="mt-2 rounded-2xl bg-white/80 p-3 text-sm font-black text-amber-800 shadow-sm dark:bg-slate-900/80 dark:text-amber-200">{selectedIds.size} selected add-on{selectedIds.size === 1 ? "" : "s"}</p>
+              <p className="mt-2 text-4xl font-black text-amb-ink">{priceSummary ? formatTripPriceRange(priceSummary) : "Needs quote"}</p>
+              <p className="mt-2 rounded-2xl bg-amb-card p-3 text-sm font-black text-amber-800 shadow-sm dark:text-amber-200">{selectedIds.size} selected add-on{selectedIds.size === 1 ? "" : "s"}</p>
               <div className="mt-4 grid gap-2">
                 {(priceSummary?.pricingNotes || ["Estimates are planning numbers, not confirmed quotes."]).slice(0, 4).map((note, index) => (
-                  <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-600 shadow-sm dark:bg-slate-900/80 dark:text-slate-300">{note}</p>
+                  <p key={note} style={{ animationDelay: `${index * 50 + 120}ms` }} className="presentation-route rounded-2xl bg-amb-card p-3 text-sm font-bold text-amb-muted shadow-sm">{note}</p>
                 ))}
               </div>
             </div>
@@ -4223,21 +4218,21 @@ function AddOnCarousel({
   }
 
   return (
-    <div style={{ animationDelay: `${animationDelay}ms` }} className="presentation-card rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+    <div style={{ animationDelay: `${animationDelay}ms` }} className="presentation-card rounded-3xl bg-amb-card p-3 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-sm`}>{icon}</span>
           <div>
-            <p className="text-xl font-black text-slate-950 dark:text-white">{title}</p>
-            <p className="text-xs font-black uppercase text-slate-400">Swipe through {items.length} option{items.length === 1 ? "" : "s"}</p>
+            <p className="text-xl font-black text-amb-ink">{title}</p>
+            <p className="text-xs font-black uppercase text-amb-muted">Swipe through {items.length} option{items.length === 1 ? "" : "s"}</p>
           </div>
         </div>
         {items.length > 1 && (
           <div className="flex gap-2">
-            <button type="button" onClick={() => shift(-1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label={`Previous ${title} option`}>
+            <button type="button" onClick={() => shift(-1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-amb-well text-amb-muted active:scale-95" aria-label={`Previous ${title} option`}>
               <ChevronLeft className="h-6 w-6" />
             </button>
-            <button type="button" onClick={() => shift(1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-slate-600 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label={`Next ${title} option`}>
+            <button type="button" onClick={() => shift(1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-amb-well text-amb-muted active:scale-95" aria-label={`Next ${title} option`}>
               <ChevronRight className="h-6 w-6" />
             </button>
           </div>
@@ -4258,7 +4253,7 @@ function AddOnCarousel({
                 <article
                   key={item.id}
                   data-addon-index={index}
-                  className={`min-w-[188px] max-w-[188px] snap-center overflow-hidden rounded-3xl bg-slate-50 shadow-sm ring-2 transition dark:bg-slate-800 ${isActive ? "scale-[1.015] ring-amber-400" : selected ? "ring-emerald-400" : "ring-transparent"}`}
+                  className={`min-w-[188px] max-w-[188px] snap-center overflow-hidden rounded-3xl bg-amb-well shadow-sm ring-2 transition ${isActive ? "scale-[1.015] ring-amber-400" : selected ? "ring-emerald-400" : "ring-transparent"}`}
                 >
                   <button
                     type="button"
@@ -4276,17 +4271,17 @@ function AddOnCarousel({
                     <AddOnThumbnail category={category} index={index} tone={tone} icon={icon} />
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-black text-amber-700 shadow-sm dark:bg-slate-700 dark:text-amber-200">{formatAddOnPrice(item)}</span>
-                        <span className="truncate text-[10px] font-black uppercase text-slate-400">{addOnProviderLabel(item)}</span>
+                        <span className="rounded-full bg-amb-card px-2 py-1 text-[11px] font-black text-amber-700 shadow-sm dark:text-amber-200">{formatAddOnPrice(item)}</span>
+                        <span className="truncate text-[10px] font-black uppercase text-amb-muted">{addOnProviderLabel(item)}</span>
                       </div>
-                      <p className="mt-2 line-clamp-2 min-h-[44px] text-base font-black leading-tight text-slate-950 dark:text-white">{item.title}</p>
-                      <p className="mt-1 line-clamp-2 text-xs font-bold leading-snug text-slate-500 dark:text-slate-300">{item.description}</p>
+                      <p className="mt-2 line-clamp-2 min-h-[44px] text-base font-black leading-tight text-amb-ink">{item.title}</p>
+                      <p className="mt-1 line-clamp-2 text-xs font-bold leading-snug text-amb-muted">{item.description}</p>
                     </div>
                   </button>
                   <button
                     type="button"
                     onClick={() => onToggleSelected(item.id)}
-                    className={`mx-3 mb-3 h-10 w-[calc(100%-1.5rem)] rounded-2xl text-xs font-black active:scale-[0.98] ${selected ? "bg-emerald-600 text-white" : "bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100"}`}
+                    className={`mx-3 mb-3 h-10 w-[calc(100%-1.5rem)] rounded-2xl text-xs font-black active:scale-[0.98] ${selected ? "bg-emerald-600 text-white" : "bg-amb-card text-amb-ink shadow-sm"}`}
                   >
                     {selected ? "Selected" : "Add"}
                   </button>
@@ -4295,7 +4290,7 @@ function AddOnCarousel({
                       href={item.bookingUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mx-3 mb-3 flex h-10 items-center justify-center gap-2 rounded-2xl bg-slate-900 text-xs font-black text-white active:scale-[0.98] dark:bg-white dark:text-slate-950"
+                      className="mx-3 mb-3 flex h-10 items-center justify-center gap-2 rounded-2xl bg-amb-accent text-xs font-black text-amb-accent-ink active:scale-[0.98]"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open
@@ -4322,7 +4317,7 @@ function AddOnCarousel({
           </div>
         </div>
       ) : (
-        <p className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">No {title.toLowerCase()} add-ons yet.</p>
+        <p className="mt-3 rounded-2xl bg-amb-well p-3 text-sm font-bold text-amb-muted">No {title.toLowerCase()} add-ons yet.</p>
       )}
     </div>
   );
@@ -4347,23 +4342,23 @@ function AddOnThumbnail({ category, index, tone, icon, large = false }: { catego
 function TripMapModal({ title, activeMapQuery, activeMapEmbedUrl, onClose, onReset }: { title: string; activeMapQuery: string; activeMapEmbedUrl: string; onClose: () => void; onReset: () => void }) {
   return (
     <div className="presentation-backdrop fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-5 backdrop-blur-sm">
-      <div className="presentation-window flex h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+      <div className="presentation-window flex h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700">
+        <div className="flex items-center justify-between gap-4 border-b border-amb-border p-4">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">Embedded Google Map</p>
-            <h3 className="text-3xl font-black text-slate-950 dark:text-white">{title}</h3>
+            <h3 className="text-3xl font-black text-amb-ink">{title}</h3>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onReset} className="h-14 rounded-2xl bg-teal-700 px-5 text-base font-black text-white active:scale-[0.98]">
               Reset
             </button>
-            <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-700 active:scale-95 dark:bg-slate-800 dark:text-slate-200" aria-label="Close map">
+            <button type="button" onClick={onClose} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-amb-well text-amb-ink active:scale-95" aria-label="Close map">
               <X className="h-7 w-7" />
             </button>
           </div>
         </div>
         <iframe title="Itinerary Google Map" src={activeMapEmbedUrl} className="min-h-0 flex-1 border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        <div className="truncate border-t border-slate-200 p-3 text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <div className="truncate border-t border-amb-border p-3 text-sm font-bold text-amb-muted">
           Showing: {activeMapQuery}
         </div>
       </div>
@@ -4373,10 +4368,10 @@ function TripMapModal({ title, activeMapQuery, activeMapEmbedUrl, onClose, onRes
 
 function ItineraryOptionGroup({ title, icon, tone, options, onSelect }: { title: string; icon: ReactNode; tone: string; options: NonNullable<TravelItineraryResult["planning"]>["travelOptions"]; onSelect: (detail: ItinerarySelectedDetail) => void }) {
   return (
-    <div className="rounded-3xl bg-white p-3 shadow-sm dark:bg-slate-900">
+    <div className="rounded-3xl bg-amb-card p-3 shadow-sm">
       <div className="flex items-center gap-2">
         <span className={`grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br ${tone} text-white shadow-sm`}>{icon}</span>
-        <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+        <p className="text-lg font-black text-amb-ink">{title}</p>
       </div>
       <div className="mt-3 grid gap-2">
         {options.map((option, index) => (
@@ -4390,22 +4385,22 @@ function ItineraryOptionGroup({ title, icon, tone, options, onSelect }: { title:
               body: option.recommendation,
               chips: [option.timing, option.estimatedCost, option.bookingNotes].filter(Boolean) as string[]
             })}
-            className="presentation-option presentation-route rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left shadow-sm active:scale-[0.99] dark:border-slate-800 dark:bg-slate-800"
+            className="presentation-option presentation-route rounded-2xl border border-amb-border bg-amb-well p-3 text-left shadow-sm active:scale-[0.99]"
           >
             <div className="flex items-start justify-between gap-3">
-              <p className="text-base font-black text-slate-900 dark:text-white">{option.title}</p>
-              {option.timing && <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black uppercase text-teal-700 shadow-sm dark:bg-slate-700 dark:text-teal-200">{option.timing}</span>}
+              <p className="text-base font-black text-amb-ink">{option.title}</p>
+              {option.timing && <span className="shrink-0 rounded-full bg-amb-card px-2 py-1 text-[11px] font-black uppercase text-teal-700 shadow-sm dark:text-teal-200">{option.timing}</span>}
             </div>
-            <p className="mt-2 line-clamp-3 text-sm font-bold leading-snug text-slate-600 dark:text-slate-300">{option.recommendation}</p>
+            <p className="mt-2 line-clamp-3 text-sm font-bold leading-snug text-amb-muted">{option.recommendation}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {option.estimatedCost && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-black text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amb-card px-2 py-1 text-[11px] font-black text-amb-muted shadow-sm">
                   <DollarSign className="h-3 w-3" />
                   {option.estimatedCost}
                 </span>
               )}
               {option.bookingNotes && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-black text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amb-card px-2 py-1 text-[11px] font-black text-amb-muted shadow-sm">
                   <Clock3 className="h-3 w-3" />
                   {option.bookingNotes}
                 </span>
@@ -4420,10 +4415,10 @@ function ItineraryOptionGroup({ title, icon, tone, options, onSelect }: { title:
 
 function ItineraryNoteGroup({ title, icon, notes, onSelect }: { title: string; icon: ReactNode; notes: string[]; onSelect: (detail: ItinerarySelectedDetail) => void }) {
   return (
-    <div className="rounded-3xl bg-white p-3 shadow-sm dark:bg-slate-900">
+    <div className="rounded-3xl bg-amb-card p-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-teal-800 dark:bg-slate-800 dark:text-teal-200">{icon}</span>
-        <p className="text-lg font-black text-slate-900 dark:text-white">{title}</p>
+        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-amb-well text-teal-800 dark:text-teal-200">{icon}</span>
+        <p className="text-lg font-black text-amb-ink">{title}</p>
       </div>
       <div className="mt-2 grid gap-2">
         {notes.map((note, index) => (
@@ -4432,7 +4427,7 @@ function ItineraryNoteGroup({ title, icon, notes, onSelect }: { title: string; i
             type="button"
             style={{ animationDelay: `${index * 45 + 80}ms` }}
             onClick={() => onSelect({ title, eyebrow: "Note", body: note })}
-            className="presentation-route rounded-2xl bg-slate-50 p-3 text-left text-sm font-bold text-slate-600 active:scale-[0.99] dark:bg-slate-800 dark:text-slate-300"
+            className="presentation-route rounded-2xl bg-amb-well p-3 text-left text-sm font-bold text-amb-muted active:scale-[0.99]"
           >
             {note}
           </button>
@@ -4444,14 +4439,14 @@ function ItineraryNoteGroup({ title, icon, notes, onSelect }: { title: string; i
 
 function CompactLinkPanel({ icon, title, links }: { icon: ReactNode; title: string; links: { label: string; url: string }[] }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-3xl border border-amb-border bg-amb-card p-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-teal-800 dark:bg-slate-800 dark:text-teal-200">{icon}</span>
-        <p className="text-lg font-black text-slate-950 dark:text-white">{title}</p>
+        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-amb-well text-teal-800 dark:text-teal-200">{icon}</span>
+        <p className="text-lg font-black text-amb-ink">{title}</p>
       </div>
       <div className="mt-3 grid gap-2">
         {links.slice(0, 2).map((link) => (
-          <button key={`${title}-${link.label}`} type="button" onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-left text-sm font-black text-slate-700 active:scale-[0.99] dark:bg-slate-800 dark:text-slate-200">
+          <button key={`${title}-${link.label}`} type="button" onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-amb-well px-3 py-2 text-left text-sm font-black text-amb-ink active:scale-[0.99]">
             <span className="truncate">{link.label}</span>
             <ExternalLink className="h-4 w-4 shrink-0 text-teal-700 dark:text-teal-300" />
           </button>
@@ -4463,19 +4458,19 @@ function CompactLinkPanel({ icon, title, links }: { icon: ReactNode; title: stri
 
 function ItineraryLinkPanel({ icon, title, links }: { icon: ReactNode; title: string; links: { label: string; url: string }[] }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-3xl border border-amb-border bg-amb-card p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-teal-800 dark:bg-slate-800 dark:text-teal-200">{icon}</span>
-        <p className="text-2xl font-black text-slate-950 dark:text-white">{title}</p>
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-amb-well text-teal-800 dark:text-teal-200">{icon}</span>
+        <p className="text-2xl font-black text-amb-ink">{title}</p>
       </div>
       <div className="mt-4 grid gap-2">
         {links.length ? links.map((link) => (
-          <button key={`${title}-${link.label}`} type="button" onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} className="flex min-h-14 items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-left text-base font-black text-slate-700 active:scale-[0.99] dark:bg-slate-800 dark:text-slate-200">
+          <button key={`${title}-${link.label}`} type="button" onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")} className="flex min-h-14 items-center justify-between gap-3 rounded-2xl bg-amb-well px-4 py-3 text-left text-base font-black text-amb-ink active:scale-[0.99]">
             <span>{link.label}</span>
             <ExternalLink className="h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300" />
           </button>
         )) : (
-          <p className="rounded-2xl bg-slate-50 p-4 text-base font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">Build an itinerary to generate links.</p>
+          <p className="rounded-2xl bg-amb-well p-4 text-base font-bold text-amb-muted">Build an itinerary to generate links.</p>
         )}
       </div>
     </div>
@@ -4526,18 +4521,18 @@ function addOnConfidenceLabel(confidence: NonNullable<TravelItineraryResult["add
 
 function TravelStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
-      <p className="text-3xl font-black text-slate-900 dark:text-white">{value}</p>
-      <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{label}</p>
+    <div className="rounded-2xl border border-amb-border bg-amb-well p-4">
+      <p className="text-3xl font-black text-amb-ink">{value}</p>
+      <p className="text-lg font-bold text-amb-muted">{label}</p>
     </div>
   );
 }
 
 function TravelMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-center dark:border-slate-700 dark:bg-slate-800">
-      <p className="text-2xl font-black text-slate-900 dark:text-white">{value}</p>
-      <p className="text-base font-black uppercase tracking-normal text-slate-500 dark:text-slate-400">{label}</p>
+    <div className="rounded-2xl border border-amb-border bg-amb-card p-4 text-center">
+      <p className="text-2xl font-black text-amb-ink">{value}</p>
+      <p className="text-base font-black uppercase tracking-normal text-amb-muted">{label}</p>
     </div>
   );
 }
@@ -4588,11 +4583,11 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
       <SectionTitle icon={Settings} title="Settings" />
       <div className="mt-4 grid grid-cols-4 gap-3">
         {(integrations?.items || []).map((item) => (
-          <div key={item.key} className="rounded-3xl bg-white/70 p-4 shadow-sm dark:bg-slate-800/80">
+          <div key={item.key} className="rounded-3xl bg-amb-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{item.label}</p>
-                <p className="mt-1 line-clamp-2 text-sm font-bold text-slate-500 dark:text-slate-400">{item.detail}</p>
+                <p className="text-lg font-black text-amb-ink">{item.label}</p>
+                <p className="mt-1 line-clamp-2 text-sm font-bold text-amb-muted">{item.detail}</p>
               </div>
               <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black uppercase ${integrationModeClass(item.mode)}`}>{integrationModeLabel(item.mode)}</span>
             </div>
@@ -4601,7 +4596,7 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
         ))}
       </div>
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-2 gap-4">
-        <div className="flex min-h-0 flex-col rounded-3xl bg-white/70 p-4">
+        <div className="flex min-h-0 flex-col rounded-3xl bg-amb-well p-4">
           <h3 className="text-2xl font-bold">RSS Feeds</h3>
           <div className="mt-4 grid grid-cols-[1fr_1fr_90px] gap-3">
             <input value={feedTitle} onChange={(event) => setFeedTitle(event.target.value)} className="touch-input text-xl" placeholder="Title" />
@@ -4610,18 +4605,18 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
           </div>
           <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {feeds.map((feed) => (
-              <div key={feed.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-white/75 p-3">
+              <div key={feed.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-amb-well p-3">
                 <div>
                   <p className="text-xl font-bold">{feed.title}</p>
-                  <p className="truncate text-slate-500">{feed.url}</p>
+                  <p className="truncate text-amb-muted">{feed.url}</p>
                 </div>
-                <button onClick={() => updateRssFeed(feed.id, { enabled: !feed.enabled }).then(reloadAndRefresh)} className={`touch-button ${feed.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{feed.enabled ? "On" : "Off"}</button>
+                <button onClick={() => updateRssFeed(feed.id, { enabled: !feed.enabled }).then(reloadAndRefresh)} className={`touch-button ${feed.enabled ? "bg-emerald-100 text-emerald-700" : "bg-amb-well text-amb-muted"}`}>{feed.enabled ? "On" : "Off"}</button>
                 <button onClick={() => deleteRssFeed(feed.id).then(reloadAndRefresh)} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
               </div>
             ))}
           </div>
         </div>
-        <div className="flex min-h-0 flex-col rounded-3xl bg-white/70 p-4">
+        <div className="flex min-h-0 flex-col rounded-3xl bg-amb-well p-4">
           <h3 className="text-2xl font-bold">Finance Watchlist</h3>
           <div className="mt-4 grid grid-cols-[1fr_90px] gap-3">
             <input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} className="touch-input text-xl" placeholder="Symbol" />
@@ -4629,9 +4624,9 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
           </div>
           <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {watchlist.map((item) => (
-              <div key={item.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-white/75 p-3">
+              <div key={item.id} className="grid grid-cols-[1fr_90px_90px] items-center gap-3 rounded-2xl bg-amb-well p-3">
                 <p className="text-3xl font-bold">{item.symbol}</p>
-                <button onClick={() => updateWatchlistItem(item.id, { enabled: !item.enabled }).then(reloadAndRefresh)} className={`touch-button ${item.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{item.enabled ? "On" : "Off"}</button>
+                <button onClick={() => updateWatchlistItem(item.id, { enabled: !item.enabled }).then(reloadAndRefresh)} className={`touch-button ${item.enabled ? "bg-emerald-100 text-emerald-700" : "bg-amb-well text-amb-muted"}`}>{item.enabled ? "On" : "Off"}</button>
                 <button onClick={() => deleteWatchlistItem(item.id).then(reloadAndRefresh)} className="touch-button bg-rose-100 text-rose-700"><Trash2 className="h-6 w-6" /></button>
               </div>
             ))}
@@ -4652,19 +4647,19 @@ function integrationModeLabel(mode: ApiIntegrationStatus["items"][number]["mode"
 function integrationModeClass(mode: ApiIntegrationStatus["items"][number]["mode"]) {
   if (mode === "live") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200";
   if (mode === "partial") return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200";
-  if (mode === "mock") return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200";
+  if (mode === "mock") return "bg-amb-well text-amb-muted";
   return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200";
 }
 
 function EventList({ events }: { events: CalendarEvent[] }) {
-  if (!events.length) return <p className="text-xl text-slate-500">No events scheduled.</p>;
+  if (!events.length) return <p className="text-xl text-amb-muted">No events scheduled.</p>;
   return (
     <div className="space-y-3">
       {events.map((event) => (
         <div key={event.id} className="rounded-2xl bg-sky-50 p-4">
           <p className="text-lg font-bold text-sky-900">{formatEventTime(event.start)}</p>
-          <p className="text-2xl font-semibold text-slate-800">{event.title}</p>
-          {event.location && <p className="text-slate-500">{event.location}</p>}
+          <p className="text-2xl font-semibold text-amb-ink">{event.title}</p>
+          {event.location && <p className="text-amb-muted">{event.location}</p>}
         </div>
       ))}
     </div>
@@ -4672,15 +4667,15 @@ function EventList({ events }: { events: CalendarEvent[] }) {
 }
 
 function TaskList({ tasks, large = false }: { tasks: Task[]; large?: boolean }) {
-  if (!tasks.length) return <p className="text-xl text-slate-500">Nothing due right now.</p>;
+  if (!tasks.length) return <p className="text-xl text-amb-muted">Nothing due right now.</p>;
   return (
     <div className="mt-4 space-y-3">
       {tasks.map((task) => (
-        <div key={task.id} className={`flex items-center gap-3 rounded-2xl bg-white/70 p-4 ${task.completed ? "opacity-60" : ""}`}>
-          <CheckCircle2 className={`h-7 w-7 ${task.completed ? "text-emerald-500" : "text-slate-300"}`} />
+        <div key={task.id} className={`flex items-center gap-3 rounded-2xl bg-amb-well p-4 ${task.completed ? "opacity-60" : ""}`}>
+          <CheckCircle2 className={`h-7 w-7 ${task.completed ? "text-emerald-500" : "text-amb-muted"}`} />
           <div>
             <p className={`${large ? "text-3xl" : "text-xl"} font-semibold ${task.completed ? "line-through" : ""}`}>{task.title}</p>
-            <p className="text-slate-500">{task.priority} priority</p>
+            <p className="text-amb-muted">{task.priority} priority</p>
           </div>
         </div>
       ))}
@@ -4692,9 +4687,9 @@ function NewsList({ articles }: { articles: NewsArticle[] }) {
   return (
     <div className="mt-4 space-y-3">
       {articles.map((article) => (
-        <a key={article.id} href={article.link} className="block rounded-2xl bg-white/70 p-4 text-lg font-semibold text-slate-700">
+        <a key={article.id} href={article.link} className="block rounded-2xl bg-amb-well p-4 text-lg font-semibold text-amb-ink">
           {article.title}
-          <span className="block text-sm text-slate-500">{article.source}</span>
+          <span className="block text-sm text-amb-muted">{article.source}</span>
         </a>
       ))}
     </div>
@@ -4705,10 +4700,10 @@ function FinanceList({ quotes }: { quotes: FinanceQuote[] }) {
   return (
     <div className="mt-4 space-y-3">
       {quotes.map((quote) => (
-        <div key={quote.symbol} className="flex items-center justify-between rounded-2xl bg-white/70 p-4">
+        <div key={quote.symbol} className="flex items-center justify-between rounded-2xl bg-amb-well p-4">
           <div>
             <p className="text-xl font-bold">{quote.symbol}</p>
-            <p className="text-slate-500">{quote.name}</p>
+            <p className="text-amb-muted">{quote.name}</p>
           </div>
           <div className="text-right">
             <p className="text-xl font-bold">{money(quote.price)}</p>
@@ -4739,11 +4734,11 @@ function OnScreenKeyboard({ visible, getTarget, onClose }: { visible: boolean; g
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-slate-200 bg-white/95 p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-950/96">
+    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-amb-border bg-amb-sheet p-4 shadow-2xl">
       <div className="mx-auto max-w-6xl">
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-xl font-bold text-slate-600 dark:text-slate-300">Touch Keyboard</p>
-          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onClose} className="h-14 rounded-2xl bg-slate-100 px-6 text-xl font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-100">Done</button>
+          <p className="text-xl font-bold text-amb-muted">Touch Keyboard</p>
+          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onClose} className="h-14 rounded-2xl bg-amb-well px-6 text-xl font-bold text-amb-ink">Done</button>
         </div>
         <div className="space-y-2">
           {rows.map((row, rowIndex) => (
@@ -4776,7 +4771,7 @@ function KeyboardKey({ label, onPress, wide = false, extraWide = false }: { labe
       type="button"
       onMouseDown={(event) => event.preventDefault()}
       onClick={onPress}
-      className={`h-16 rounded-2xl bg-slate-100 text-xl font-bold text-slate-800 active:scale-95 dark:bg-slate-800 dark:text-slate-100 ${extraWide ? "w-80" : wide ? "w-28" : "w-16"}`}
+      className={`h-16 rounded-2xl bg-amb-well text-xl font-bold text-amb-ink active:scale-95 ${extraWide ? "w-80" : wide ? "w-28" : "w-16"}`}
     >
       {label}
     </button>
@@ -4786,16 +4781,16 @@ function KeyboardKey({ label, onPress, wide = false, extraWide = false }: { labe
 function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amb-border text-amb-accent">
         <Icon className="h-7 w-7" />
       </span>
-      <h2 className="text-3xl font-bold">{title}</h2>
+      <h2 className="font-display text-4xl">{title}</h2>
     </div>
   );
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`min-h-0 rounded-[24px] border border-white/75 bg-mirror-card p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/90 ${className}`}>{children}</section>;
+  return <section className={`min-h-0 rounded-[30px] border border-amb-border bg-amb-card p-5 shadow-ambient ${className}`}>{children}</section>;
 }
 
 // Times are pinned to en-US rather than the system locale: the Pi's locale
