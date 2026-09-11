@@ -12,10 +12,13 @@
   .\scripts\deploy.ps1
   .\scripts\deploy.ps1 -PiHost 192.168.1.50 -PiUser connor
   .\scripts\deploy.ps1 -SkipBuild        # ship what is already built
+  $env:MIRROR_PI_HOST = "connor"; .\scripts\deploy.ps1   # over Tailscale, from anywhere
 #>
 [CmdletBinding()]
 param(
-  [string]$PiHost = "raspberrypi.local",
+  # Set MIRROR_PI_HOST to the Pi's Tailscale name to deploy from anywhere,
+  # rather than only from the home network.
+  [string]$PiHost = $(if ($env:MIRROR_PI_HOST) { $env:MIRROR_PI_HOST } else { "raspberrypi.local" }),
   [string]$PiUser = "connor",
   [switch]$SkipBuild,
   [switch]$NoRestart

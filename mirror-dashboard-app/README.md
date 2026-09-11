@@ -227,6 +227,41 @@ crosses the wire - running vite and tsc on-device pins all four cores while it
 is also driving the display, and sustained builds on the first board preceded a
 hardware failure.
 
+## Remote access (Tailscale)
+
+The dashboard has no login of its own, so it is never exposed to the public
+internet. Instead the Pi, your phone and your laptop join a private Tailscale
+network, and only those devices can reach it.
+
+On the Pi, once:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Open the login link it prints. Then install Tailscale on your phone and laptop
+and sign in with the same account. From any of them, wherever you are:
+
+- Dashboard: `http://connor:4174`
+- SSH: `ssh connor@connor`
+- Deploy: `$env:MIRROR_PI_HOST = "connor"; .\scripts\deploy.ps1`
+
+`connor` is the Pi's hostname; Tailscale's MagicDNS resolves it on every device
+in the network.
+
+## Developing on another machine
+
+```powershell
+git clone https://github.com/Connormcl123/Home-Scheduler.git
+cd Home-Scheduler/mirror-dashboard-app
+.\scripts\setup-dev.ps1
+npm run dev
+```
+
+`setup-dev.ps1` installs dependencies, creates `.env` from the example, and
+seeds a database with sample data so every panel has something in it.
+
 ## Household Assistant (Claude)
 
 The Assistant tab is a chat panel backed by a Claude agent that can read and change the
