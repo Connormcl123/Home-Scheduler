@@ -8,215 +8,178 @@
 <x-dc>
 <helmet>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&amp;family=Caveat:wght@500;600&amp;display=swap">
   <style>
     body { margin: 0; }
-    a { color: #b45309; }
-    a:hover { color: #92400e; }
-    .serif { font-family: "Instrument Serif", Georgia, "Times New Roman", serif; font-weight: 400; }
-    .sans { font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif; }
-    @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-    .rise { animation: rise 760ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    a { color: oklch(0.5 0.12 40); }
+    a:hover { color: oklch(0.42 0.12 40); }
+    .serif { font-family: "Literata", Georgia, "Times New Roman", serif; }
+    .hand { font-family: "Caveat", "Segoe Print", "Bradley Hand", cursive; }
+    .caps { font-family: "Literata", Georgia, serif; font-size: 16px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; }
     p { margin: 0; }
     svg { flex-shrink: 0; }
   </style>
 </helmet>
-<div class="sans" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; box-sizing: border-box; padding: 32px; display: flex; gap: 32px; background: {{p.bg}}; color: {{p.ink}};">
+<div class="serif" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; box-sizing: border-box; padding: 70px 78px; color: oklch(0.24 0.02 60); background: radial-gradient(circle, oklch(0.55 0.02 70 / 0.17) 1.3px, transparent 1.7px) 0 0 / 30px 30px, oklch(0.965 0.014 85);">
 
-  <div style="position: absolute; right: 120px; top: -260px; width: 760px; height: 760px; border-radius: 50%; background: {{p.sun}}; pointer-events: none;"></div>
+  <div style="position: absolute; inset: 24px; border: 1px solid oklch(0.4 0.03 60 / 0.22); border-radius: 6px; pointer-events: none;"></div>
 
-  <nav style="position: relative; width: 112px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 0; border-radius: 32px; background: {{p.rail}}; border: 1px solid {{p.cardBorder}};">
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; border-radius: 22px; background: {{p.card}}; color: {{p.ink}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 4l8.5 6.5"></path><path d="M5.5 9.5V20h13V9.5"></path><path d="M10 20v-5h4v5"></path></svg>
-      <span style="font-size: 13px; font-weight: 600;">Home</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Calendar</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16l-1.6 9.2a1.5 1.5 0 0 1-1.5 1.3H7.1a1.5 1.5 0 0 1-1.5-1.3z"></path><path d="M8.5 10 11 4.5M15.5 10 13 4.5M9.5 14v3M14.5 14v3"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Grocery</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.2 2.4 2.4 4.6-5"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Tasks</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16M5.5 17.5v-6M9.8 17.5v-6M14.2 17.5v-6M18.5 17.5v-6M3.5 9 12 4l8.5 5z"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Finance</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"></path><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Notes</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.8 0 1.5.7 1.5 1.5v5l7 4v1.9l-7-2.1v4.1l2 1.5v1.4L12 19.3l-3.5 1v-1.4l2-1.5v-4.1l-7 2.1v-1.9l7-4v-5C10.5 3.7 11.2 3 12 3z"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Travel</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="8" width="15" height="11.5" rx="3"></rect><path d="M12 8V4.5M9.5 13.5v1M14.5 13.5v1"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Assistant</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Settings</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 88px; height: 74px; justify-content: center; color: {{p.muted}};">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13.5v6h10v-6"></path><path d="M7 13.5a3.5 3.5 0 0 1-.6-6.9 4 4 0 0 1 7.6-1.3 3.5 3.5 0 0 1 3.6 8.2"></path><path d="M7 16.5h10"></path></svg>
-      <span style="font-size: 13px; font-weight: 500;">Recipes</span>
-    </div>
-  </nav>
+  <div style="position: relative; height: 100%; display: grid; grid-template-columns: 620px minmax(0, 1fr); gap: 84px;">
 
-  <main style="position: relative; flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 26px;">
-
-    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-      <div class="rise" style="display: flex; flex-direction: column; gap: 6px;">
-        <p style="font-size: 26px; font-weight: 500; letter-spacing: 0.01em; color: {{p.muted}};">{{greeting}}  ·  Friday, September 11</p>
-        <p class="serif" style="font-size: 184px; line-height: 0.86; letter-spacing: -0.02em;">{{time}}<span style="font-size: 66px; font-style: italic; margin-left: 14px; letter-spacing: 0;">{{meridiem}}</span></p>
+    <div style="display: flex; flex-direction: column; gap: 34px;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <p class="caps" style="color: oklch(0.52 0.12 40);">Friday</p>
+        <p style="font-size: 96px; font-weight: 500; line-height: 1; letter-spacing: -0.02em;">September 11</p>
+        <p style="font-size: 40px; color: oklch(0.45 0.02 60);">9:51 in the morning</p>
       </div>
-      <div class="rise" style="display: flex; align-items: center; gap: 28px; animation-delay: 120ms;">
-        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-          <p class="serif" style="font-size: 120px; line-height: 0.9;">72°</p>
-          <p style="font-size: 22px; font-weight: 500; color: {{p.muted}};">Clear  ·  80° / 66°</p>
+
+      <div style="height: 1px; background: oklch(0.4 0.03 60 / 0.22);"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <p class="caps" style="color: oklch(0.45 0.02 60);">Today</p>
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <span style="width: 30px; height: 30px; flex-shrink: 0; border: 2.5px solid oklch(0.3 0.02 60); border-radius: 4px; transform: rotate(-3deg);"></span>
+          <p class="hand" style="font-size: 44px; font-weight: 600; line-height: 1;">Wash Ella's cleats before bed</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px; height: 64px; padding: 0 26px; border-radius: 999px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; font-size: 20px; font-weight: 600;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.5v13l10.5-6.5z"></path></svg>
-          Morning briefing
+        <div style="display: flex; align-items: baseline; gap: 20px; padding-left: 50px;">
+          <p class="hand" style="font-size: 44px; font-weight: 500; line-height: 1.05;">Dinner: creamy tomato pasta with spinach</p>
+        </div>
+        <p style="padding-left: 50px; font-size: 22px; color: oklch(0.45 0.02 60);">About 25 minutes</p>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="oklch(0.52 0.12 40)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></svg>
+        <p style="font-size: 30px;">72° and clear, high of 80°</p>
+      </div>
+
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 14px; padding: 26px 30px; background: oklch(0.985 0.01 90); border: 1px solid oklch(0.4 0.03 60 / 0.16); box-shadow: 0 2px 0 oklch(0.4 0.03 60 / 0.06); transform: rotate(-0.6deg);">
+        <p class="caps" style="color: oklch(0.52 0.12 40);">Shopping</p>
+        <div class="hand" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 28px; font-size: 36px; font-weight: 500; line-height: 1.15;">
+          <span>ground beef</span>
+          <span>chicken thighs</span>
+          <span>parmesan</span>
+          <span>butter</span>
+          <span>heavy cream</span>
         </div>
       </div>
     </div>
 
-    <div class="rise" style="display: flex; flex-direction: column; gap: 10px; max-width: 1480px; animation-delay: 220ms;">
-      <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{p.muted}};">Right now</p>
-      <p style="font-size: 46px; font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; text-wrap: pretty;">The plumber comes tomorrow between 9 and 11, and the pediatrician is at 9:45 — someone needs to stay home.</p>
-    </div>
-
-    <div style="flex-grow: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px;">
-
-      <div class="rise" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 30px; border-radius: 30px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; box-shadow: {{p.shadow}}; animation-delay: 320ms;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{p.muted}};">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
-          Tomorrow
-        </div>
-        <p class="serif" style="font-size: 44px; line-height: 1.02;">Plumber, 9–11 AM</p>
-        <p style="font-size: 21px; line-height: 1.4; color: {{p.muted}};">Pediatrician at 9:45 AM, then the dentist at 3 PM.</p>
+    <div style="display: flex; flex-direction: column; gap: 30px; min-width: 0;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <p class="caps" style="color: oklch(0.45 0.02 60);">This week</p>
+        <p style="font-size: 22px; color: oklch(0.45 0.02 60);">September 11 – 17</p>
       </div>
 
-      <div class="rise" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 30px; border-radius: 30px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; box-shadow: {{p.shadow}}; animation-delay: 380ms;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{p.muted}};">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.2 2.4 2.4 4.6-5"></path></svg>
-            Tonight
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); height: 470px; border-top: 2px solid oklch(0.3 0.02 60); border-bottom: 1px solid oklch(0.4 0.03 60 / 0.22);">
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px; border-right: 1px solid oklch(0.4 0.03 60 / 0.18);">
+          <p class="caps" style="font-size: 14px; color: oklch(0.52 0.12 40);">Fri</p>
+          <p style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; margin-left: -10px; border: 2px solid oklch(0.52 0.12 40); border-radius: 50%; font-size: 40px; font-weight: 500; color: oklch(0.52 0.12 40);">11</p>
+          <p class="hand" style="font-size: 28px; line-height: 1.1; color: oklch(0.5 0.02 60);">cleats tonight</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px; border-right: 1px solid oklch(0.4 0.03 60 / 0.18);">
+          <p class="caps" style="font-size: 14px; color: oklch(0.45 0.02 60);">Sat</p>
+          <p style="height: 64px; display: flex; align-items: center; font-size: 40px; font-weight: 500;">12</p>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <p style="font-size: 17px; color: oklch(0.45 0.02 60);">9–11 am</p>
+            <p style="font-size: 24px; font-weight: 500; line-height: 1.15;">Plumber</p>
           </div>
-          <span style="padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; background: {{p.accent}}; color: {{p.accentInk}};">NOW</span>
         </div>
-        <p class="serif" style="font-size: 44px; line-height: 1.02;">Wash Ella's cleats</p>
-        <p style="font-size: 21px; line-height: 1.4; color: {{p.muted}};">Needed before her practice. Do it before bed.</p>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px; border-right: 1px solid oklch(0.4 0.03 60 / 0.18);">
+          <p class="caps" style="font-size: 14px; color: oklch(0.45 0.02 60);">Sun</p>
+          <p style="height: 64px; display: flex; align-items: center; font-size: 40px; font-weight: 500;">13</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px; border-right: 1px solid oklch(0.4 0.03 60 / 0.18);">
+          <p class="caps" style="font-size: 14px; color: oklch(0.45 0.02 60);">Mon</p>
+          <p style="height: 64px; display: flex; align-items: center; font-size: 40px; font-weight: 500;">14</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px; border-right: 1px solid oklch(0.4 0.03 60 / 0.18);">
+          <p class="caps" style="font-size: 14px; color: oklch(0.45 0.02 60);">Tue</p>
+          <p style="height: 64px; display: flex; align-items: center; font-size: 40px; font-weight: 500;">15</p>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <p style="font-size: 17px; color: oklch(0.45 0.02 60);">3 pm</p>
+            <p style="font-size: 24px; font-weight: 500; line-height: 1.15;">Dentist</p>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px; border-right: 1px solid oklch(0.4 0.03 60 / 0.18);">
+          <p class="caps" style="font-size: 14px; color: oklch(0.45 0.02 60);">Wed</p>
+          <p style="height: 64px; display: flex; align-items: center; font-size: 40px; font-weight: 500;">16</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 18px 14px;">
+          <p class="caps" style="font-size: 14px; color: oklch(0.45 0.02 60);">Thu</p>
+          <p style="height: 64px; display: flex; align-items: center; font-size: 40px; font-weight: 500;">17</p>
+        </div>
       </div>
 
-      <div class="rise" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 30px; border-radius: 30px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; box-shadow: {{p.shadow}}; animation-delay: 440ms;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{p.muted}};">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 4 0V3M8 12v9M17 3c-1.7 1-2.5 3-2.5 5.5V13H17v8"></path></svg>
-          Dinner
+      <div style="display: flex; flex-direction: column; gap: 18px;">
+        <p class="caps" style="color: oklch(0.45 0.02 60);">Further out</p>
+        <div style="display: grid; grid-template-columns: 190px minmax(0, 1fr); row-gap: 14px; font-size: 28px; line-height: 1.2;">
+          <span style="color: oklch(0.45 0.02 60);">Tue, Sep 22</span>
+          <span>Oral cleaning</span>
+          <span style="color: oklch(0.45 0.02 60);">Fri, Sep 25</span>
+          <span>Dr. Kamal, Boyton office</span>
+          <span style="color: oklch(0.45 0.02 60);">Mon, Oct 19</span>
+          <span>Dentist</span>
         </div>
-        <p class="serif" style="font-size: 44px; line-height: 1.02;">Creamy Tomato Pasta with Spinach</p>
-        <p style="font-size: 21px; line-height: 1.4; color: {{p.muted}};">About 25 minutes.</p>
       </div>
 
-      <div class="rise" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 30px; border-radius: 30px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; box-shadow: {{p.shadow}}; animation-delay: 500ms;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{p.muted}};">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16l-1.6 9.2a1.5 1.5 0 0 1-1.5 1.3H7.1a1.5 1.5 0 0 1-1.5-1.3z"></path><path d="M8.5 10 11 4.5M15.5 10 13 4.5"></path></svg>
-          Grocery
-        </div>
-        <p class="serif" style="font-size: 44px; line-height: 1.02;">A big run is due</p>
-        <p style="font-size: 21px; line-height: 1.4; color: {{p.muted}};">Ground beef, chicken thighs, parmesan, butter, heavy cream.</p>
+      <div style="margin-top: auto; display: flex; justify-content: flex-end; align-items: center; gap: 10px; color: oklch(0.5 0.02 60);">
+        <span style="font-size: 18px; letter-spacing: 0.04em;">Tap anywhere for the menu</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>
       </div>
-
-      <div class="rise" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 30px; border-radius: 30px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; box-shadow: {{p.shadow}}; animation-delay: 560ms;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{p.muted}};">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.8 0 1.5.7 1.5 1.5v5l7 4v1.9l-7-2.1v4.1l2 1.5v1.4L12 19.3l-3.5 1v-1.4l2-1.5v-4.1l-7 2.1v-1.9l7-4v-5C10.5 3.7 11.2 3 12 3z"></path></svg>
-          Trip idea
-        </div>
-        <p class="serif" style="font-size: 44px; line-height: 1.02;">Shenandoah National Park</p>
-        <p style="font-size: 21px; line-height: 1.4; color: {{p.muted}};">Mountain scenery without the crowds.</p>
-      </div>
-
-      <div class="rise" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 30px; border-radius: 30px; background: {{p.card}}; border: 1px solid {{p.cardBorder}}; box-shadow: {{p.shadow}}; animation-delay: 620ms;">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{p.muted}};">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h13v13a1.5 1.5 0 0 0 1.5 1.5H6a2 2 0 0 1-2-2z"></path><path d="M17 9h3v9.5a1.5 1.5 0 0 1-3 0M7.5 9h6M7.5 12.5h6M7.5 16h4"></path></svg>
-          The Verge
-        </div>
-        <p class="serif" style="font-size: 44px; line-height: 1.02;">Smartphone prices are rising across the board</p>
-      </div>
-
     </div>
-  </main>
+  </div>
+
+  <sc-if value="{{showMenu}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; inset: 0; background: oklch(0.3 0.03 60 / 0.14);"></div>
+    <div style="position: absolute; left: 50%; bottom: 54px; transform: translateX(-50%); display: flex; gap: 4px; padding: 12px; border-radius: 30px; background: oklch(0.99 0.008 85); border: 1px solid oklch(0.4 0.03 60 / 0.14); box-shadow: 0 28px 70px oklch(0.3 0.04 60 / 0.24); font-family: &quot;Literata&quot;, Georgia, serif; color: oklch(0.24 0.02 60);">
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-radius: 20px; background: oklch(0.52 0.12 40); color: oklch(0.99 0.008 85);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 4l8.5 6.5"></path><path d="M5.5 9.5V20h13V9.5"></path><path d="M10 20v-5h4v5"></path></svg>
+        <span style="font-size: 15px; font-weight: 600;">Home</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
+        <span style="font-size: 15px;">Calendar</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16l-1.6 9.2a1.5 1.5 0 0 1-1.5 1.3H7.1a1.5 1.5 0 0 1-1.5-1.3z"></path><path d="M8.5 10 11 4.5M15.5 10 13 4.5M9.5 14v3M14.5 14v3"></path></svg>
+        <span style="font-size: 15px;">Grocery</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.2 2.4 2.4 4.6-5"></path></svg>
+        <span style="font-size: 15px;">Tasks</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16M5.5 17.5v-6M9.8 17.5v-6M14.2 17.5v-6M18.5 17.5v-6M3.5 9 12 4l8.5 5z"></path></svg>
+        <span style="font-size: 15px;">Finance</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"></path><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"></path></svg>
+        <span style="font-size: 15px;">Notes</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.8 0 1.5.7 1.5 1.5v5l7 4v1.9l-7-2.1v4.1l2 1.5v1.4L12 19.3l-3.5 1v-1.4l2-1.5v-4.1l-7 2.1v-1.9l7-4v-5C10.5 3.7 11.2 3 12 3z"></path></svg>
+        <span style="font-size: 15px;">Travel</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="8" width="15" height="11.5" rx="3"></rect><path d="M12 8V4.5M9.5 13.5v1M14.5 13.5v1"></path></svg>
+        <span style="font-size: 15px;">Assistant</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"></path></svg>
+        <span style="font-size: 15px;">Settings</span>
+      </div>
+      <div style="width: 104px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13.5v6h10v-6"></path><path d="M7 13.5a3.5 3.5 0 0 1-.6-6.9 4 4 0 0 1 7.6-1.3 3.5 3.5 0 0 1 3.6 8.2"></path><path d="M7 16.5h10"></path></svg>
+        <span style="font-size: 15px;">Recipes</span>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
-<script data-dc-script data-props='{"timeOfDay":{"editor":"enum","options":["dawn","morning","dusk","night"],"default":"morning"},"$preview":{"width":1920,"height":1080}}'>
+<script data-dc-script data-props='{"showMenu":{"editor":"boolean","default":false},"$preview":{"width":1920,"height":1080}}'>
 class Component extends DCLogic {
   renderVals() {
-    const palettes = {
-      dawn: {
-        bg: 'linear-gradient(180deg, oklch(0.80 0.07 25) 0%, oklch(0.88 0.06 55) 46%, oklch(0.94 0.035 85) 100%)',
-        sun: 'radial-gradient(circle, oklch(0.96 0.08 75 / 0.95) 0%, oklch(0.9 0.09 55 / 0.35) 38%, transparent 66%)',
-        ink: 'oklch(0.27 0.035 30)',
-        muted: 'oklch(0.43 0.045 35)',
-        card: 'oklch(0.985 0.012 60 / 0.62)',
-        rail: 'oklch(0.985 0.012 60 / 0.4)',
-        cardBorder: 'oklch(1 0 0 / 0.55)',
-        shadow: '0 24px 60px oklch(0.35 0.08 30 / 0.14)',
-        accent: 'oklch(0.58 0.16 35)',
-        accentInk: 'oklch(0.99 0 0)'
-      },
-      morning: {
-        bg: 'linear-gradient(180deg, oklch(0.86 0.06 235) 0%, oklch(0.93 0.035 215) 52%, oklch(0.97 0.018 150) 100%)',
-        sun: 'radial-gradient(circle, oklch(0.99 0.045 95 / 0.95) 0%, oklch(0.96 0.06 90 / 0.4) 34%, transparent 64%)',
-        ink: 'oklch(0.25 0.035 250)',
-        muted: 'oklch(0.44 0.04 245)',
-        card: 'oklch(0.99 0.008 230 / 0.66)',
-        rail: 'oklch(0.99 0.008 230 / 0.42)',
-        cardBorder: 'oklch(1 0 0 / 0.6)',
-        shadow: '0 24px 60px oklch(0.35 0.08 250 / 0.13)',
-        accent: 'oklch(0.56 0.15 245)',
-        accentInk: 'oklch(0.99 0 0)'
-      },
-      dusk: {
-        bg: 'linear-gradient(180deg, oklch(0.42 0.09 300) 0%, oklch(0.58 0.13 350) 50%, oklch(0.74 0.12 55) 100%)',
-        sun: 'radial-gradient(circle, oklch(0.88 0.13 65 / 0.85) 0%, oklch(0.75 0.15 40 / 0.35) 36%, transparent 64%)',
-        ink: 'oklch(0.97 0.015 60)',
-        muted: 'oklch(0.89 0.03 40)',
-        card: 'oklch(0.28 0.06 320 / 0.46)',
-        rail: 'oklch(0.28 0.06 320 / 0.32)',
-        cardBorder: 'oklch(1 0 0 / 0.16)',
-        shadow: '0 24px 60px oklch(0.2 0.08 320 / 0.25)',
-        accent: 'oklch(0.86 0.13 70)',
-        accentInk: 'oklch(0.25 0.05 40)'
-      },
-      night: {
-        bg: 'linear-gradient(180deg, oklch(0.16 0.04 270) 0%, oklch(0.22 0.05 265) 56%, oklch(0.27 0.05 245) 100%)',
-        sun: 'radial-gradient(circle, oklch(0.93 0.02 250 / 0.5) 0%, oklch(0.7 0.05 250 / 0.12) 30%, transparent 60%)',
-        ink: 'oklch(0.94 0.012 260)',
-        muted: 'oklch(0.75 0.03 260)',
-        card: 'oklch(0.28 0.04 265 / 0.62)',
-        rail: 'oklch(0.28 0.04 265 / 0.45)',
-        cardBorder: 'oklch(1 0 0 / 0.08)',
-        shadow: '0 24px 60px oklch(0.05 0.03 270 / 0.45)',
-        accent: 'oklch(0.8 0.11 210)',
-        accentInk: 'oklch(0.2 0.04 265)'
-      }
-    };
-    const clocks = {
-      dawn: ['6:42', 'AM', 'Good morning'],
-      morning: ['9:51', 'AM', 'Good morning'],
-      dusk: ['6:58', 'PM', 'Good evening'],
-      night: ['10:24', 'PM', 'Good night']
-    };
-    const key = this.props.timeOfDay ?? 'morning';
-    const p = palettes[key] || palettes.morning;
-    const c = clocks[key] || clocks.morning;
-    return { p, time: c[0], meridiem: c[1], greeting: c[2] };
+    return { showMenu: this.props.showMenu ?? false };
   }
 }
 </script>

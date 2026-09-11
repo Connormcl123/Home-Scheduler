@@ -1,13 +1,24 @@
 {
+  "pages": [
+    { "id": "round-2", "name": "Home display" },
+    { "id": "round-1", "name": "Round 1" }
+  ],
   "artboards": [
-    { "file": "Main.dc.html", "title": "Ambient", "x": 0, "y": 0, "w": 1920, "h": 1080 },
-    { "file": "Editorial.dc.html", "x": 2040, "y": 0, "w": 1920, "h": 1080 },
-    { "file": "Bento.dc.html", "x": 4080, "y": 0, "w": 1920, "h": 1080 }
+    { "file": "Main.dc.html", "title": "Family Board", "page": "round-2", "x": 0, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "PictureFrame.dc.html", "title": "Picture Frame", "page": "round-2", "x": 2040, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "Clock.dc.html", "page": "round-2", "x": 4080, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "Ambient.dc.html", "page": "round-1", "x": 0, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "Editorial.dc.html", "page": "round-1", "x": 2040, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "Bento.dc.html", "page": "round-1", "x": 4080, "y": 0, "w": 1920, "h": 1080 }
   ],
   "annotations": [
-    { "id": "ambient-case", "x": 0, "y": -330, "w": 760, "text": "Ambient - the screen is a sky that follows the day: dawn peach, morning blue, dusk rose, night indigo. Try the timeOfDay chip.\nFor: a wall display is seen in passing, so the colour alone tells you roughly what time it is, and it is the most distinctive of the three.\nAgainst: text sits on a shifting background, so contrast must be checked in every palette, and cards read softer than today.\nPi: one static gradient and solid tints, no blur." },
-    { "id": "editorial-case", "x": 2040, "y": -330, "w": 760, "text": "Editorial - the morning paper: serif headlines, hairline rules, one lead story, photo-led features.\nFor: the most personality per pixel, and it reads beautifully up close.\nAgainst: slower to scan from across the room than big cards, and it leans on good photos. The hatched blocks are placeholders; the app already pulls trip photos from Wikimedia and news images from the feeds, recipes would need a source.\nPi: flat colour and type only, the cheapest to render." },
-    { "id": "bento-case", "x": 4080, "y": -330, "w": 760, "text": "Bento - tiles of different sizes, colour-coded by kind, with soft depth from layered surfaces. Try the dark chip.\nFor: fastest to scan, big numerals read across the room, and it is closest to today's layout, so the easiest to migrate.\nAgainst: the most app-like and least distinctive of the three.\nPi: static shadows and solid fills, no blur." }
+    { "id": "round-2-why", "page": "round-2", "x": -940, "y": 0, "w": 820, "text": "Round 2: things that belong on a wall.\nRound 1 read like an app mostly because of the permanent column of ten app icons, plus everything boxed in cards and type sized for arm's length.\nAll three here hide the menu until someone touches the screen (flip showMenu on Family Board to see it), drop the boxes, and size type to read across a room." },
+    { "id": "family-board-case", "page": "round-2", "x": 0, "y": -330, "w": 760, "text": "Family Board - a printed family planner: warm paper, the week in ruled columns, today's note and the shopping list in handwriting.\nFor: shows the most of your week and still feels like an object, not a screen.\nAgainst: the densest of the three, so type is smaller than Clock, and a quiet week looks sparse (this one is real - it is quiet).\nPi: the paper texture is a static background, no effects." },
+    { "id": "picture-frame-case", "page": "round-2", "x": 2040, "y": -330, "w": 760, "text": "Picture Frame - a photo frame that happens to know your day: the time and one line of what matters over a picture.\nFor: the most like decor; most of the time it is just a nice photo.\nAgainst: shows the least, and everything depends on good photos. The painted scene is a stand-in; the real one would be your own album or the day's trip photo from Wikimedia.\nPi: one image and a gradient." },
+    { "id": "clock-case", "page": "round-2", "x": 4080, "y": -330, "w": 760, "text": "Clock - a smart-display clock face with three glanceable readings: weather, the next thing on the calendar, tonight's dinner.\nFor: reads from anywhere in the room, and the night switch dims it to deep red so it can stay on in the evening.\nAgainst: no room for the week or the shopping list - those live one tap away.\nPi: the cheapest of all to render." },
+    { "id": "ambient-case", "page": "round-1", "x": 0, "y": -330, "w": 760, "text": "Ambient - the screen is a sky that follows the day: dawn peach, morning blue, dusk rose, night indigo. Try the timeOfDay chip.\nFor: a wall display is seen in passing, so the colour alone tells you roughly what time it is, and it is the most distinctive of the three.\nAgainst: text sits on a shifting background, so contrast must be checked in every palette, and cards read softer than today.\nPi: one static gradient and solid tints, no blur." },
+    { "id": "editorial-case", "page": "round-1", "x": 2040, "y": -330, "w": 760, "text": "Editorial - the morning paper: serif headlines, hairline rules, one lead story, photo-led features.\nFor: the most personality per pixel, and it reads beautifully up close.\nAgainst: slower to scan from across the room than big cards, and it leans on good photos. The hatched blocks are placeholders; the app already pulls trip photos from Wikimedia and news images from the feeds, recipes would need a source.\nPi: flat colour and type only, the cheapest to render." },
+    { "id": "bento-case", "page": "round-1", "x": 4080, "y": -330, "w": 760, "text": "Bento - tiles of different sizes, colour-coded by kind, with soft depth from layered surfaces. Try the dark chip.\nFor: fastest to scan, big numerals read across the room, and it is closest to today's layout, so the easiest to migrate.\nAgainst: the most app-like and least distinctive of the three.\nPi: static shadows and solid fills, no blur." }
   ],
-  "launch": { "view": "canvas" }
+  "launch": { "view": "canvas", "page": "round-2" }
 }
