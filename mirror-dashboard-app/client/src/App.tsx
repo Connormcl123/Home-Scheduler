@@ -569,6 +569,9 @@ function DashboardApp() {
 
   useEffect(() => {
     safeStorageSet("mirror-dashboard-theme", darkMode ? "dark" : "light");
+    // shadcn/Radix dialogs portal into <body>, outside <main> where the dark
+    // class lives, so mirror it on the root or they always open light.
+    document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
   useEffect(() => {

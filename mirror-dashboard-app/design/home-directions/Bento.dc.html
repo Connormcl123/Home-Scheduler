@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.7 0.12 250); }
+    a:hover { color: oklch(0.6 0.12 250); }
+    .display { font-family: "Bricolage Grotesque", "Arial Narrow", "Segoe UI", sans-serif; }
+    .sans { font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif; }
+    p { margin: 0; }
+    svg { flex-shrink: 0; }
+    @keyframes pop { from { opacity: 0; transform: scale(0.965); } to { opacity: 1; transform: none; } }
+    .pop { animation: pop 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  </style>
+</helmet>
+<div class="sans" style="width: 1920px; height: 1080px; overflow: hidden; box-sizing: border-box; padding: 28px; display: flex; gap: 24px; background: {{c.ground}}; color: {{c.ink}};">
+
+  <nav style="width: 96px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0; border-radius: 40px; background: {{c.tile}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}};">
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 22px; background: {{c.blueBg}}; color: {{c.blueInk}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 4l8.5 6.5"></path><path d="M5.5 9.5V20h13V9.5"></path><path d="M10 20v-5h4v5"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16l-1.6 9.2a1.5 1.5 0 0 1-1.5 1.3H7.1a1.5 1.5 0 0 1-1.5-1.3z"></path><path d="M8.5 10 11 4.5M15.5 10 13 4.5M9.5 14v3M14.5 14v3"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.2 2.4 2.4 4.6-5"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16M5.5 17.5v-6M9.8 17.5v-6M14.2 17.5v-6M18.5 17.5v-6M3.5 9 12 4l8.5 5z"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"></path><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.8 0 1.5.7 1.5 1.5v5l7 4v1.9l-7-2.1v4.1l2 1.5v1.4L12 19.3l-3.5 1v-1.4l2-1.5v-4.1l-7 2.1v-1.9l7-4v-5C10.5 3.7 11.2 3 12 3z"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="8" width="15" height="11.5" rx="3"></rect><path d="M12 8V4.5M9.5 13.5v1M14.5 13.5v1"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"></path></svg>
+    </div>
+    <div style="width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: {{c.muted}};">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13.5v6h10v-6"></path><path d="M7 13.5a3.5 3.5 0 0 1-.6-6.9 4 4 0 0 1 7.6-1.3 3.5 3.5 0 0 1 3.6 8.2"></path><path d="M7 16.5h10"></path></svg>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; min-width: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); gap: 20px;">
+
+    <div class="pop" style="grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 30px 34px; border-radius: 32px; background: {{c.tile}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}};">
+      <p style="font-size: 22px; font-weight: 600; color: {{c.muted}};">Friday, September 11</p>
+      <p class="display" style="font-size: 168px; font-weight: 700; line-height: 0.82; letter-spacing: -0.04em;">9:51<span style="font-size: 44px; font-weight: 600; letter-spacing: 0; margin-left: 10px; color: {{c.muted}};">AM</span></p>
+    </div>
+
+    <div class="pop" style="grid-column: span 8; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 30px 38px; border-radius: 32px; background: {{c.tile}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 60ms;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.blueInk}};">Right now</p>
+        <div style="display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px; border-radius: 999px; background: {{c.blueBg}}; color: {{c.blueInk}}; font-size: 18px; font-weight: 700;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.5v13l10.5-6.5z"></path></svg>
+          Morning briefing
+        </div>
+      </div>
+      <p class="display" style="font-size: 52px; font-weight: 600; line-height: 1.06; letter-spacing: -0.015em; text-wrap: pretty;">Plumber tomorrow 9–11, pediatrician at 9:45, dentist at 3.</p>
+    </div>
+
+    <div class="pop" style="grid-column: span 3; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 30px; border-radius: 32px; background: {{c.tile}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 120ms;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.muted}};">Weather</p>
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="{{c.amberInk}}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <p class="display" style="font-size: 104px; font-weight: 700; line-height: 0.86; letter-spacing: -0.03em;">72°</p>
+        <p style="font-size: 20px; font-weight: 500; color: {{c.muted}};">Clear · 80° / 66°</p>
+      </div>
+    </div>
+
+    <div class="pop" style="grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 30px; border-radius: 32px; background: {{c.blueBg}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 180ms;">
+      <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.blueInk}};">Tomorrow</p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <p class="display" style="font-size: 72px; font-weight: 700; line-height: 0.9; letter-spacing: -0.03em;">9–11 AM</p>
+        <p style="font-size: 24px; font-weight: 600;">Plumber visit</p>
+        <p style="font-size: 19px; font-weight: 500; color: {{c.muted}};">Overlaps the pediatrician at 9:45</p>
+      </div>
+    </div>
+
+    <div class="pop" style="grid-column: span 3; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 30px; border-radius: 32px; background: {{c.greenBg}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 240ms;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.greenInk}};">Task</p>
+        <span style="padding: 6px 14px; border-radius: 999px; background: {{c.greenInk}}; color: {{c.ground}}; font-size: 13px; font-weight: 800; letter-spacing: 0.1em;">NOW</span>
+      </div>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <p class="display" style="font-size: 38px; font-weight: 700; line-height: 1;">Wash Ella's cleats</p>
+          <p style="font-size: 19px; font-weight: 500; color: {{c.muted}};">Before practice</p>
+        </div>
+        <div style="width: 60px; height: 60px; flex-shrink: 0; border-radius: 50%; border: 3px solid {{c.greenInk}};"></div>
+      </div>
+    </div>
+
+    <div class="pop" style="grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 26px; border-radius: 32px; background: {{c.amberBg}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 300ms;">
+      <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.amberInk}};">Grocery</p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <p class="display" style="font-size: 36px; font-weight: 700; line-height: 1;">Big run due</p>
+        <p style="font-size: 18px; font-weight: 500; line-height: 1.4; color: {{c.muted}};">Proteins, dairy, produce</p>
+      </div>
+    </div>
+
+    <div class="pop" style="grid-column: span 5; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 30px 34px; border-radius: 32px; background: {{c.coralBg}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 360ms;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.coralInk}};">Tonight</p>
+        <span style="padding: 8px 16px; border-radius: 999px; background: {{c.tile}}; font-size: 16px; font-weight: 700;">25 min</span>
+      </div>
+      <p class="display" style="font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; text-wrap: balance;">Creamy Tomato Pasta with Spinach</p>
+    </div>
+
+    <div class="pop" style="grid-column: span 4; grid-row: span 2; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 28px 30px; border-radius: 32px; background: repeating-linear-gradient(135deg, {{c.photoLine}} 0 2px, transparent 2px 16px), {{c.photo}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 420ms;">
+      <span style="position: absolute; top: 22px; right: 22px; padding: 5px 11px; border-radius: 999px; background: {{c.tile}}; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: {{c.muted}};">TRIP PHOTO · WIKIMEDIA</span>
+      <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.muted}};">Trip idea</p>
+      <p class="display" style="font-size: 40px; font-weight: 700; line-height: 1.02; margin-top: 8px;">Shenandoah National Park</p>
+    </div>
+
+    <div class="pop" style="grid-column: span 3; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 30px; border-radius: 32px; background: {{c.tile}}; box-shadow: inset 0 1px 0 {{c.hi}}, 0 18px 40px {{c.drop}}; animation-delay: 480ms;">
+      <p style="font-size: 16px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {{c.muted}};">The Verge</p>
+      <p class="display" style="font-size: 32px; font-weight: 600; line-height: 1.12;">Smartphone prices are rising across the board</p>
+    </div>
+
+  </main>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark ?? true;
+    const c = dark ? {
+      ground: 'oklch(0.16 0.012 265)',
+      tile: 'oklch(0.215 0.016 265)',
+      hi: 'oklch(1 0 0 / 0.06)',
+      drop: 'oklch(0 0 0 / 0.35)',
+      ink: 'oklch(0.96 0.008 265)',
+      muted: 'oklch(0.74 0.02 265)',
+      blueBg: 'oklch(0.3 0.06 250)', blueInk: 'oklch(0.84 0.1 250)',
+      greenBg: 'oklch(0.3 0.06 155)', greenInk: 'oklch(0.84 0.1 155)',
+      amberBg: 'oklch(0.3 0.06 75)', amberInk: 'oklch(0.84 0.1 75)',
+      coralBg: 'oklch(0.3 0.06 30)', coralInk: 'oklch(0.84 0.1 30)',
+      photo: 'oklch(0.27 0.03 150)', photoLine: 'oklch(0.33 0.035 150)'
+    } : {
+      ground: 'oklch(0.955 0.008 265)',
+      tile: 'oklch(0.995 0.003 265)',
+      hi: 'oklch(1 0 0 / 0.9)',
+      drop: 'oklch(0.4 0.03 265 / 0.12)',
+      ink: 'oklch(0.22 0.02 265)',
+      muted: 'oklch(0.48 0.02 265)',
+      blueBg: 'oklch(0.93 0.04 250)', blueInk: 'oklch(0.48 0.13 250)',
+      greenBg: 'oklch(0.93 0.04 155)', greenInk: 'oklch(0.48 0.13 155)',
+      amberBg: 'oklch(0.93 0.04 75)', amberInk: 'oklch(0.48 0.13 75)',
+      coralBg: 'oklch(0.93 0.04 30)', coralInk: 'oklch(0.48 0.13 30)',
+      photo: 'oklch(0.9 0.025 150)', photoLine: 'oklch(0.84 0.03 150)'
+    };
+    return { c };
+  }
+}
+</script>
+</body>
+</html>

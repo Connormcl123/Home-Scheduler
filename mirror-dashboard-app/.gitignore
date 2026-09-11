@@ -8,3 +8,7 @@ npm-debug.log*
 # The Pi generates its own lockfile with npm 10 on ARM; a Windows/npm-11 one
 # collides on pull and can carry wrong-platform optional binaries.
 package-lock.json
+
+# Assembled design canvases are large and rebuilt from the .dc.html sources.
+design/*/*.html
+!design/*/*.dc.html

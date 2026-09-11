@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Ambient", "x": 0, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "Editorial.dc.html", "x": 2040, "y": 0, "w": 1920, "h": 1080 },
+    { "file": "Bento.dc.html", "x": 4080, "y": 0, "w": 1920, "h": 1080 }
+  ],
+  "annotations": [
+    { "id": "ambient-case", "x": 0, "y": -330, "w": 760, "text": "Ambient - the screen is a sky that follows the day: dawn peach, morning blue, dusk rose, night indigo. Try the timeOfDay chip.\nFor: a wall display is seen in passing, so the colour alone tells you roughly what time it is, and it is the most distinctive of the three.\nAgainst: text sits on a shifting background, so contrast must be checked in every palette, and cards read softer than today.\nPi: one static gradient and solid tints, no blur." },
+    { "id": "editorial-case", "x": 2040, "y": -330, "w": 760, "text": "Editorial - the morning paper: serif headlines, hairline rules, one lead story, photo-led features.\nFor: the most personality per pixel, and it reads beautifully up close.\nAgainst: slower to scan from across the room than big cards, and it leans on good photos. The hatched blocks are placeholders; the app already pulls trip photos from Wikimedia and news images from the feeds, recipes would need a source.\nPi: flat colour and type only, the cheapest to render." },
+    { "id": "bento-case", "x": 4080, "y": -330, "w": 760, "text": "Bento - tiles of different sizes, colour-coded by kind, with soft depth from layered surfaces. Try the dark chip.\nFor: fastest to scan, big numerals read across the room, and it is closest to today's layout, so the easiest to migrate.\nAgainst: the most app-like and least distinctive of the three.\nPi: static shadows and solid fills, no blur." }
+  ],
+  "launch": { "view": "canvas" }
+}
