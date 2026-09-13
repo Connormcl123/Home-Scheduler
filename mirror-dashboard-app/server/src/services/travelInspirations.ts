@@ -6,7 +6,7 @@ import { researchTravelPlaces, type TravelPlaceResearch } from "./travelPlaces.j
 
 type TravelRow = {
   id: number;
-  source: "instagram" | "manual";
+  source: "instagram" | "manual" | "web";
   url: string;
   thumbnail_url: string | null;
   title: string;
@@ -18,7 +18,7 @@ type TravelRow = {
 };
 
 type TravelInput = {
-  source?: "instagram" | "manual";
+  source?: "instagram" | "manual" | "web";
   url: string;
   thumbnailUrl?: string | null;
   title?: string;

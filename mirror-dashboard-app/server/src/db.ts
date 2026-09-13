@@ -225,6 +225,19 @@ export async function initializeSchema(database: Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_assistant_messages_conversation ON assistant_messages(conversation_id, id);
+
+    CREATE TABLE IF NOT EXISTS share_imports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      url TEXT,
+      kind TEXT CHECK (kind IN ('recipe', 'trip')),
+      status TEXT NOT NULL CHECK (status IN ('saved', 'duplicate', 'unrecognized', 'failed')),
+      item_id INTEGER,
+      title TEXT,
+      message TEXT NOT NULL,
+      content TEXT,
+      image_url TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   await ensureColumn(database, "finance_accounts", "provider_item_id", "TEXT");
@@ -234,6 +247,10 @@ export async function initializeSchema(database: Database) {
   await ensureColumn(database, "finance_transactions", "categorized_by", "TEXT NOT NULL DEFAULT 'provider'");
   await ensureColumn(database, "travel_inspirations", "thumbnail_url", "TEXT");
   await ensureColumn(database, "travel_deals", "image_url", "TEXT");
+  await ensureColumn(database, "recipes", "source_url", "TEXT");
+  await ensureColumn(database, "recipes", "source_name", "TEXT");
+  // A shared link is saved once; manual and AI recipes have no link and are not affected.
+  await database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_recipes_source_url ON recipes(source_url) WHERE source_url IS NOT NULL");
 }
 
 async function ensureColumn(database: Database, table: string, column: string, definition: string) {

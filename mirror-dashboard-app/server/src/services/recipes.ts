@@ -16,6 +16,8 @@ type RecipeRow = {
   steps: string;
   image_url: string | null;
   source: string;
+  source_url: string | null;
+  source_name: string | null;
   created_at: string;
 };
 
@@ -39,6 +41,8 @@ function rowToRecipe(row: RecipeRow): Recipe {
     steps: parseJson<string[]>(row.steps, []),
     imageUrl: row.image_url,
     source: row.source,
+    sourceUrl: row.source_url,
+    sourceName: row.source_name,
     createdAt: row.created_at
   };
 }
@@ -65,11 +69,13 @@ export async function createRecipe(input: {
   steps?: string[];
   imageUrl?: string | null;
   source?: string;
+  sourceUrl?: string | null;
+  sourceName?: string | null;
 }): Promise<Recipe> {
   const db = await getDb();
   const result = await db.run(
-    `INSERT INTO recipes (title, summary, servings, total_minutes, tags, ingredients, steps, image_url, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO recipes (title, summary, servings, total_minutes, tags, ingredients, steps, image_url, source, source_url, source_name)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.title.trim(),
     input.summary || null,
     input.servings ?? null,
@@ -78,7 +84,9 @@ export async function createRecipe(input: {
     JSON.stringify(input.ingredients || []),
     JSON.stringify(input.steps || []),
     input.imageUrl || null,
-    input.source || "manual"
+    input.source || "manual",
+    input.sourceUrl || null,
+    input.sourceName || null
   );
   const recipe = await getRecipe(Number(result.lastID));
   if (!recipe) throw new Error("Recipe could not be created.");

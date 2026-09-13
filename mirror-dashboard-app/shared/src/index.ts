@@ -171,7 +171,7 @@ export interface GroceryItem {
 
 export interface TravelInspiration {
   id: number;
-  source: "instagram" | "manual";
+  source: "instagram" | "manual" | "web";
   url: string;
   thumbnailUrl?: string | null;
   title: string;
@@ -394,6 +394,10 @@ export interface Recipe {
   steps: string[];
   imageUrl?: string | null;
   source: string;
+  /** The link it was shared from, tidied. */
+  sourceUrl?: string | null;
+  /** Who made it, e.g. "heresyourbite on Instagram". */
+  sourceName?: string | null;
   createdAt: string;
 }
 
@@ -459,5 +463,32 @@ export interface StorySlide {
 export interface MorningStory {
   forDate: string;
   slides: StorySlide[];
+  createdAt: string;
+}
+
+export type ShareKind = "recipe" | "trip";
+export type ShareStatus = "saved" | "duplicate" | "unrecognized" | "failed";
+
+/** What POST /api/share returns; the phone shows `message` as a notification. */
+export interface ShareResult {
+  status: ShareStatus;
+  kind: ShareKind | null;
+  id: number | null;
+  title: string | null;
+  message: string;
+  shareId: number | null;
+  imageUrl: string | null;
+}
+
+/** One row of share history, for the wall banner and Settings. */
+export interface ShareImport {
+  id: number;
+  url: string | null;
+  kind: ShareKind | null;
+  status: ShareStatus;
+  itemId: number | null;
+  title: string | null;
+  message: string;
+  imageUrl: string | null;
   createdAt: string;
 }
