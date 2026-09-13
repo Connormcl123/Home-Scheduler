@@ -21,7 +21,8 @@ import { createEnrichedTravelInspiration, deleteTravelInspiration, generateTrave
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
 import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
-import { AssistantError, getAssistantStatus, runAssistantTurn } from "./services/assistant.js";
+import { AssistantError, getAssistantStatus } from "./services/assistant.js";
+import { chatInConversation, deleteConversation, getConversation, listConversations } from "./services/assistantHistory.js";
 import { generateTravelDeals, listTravelDeals, startTravelDealScheduler } from "./services/travelDeals.js";
 import { generateMorningStory, getHomePulse, getMorningStory } from "./services/homeBrief.js";
 import { createRecipe, deleteRecipe, generateRecipe, getMealPlan, listRecipes, pushPlanToGrocery, setMeal, suggestWeek } from "./services/recipes.js";
@@ -572,8 +573,35 @@ app.post("/api/assistant/chat", async (req, res, next) => {
   try {
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
     if (!message) return res.status(400).json({ error: "A message is required." });
-    const history = Array.isArray(req.body?.history) ? req.body.history : [];
-    res.json(await runAssistantTurn(history, message));
+    const conversationId = Number.isInteger(req.body?.conversationId) ? Number(req.body.conversationId) : null;
+    res.json(await chatInConversation(message, conversationId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/assistant/conversations", async (_req, res, next) => {
+  try {
+    res.json(await listConversations());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/assistant/conversations/:id", async (req, res, next) => {
+  try {
+    const conversation = await getConversation(Number(req.params.id));
+    if (!conversation) return res.status(404).json({ error: "Chat not found." });
+    res.json(conversation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/assistant/conversations/:id", async (req, res, next) => {
+  try {
+    await deleteConversation(Number(req.params.id));
+    res.status(204).end();
   } catch (error) {
     next(error);
   }

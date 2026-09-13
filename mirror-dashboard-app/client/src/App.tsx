@@ -2,8 +2,8 @@ import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEv
 import QRCode from "qrcode";
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
-import type { ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantMessage, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
+import type { ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -38,6 +38,9 @@ import {
   updateTask,
   updateWatchlistItem,
   fetchAssistantStatus,
+  fetchAssistantConversation,
+  fetchAssistantConversations,
+  deleteAssistantConversation,
   fetchCalendarEvents,
   fetchRecipes,
   fetchMealPlan,
@@ -996,7 +999,7 @@ function HomePanel({
     <div className="flex h-full min-h-0 flex-col gap-6 px-2 pt-2">
       <div className="flex shrink-0 items-end justify-between gap-8">
         <motion.div className="flex flex-col gap-1.5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(0)}>
-          <p className="text-[26px] font-medium text-amb-muted">{greetingFor(now)}&nbsp;&nbsp;·&nbsp;&nbsp;{dateLine}</p>
+          <p className="text-[26px] font-medium text-amb-muted">{greetingFor(now)}, it&rsquo;s {dateLine}</p>
           <p className="font-display text-[184px] leading-[0.86] tracking-[-0.02em]">
             {part("hour")}:{part("minute")}
             <span className="ml-3.5 text-[66px] italic tracking-normal">{part("dayPeriod")}</span>
@@ -1007,7 +1010,7 @@ function HomePanel({
             <p className="font-display text-[120px] leading-[0.9]">{Math.round(weather.current.temperature)}&deg;</p>
             <p className="text-[22px] font-medium text-amb-muted">
               {weather.current.description}
-              {today ? `  ·  ${Math.round(today.high)}° / ${Math.round(today.low)}°` : ""}
+              {today ? `, high ${Math.round(today.high)}°, low ${Math.round(today.low)}°` : ""}
             </p>
           </div>
           {story && (
@@ -1025,7 +1028,7 @@ function HomePanel({
 
       {/* The one line worth walking over for. */}
       <motion.div className="flex max-w-[1480px] shrink-0 flex-col gap-2.5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(2)}>
-        <p className="text-base font-bold uppercase tracking-[0.18em] text-amb-muted">Right now</p>
+        <p className="text-xl font-medium text-amb-muted">Right now</p>
         <p className="text-pretty text-[46px] font-semibold leading-[1.12] tracking-[-0.01em]">{pulse?.headline ?? "Reading the day..."}</p>
       </motion.div>
 
@@ -1053,18 +1056,17 @@ function HomePanel({
               className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-[30px] border border-amb-border bg-amb-card px-[30px] py-7 text-left shadow-ambient"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2.5 text-[15px] font-bold uppercase tracking-[0.16em] text-amb-muted">
+                <span className="flex items-center gap-2.5 text-lg font-semibold text-amb-muted">
                   <Icon className="h-5 w-5" />
                   {look.label}
                 </span>
                 {card.urgency === "now" && (
-                  <span className="rounded-full bg-amb-accent px-3.5 py-1.5 text-sm font-bold tracking-[0.08em] text-amb-accent-ink">NOW</span>
+                  <span className="rounded-full bg-amb-accent px-3.5 py-1.5 text-sm font-bold text-amb-accent-ink">Now</span>
                 )}
               </div>
               <p className="line-clamp-3 font-display text-[44px] leading-[1.02]">{card.title}</p>
-              <p className="line-clamp-3 text-[21px] leading-[1.4] text-amb-muted">
-                {countdown ? `${countdown} · ${card.detail}` : card.detail}
-              </p>
+              {countdown && <p className="text-[21px] font-semibold text-amb-ink first-letter:uppercase">{countdown}</p>}
+              <p className="line-clamp-3 text-[21px] leading-[1.4] text-amb-muted">{card.detail}</p>
             </motion.button>
           );
         })}
@@ -1334,7 +1336,7 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
                   <div key={day.label} className="rounded-2xl bg-white/10 p-5">
                     <p className="text-xl font-black text-white">{day.label}</p>
                     <p className="text-4xl font-black text-white">{day.high}&deg;</p>
-                    <p className="text-lg text-white/70">{day.low}&deg; · {day.description}</p>
+                    <p className="text-lg text-white/70">Low {day.low}&deg;, {day.description.charAt(0).toLowerCase() + day.description.slice(1)}</p>
                   </div>
                 ))}
               </div>
@@ -2524,118 +2526,406 @@ function NotesPanel({ onChanged }: { onChanged: () => void }) {
   );
 }
 
+const ASSISTANT_CONVERSATION_KEY = "mirror-dashboard-assistant-conversation";
+
+type ChatBubble = { key: string; role: "user" | "assistant"; content: string; actions?: AssistantAction[] };
+
+/** "claude-haiku-4-5" -> "Claude Haiku 4.5", for the badge above the thread. */
+function modelLabel(model: string) {
+  const match = model.match(/^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-|$)/i);
+  if (!match) return model;
+  const family = match[1][0].toUpperCase() + match[1].slice(1);
+  return `Claude ${family} ${match[2]}${match[3] ? `.${match[3]}` : ""}`;
+}
+
+function conversationTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (now.getTime() - date.getTime() < 6 * 86400000) return date.toLocaleDateString([], { weekday: "short" });
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function groupConversations(list: AssistantConversationSummary[]) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = 86400000;
+  const groups: Array<[string, AssistantConversationSummary[]]> = [["Today", []], ["Yesterday", []], ["Previous 7 days", []], ["Older", []]];
+  for (const conversation of list) {
+    const time = Date.parse(conversation.updatedAt);
+    const index = time >= today ? 0 : time >= today - day ? 1 : time >= today - 7 * day ? 2 : 3;
+    groups[index][1].push(conversation);
+  }
+  return groups.filter(([, items]) => items.length);
+}
+
+/** Bold and inline code only; enough markdown for chat replies. */
+function inlineMarkdown(text: string) {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={index} className="font-semibold">{part.slice(2, -2)}</strong>;
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return <code key={index} className="rounded-md bg-amb-well px-1.5 py-0.5 text-[0.85em]">{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
+
+/** Paragraphs, bullet and numbered lists, and headings, the way chat apps show replies. */
+function RichText({ text }: { text: string }) {
+  const blocks: ReactNode[] = [];
+  let paragraph: string[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push(<p key={blocks.length}>{inlineMarkdown(paragraph.join(" "))}</p>);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!list) return;
+    const items = list.items.map((item, index) => <li key={index}>{inlineMarkdown(item)}</li>);
+    blocks.push(list.ordered
+      ? <ol key={blocks.length} className="list-decimal space-y-1.5 pl-8">{items}</ol>
+      : <ul key={blocks.length} className="list-disc space-y-1.5 pl-8">{items}</ul>);
+    list = null;
+  };
+
+  for (const raw of text.split("\n")) {
+    const line = raw.trimEnd();
+    const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
+    const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bullet || numbered) {
+      flushParagraph();
+      const ordered = Boolean(numbered);
+      if (!list || list.ordered !== ordered) {
+        flushList();
+        list = { ordered, items: [] };
+      }
+      list.items.push((bullet ?? numbered)![1]);
+      continue;
+    }
+    flushList();
+    if (!line.trim()) {
+      flushParagraph();
+      continue;
+    }
+    const heading = line.match(/^#{1,4}\s+(.*)$/);
+    if (heading) {
+      flushParagraph();
+      blocks.push(<p key={blocks.length} className="font-semibold">{inlineMarkdown(heading[1])}</p>);
+      continue;
+    }
+    paragraph.push(line);
+  }
+  flushParagraph();
+  flushList();
+  return <div className="space-y-4">{blocks}</div>;
+}
+
+function AssistantAvatar({ small = false }: { small?: boolean }) {
+  return (
+    <span className={`grid shrink-0 place-items-center rounded-full bg-amb-accent text-amb-accent-ink ${small ? "mt-1 h-11 w-11" : "h-16 w-16"}`}>
+      <Sparkles className={small ? "h-5 w-5" : "h-8 w-8"} />
+    </span>
+  );
+}
+
+/**
+ * The Assistant tab, laid out like the Claude app: Recents on the left, the
+ * open chat on the right. Chats are saved on the server, so they are the same
+ * on the wall panel and on a phone over Tailscale.
+ */
 function AssistantPanel({ onChanged }: { onChanged: () => void }) {
   const [status, setStatus] = useState<AssistantStatus | null>(null);
-  const [messages, setMessages] = useState<Array<AssistantMessage & { actions?: AssistantAction[] }>>([]);
+  const [conversations, setConversations] = useState<AssistantConversationSummary[]>([]);
+  const [activeId, setActiveId] = useState<number | null>(() => {
+    try {
+      const stored = Number(localStorage.getItem(ASSISTANT_CONVERSATION_KEY));
+      return stored > 0 ? stored : null;
+    } catch {
+      return null;
+    }
+  });
+  const [messages, setMessages] = useState<ChatBubble[]>([]);
+  const [loadingThread, setLoadingThread] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  // Set when a send creates a chat, so selecting it does not refetch the
+  // thread that is already on screen.
+  const skipLoadRef = useRef<number | null>(null);
+
+  const enabled = Boolean(status?.enabled);
+  const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
+
+  function loadConversations() {
+    fetchAssistantConversations().then(setConversations).catch(() => undefined);
+  }
 
   useEffect(() => {
     fetchAssistantStatus().then(setStatus).catch(() => setStatus({ enabled: false, model: "", reason: "Could not reach the assistant service." }));
+    loadConversations();
   }, []);
+
+  useEffect(() => {
+    try {
+      if (activeId) localStorage.setItem(ASSISTANT_CONVERSATION_KEY, String(activeId));
+      else localStorage.removeItem(ASSISTANT_CONVERSATION_KEY);
+    } catch {
+      // Storage can be blocked; the open chat just won't be remembered.
+    }
+    setConfirmDelete(null);
+    setError("");
+    if (activeId === null) {
+      setMessages([]);
+      return;
+    }
+    if (skipLoadRef.current === activeId) {
+      skipLoadRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    setLoadingThread(true);
+    setMessages([]);
+    fetchAssistantConversation(activeId)
+      .then((conversation) => {
+        if (cancelled) return;
+        setMessages(conversation.messages.map((message) => ({ key: `m-${message.id}`, role: message.role, content: message.content, actions: message.actions })));
+      })
+      .catch(() => {
+        if (!cancelled) setActiveId(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingThread(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
 
+  // Grow the composer with its text, up to about five lines.
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 220)}px`;
+  }, [draft]);
+
   async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
-    const history = messages.map(({ role, content }) => ({ role, content }));
-    setMessages((current) => [...current, { role: "user", content: trimmed }]);
+    if (!trimmed || busy || !enabled) return;
+    const pendingKey = `pending-${Date.now()}`;
+    setMessages((current) => [...current, { key: pendingKey, role: "user", content: trimmed }]);
     setDraft("");
     setBusy(true);
     setError("");
     try {
-      const result = await sendAssistantMessage(trimmed, history);
-      setMessages((current) => [...current, { role: "assistant", content: result.reply, actions: result.actions }]);
+      const result = await sendAssistantMessage(trimmed, activeId);
+      setMessages((current) => [...current, { key: `reply-${Date.now()}`, role: "assistant", content: result.reply, actions: result.actions }]);
+      if (result.conversationId && result.conversationId !== activeId) {
+        skipLoadRef.current = result.conversationId;
+        setActiveId(result.conversationId);
+      }
+      loadConversations();
       if (result.refresh.length) onChanged();
     } catch (err) {
+      // Put the words back so nothing typed is lost; the thread stays as it was.
+      setMessages((current) => current.filter((message) => message.key !== pendingKey));
+      setDraft(trimmed);
       setError(err instanceof Error ? err.message : "The assistant could not answer.");
     } finally {
       setBusy(false);
     }
   }
 
-  const suggestions = ["What's on today?", "Add milk to the grocery list", "Remind me to take the trash out tomorrow"];
+  function startNewChat() {
+    if (busy) return;
+    setActiveId(null);
+    setDraft("");
+    inputRef.current?.focus();
+  }
+
+  async function removeConversation(id: number) {
+    try {
+      await deleteAssistantConversation(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete the chat.");
+      return;
+    }
+    if (id === activeId) setActiveId(null);
+    setConfirmDelete(null);
+    loadConversations();
+  }
+
+  const suggestions = ["What's on today?", "Plan dinners for this week", "Add milk to the grocery list", "Remind me to take the trash out tomorrow"];
+  const groups = groupConversations(conversations);
+  const showWelcome = activeId === null && !messages.length;
+
+  const composer = (
+    <div className="flex items-end gap-3 rounded-[28px] border border-amb-border bg-amb-card p-3 pl-6 shadow-ambient">
+      <textarea
+        ref={inputRef}
+        rows={1}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            send(draft);
+          }
+        }}
+        disabled={!enabled || busy}
+        placeholder={enabled ? (showWelcome ? "How can I help today?" : "Reply to Claude...") : "Assistant is not configured"}
+        className="max-h-[220px] min-h-[56px] min-w-0 flex-1 resize-none bg-transparent py-3 text-2xl leading-snug text-amb-ink outline-none placeholder:text-amb-muted"
+      />
+      <button
+        onClick={() => send(draft)}
+        disabled={!enabled || busy || !draft.trim()}
+        className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-amb-accent text-amb-accent-ink transition active:scale-95 disabled:opacity-35"
+        aria-label="Send message"
+      >
+        <ArrowUp className="h-7 w-7" />
+      </button>
+    </div>
+  );
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <SectionTitle icon={Bot} title="Assistant" />
-
-      {status && !status.enabled && (
-        <div className="mt-4 rounded-2xl bg-amber-100 p-5 text-xl font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
-          {status.reason}
-        </div>
-      )}
-
-      <div ref={scrollRef} className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
-        {!messages.length && (
-          <div className="rounded-2xl bg-amb-card p-6 text-2xl text-amb-muted">
-            Ask about the day, or tell me what to add. I can update tasks, groceries, the calendar, and today's note.
+    <Card className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-[340px_minmax(0,1fr)] gap-5">
+        <aside className="flex min-h-0 flex-col rounded-[24px] bg-amb-well p-3">
+          <button
+            onClick={startNewChat}
+            disabled={busy}
+            className="flex min-h-16 shrink-0 items-center gap-3 rounded-2xl bg-amb-accent px-5 text-xl font-semibold text-amb-accent-ink active:scale-[0.98] disabled:opacity-50"
+          >
+            <Plus className="h-6 w-6" /> New chat
+          </button>
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+            {!conversations.length && <p className="px-3 py-4 text-lg text-amb-muted">Your chats will show up here.</p>}
+            {groups.map(([label, items]) => (
+              <div key={label} className="mb-4">
+                <p className="px-3 pb-2 text-base font-semibold text-amb-muted">{label}</p>
+                {items.map((conversation) => {
+                  const selected = conversation.id === activeId;
+                  return (
+                    <div key={conversation.id} className={`flex items-center gap-1 rounded-2xl ${selected ? "bg-amb-card shadow-ambient" : ""}`}>
+                      <button
+                        onClick={() => { if (!busy) setActiveId(conversation.id); }}
+                        className="flex min-h-16 min-w-0 flex-1 flex-col justify-center px-4 py-2 text-left"
+                      >
+                        <span className="flex items-baseline gap-3">
+                          <span className="min-w-0 flex-1 truncate text-lg font-semibold text-amb-ink">{conversation.title}</span>
+                          <span className="shrink-0 text-sm text-amb-muted">{conversationTime(conversation.updatedAt)}</span>
+                        </span>
+                        <span className="truncate text-sm text-amb-muted">{conversation.preview}</span>
+                      </button>
+                      {selected && (confirmDelete === conversation.id ? (
+                        <button onClick={() => removeConversation(conversation.id)} className="mr-2 h-11 shrink-0 rounded-xl bg-rose-600 px-3 text-sm font-bold text-white active:scale-95">
+                          Delete
+                        </button>
+                      ) : (
+                        <button onClick={() => setConfirmDelete(conversation.id)} className="mr-1 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-amb-muted active:scale-95" aria-label="Delete chat">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
-        )}
-        {messages.map((message, index) => (
-          <div key={index} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div
-              className={`max-w-[80%] rounded-3xl px-6 py-4 text-2xl leading-relaxed ${
-                message.role === "user"
-                  ? "bg-sky-600 text-white"
-                  : "bg-amb-card text-amb-ink"
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{message.content}</p>
-              {message.actions?.length ? (
-                <div className="mt-3 space-y-1 border-t border-amb-border pt-3 text-lg font-semibold text-emerald-700 dark:text-emerald-300">
-                  {message.actions.map((action, actionIndex) => (
-                    <p key={actionIndex}>{action.summary}</p>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-col">
+          <header className="flex shrink-0 items-center justify-between gap-4 px-2 pb-3">
+            <h2 className="min-w-0 truncate font-display text-4xl text-amb-ink">{active?.title ?? "New chat"}</h2>
+            {status?.model && (
+              <span className="shrink-0 rounded-full border border-amb-border px-4 py-1.5 text-base font-semibold text-amb-muted">{modelLabel(status.model)}</span>
+            )}
+          </header>
+
+          {status && !status.enabled && (
+            <div className="mb-4 rounded-2xl bg-amber-100 p-5 text-xl font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+              {status.reason}
+            </div>
+          )}
+
+          {showWelcome ? (
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 px-6 pb-10">
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
+                className="flex items-center gap-5"
+              >
+                <AssistantAvatar />
+                <h3 className="font-display text-6xl text-amb-ink">{greetingFor(new Date())}. How can I help?</h3>
+              </motion.div>
+              <div className="w-full max-w-[980px]">{composer}</div>
+              {error && <p className="text-xl font-semibold text-rose-600 dark:text-rose-300">{error}</p>}
+              {enabled && (
+                <div className="flex max-w-[980px] flex-wrap justify-center gap-3">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => send(suggestion)}
+                      className="min-h-14 rounded-2xl border border-amb-border bg-amb-well px-5 text-xl font-semibold text-amb-ink active:scale-95"
+                    >
+                      {suggestion}
+                    </button>
                   ))}
                 </div>
-              ) : null}
+              )}
             </div>
-          </div>
-        ))}
-        {busy && (
-          <div className="flex justify-start">
-            <div className="rounded-3xl bg-amb-card px-6 py-4 text-2xl text-amb-muted">Thinking...</div>
-          </div>
-        )}
-        {error && <p className="text-xl font-semibold text-rose-600 dark:text-rose-400">{error}</p>}
-      </div>
-
-      {!messages.length && status?.enabled && (
-        <div className="mt-4 flex shrink-0 flex-wrap gap-3">
-          {suggestions.map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => send(suggestion)}
-              className="min-h-14 rounded-2xl bg-amb-card px-5 text-xl font-semibold text-amb-muted active:scale-95"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-4 flex shrink-0 gap-3">
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => { if (event.key === "Enter") send(draft); }}
-          disabled={!status?.enabled || busy}
-          placeholder={status?.enabled ? "Ask or tell me something..." : "Assistant is not configured"}
-          className="touch-input min-w-0 flex-1"
-        />
-        <button
-          onClick={() => send(draft)}
-          disabled={!status?.enabled || busy || !draft.trim()}
-          className="touch-button w-24 bg-sky-600 text-white disabled:opacity-40"
-          aria-label="Send message"
-        >
-          <Send className="h-7 w-7" />
-        </button>
+          ) : (
+            <>
+              <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2">
+                <div className="mx-auto flex w-full max-w-[980px] flex-col gap-8 py-4">
+                  {loadingThread && !messages.length && <p className="text-xl text-amb-muted">Opening chat...</p>}
+                  {messages.map((message) =>
+                    message.role === "user" ? (
+                      <motion.div key={message.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex justify-end">
+                        <p className="max-w-[78%] whitespace-pre-wrap rounded-[26px] bg-amb-card px-6 py-4 text-2xl leading-relaxed text-amb-ink shadow-ambient">{message.content}</p>
+                      </motion.div>
+                    ) : (
+                      <motion.div key={message.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex gap-4">
+                        <AssistantAvatar small />
+                        <div className="min-w-0 flex-1 text-2xl leading-relaxed text-amb-ink">
+                          <RichText text={message.content} />
+                          {message.actions?.length ? (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {message.actions.map((action, index) => (
+                                <span key={index} className="inline-flex items-center gap-2 rounded-full border border-amb-border bg-amb-well px-4 py-1.5 text-base font-semibold text-amb-ink">
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                                  {action.summary}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    )
+                  )}
+                  {busy && (
+                    <div className="flex gap-4">
+                      <AssistantAvatar small />
+                      <div className="flex items-center gap-2 pt-3" aria-label="Claude is typing">
+                        {[0, 1, 2].map((dot) => <span key={dot} className="typing-dot h-3 w-3 rounded-full bg-amb-muted" />)}
+                      </div>
+                    </div>
+                  )}
+                  {error && <p className="text-xl font-semibold text-rose-600 dark:text-rose-300">{error}</p>}
+                </div>
+              </div>
+              <div className="mx-auto w-full max-w-[980px] shrink-0 pt-3">{composer}</div>
+            </>
+          )}
+        </section>
       </div>
     </Card>
   );
@@ -3101,7 +3391,7 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
                       <p className="truncate text-xl font-bold text-amb-ink">{entry.recipe.title}</p>
                       <p className="text-base text-amb-muted">
                         {entry.recipe.totalMinutes ? `${entry.recipe.totalMinutes} min` : "Planned"}
-                        {entry.recipe.servings ? ` · serves ${entry.recipe.servings}` : ""}
+                        {entry.recipe.servings ? `, serves ${entry.recipe.servings}` : ""}
                       </p>
                     </>
                   ) : (

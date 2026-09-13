@@ -309,6 +309,32 @@ export interface AssistantChatResponse {
   actions: AssistantAction[];
   /** Panels touched by this turn, so the UI knows what to refresh. */
   refresh: Array<"tasks" | "grocery" | "notes" | "calendar" | "dashboard">;
+  /** The saved conversation this turn landed in (created on a first message). */
+  conversationId?: number;
+  title?: string;
+}
+
+export interface AssistantStoredMessage extends AssistantMessage {
+  id: number;
+  actions: AssistantAction[];
+  createdAt: string;
+}
+
+export interface AssistantConversationSummary {
+  id: number;
+  title: string;
+  /** The latest message, for the Recents list. */
+  preview: string;
+  messageCount: number;
+  updatedAt: string;
+}
+
+export interface AssistantConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: AssistantStoredMessage[];
 }
 
 export interface AssistantStatus {

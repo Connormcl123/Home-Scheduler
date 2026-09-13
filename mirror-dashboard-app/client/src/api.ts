@@ -1,4 +1,4 @@
-import type { ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantMessage, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -159,11 +159,24 @@ export function fetchAssistantStatus() {
   return request<AssistantStatus>("/api/assistant/status");
 }
 
-export function sendAssistantMessage(message: string, history: AssistantMessage[]) {
+export function sendAssistantMessage(message: string, conversationId: number | null) {
   return request<AssistantChatResponse>("/api/assistant/chat", {
     method: "POST",
-    body: JSON.stringify({ message, history })
+    body: JSON.stringify({ message, conversationId })
   });
+}
+
+export function fetchAssistantConversations() {
+  return request<AssistantConversationSummary[]>("/api/assistant/conversations");
+}
+
+export function fetchAssistantConversation(id: number) {
+  return request<AssistantConversation>(`/api/assistant/conversations/${id}`);
+}
+
+export async function deleteAssistantConversation(id: number) {
+  const response = await fetch(`/api/assistant/conversations/${id}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(`Could not delete the chat (${response.status}).`);
 }
 
 export function fetchTravelDeals() {
