@@ -12,3 +12,6 @@ package-lock.json
 # Assembled design canvases are large and rebuilt from the .dc.html sources.
 design/*/*.html
 !design/*/*.dc.html
+
+# Brainstorming mockups from the superpowers visual companion
+.superpowers/
