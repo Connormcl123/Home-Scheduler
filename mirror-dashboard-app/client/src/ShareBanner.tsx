@@ -27,7 +27,8 @@ export function ShareBanner({ onArrived, onOpen }: { onArrived: (share: ShareImp
         if (!live || !fresh.length) return;
         lastId.current = fresh.reduce((max, share) => Math.max(max, share.id), lastId.current);
         const saved = fresh.filter((share) => share.status === "saved");
-        const newest = saved[saved.length - 1];
+        // Newest by id, whatever order the list arrives in (the server lists newest-first when there is no marker yet).
+        const newest = saved.reduce<ShareImport | undefined>((best, share) => (!best || share.id > best.id ? share : best), undefined);
         if (newest) {
           setCurrent(newest);
           onArrived(newest);

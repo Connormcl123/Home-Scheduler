@@ -515,6 +515,8 @@ function DashboardApp() {
       setView("recipes");
     }
   }, []);
+  const clearFocusRecipe = useCallback(() => setFocusRecipeId(null), []);
+  const clearShowSaved = useCallback(() => setSavedTripsKey(0), []);
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
@@ -677,11 +679,11 @@ function DashboardApp() {
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
     if (view === "grocery") return <GroceryPanel />;
-    if (view === "recipes") return <RecipesPanel onChanged={refreshDashboard} refreshKey={shareVersion} focusRecipeId={focusRecipeId} />;
+    if (view === "recipes") return <RecipesPanel onChanged={refreshDashboard} refreshKey={shareVersion} focusRecipeId={focusRecipeId} onFocusHandled={clearFocusRecipe} />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
-    if (view === "travel") return <TravelPanel focusDealId={focusDealId} refreshKey={shareVersion} showSaved={savedTripsKey} />;
+    if (view === "travel") return <TravelPanel focusDealId={focusDealId} refreshKey={shareVersion} showSaved={savedTripsKey} onShowSavedHandled={clearShowSaved} />;
     if (view === "assistant") return <AssistantPanel onChanged={refreshDashboard} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return (
@@ -694,7 +696,7 @@ function DashboardApp() {
         }}
       />
     );
-  }, [dashboard, now, view, focusDealId, shareVersion, focusRecipeId, savedTripsKey]);
+  }, [dashboard, now, view, focusDealId, shareVersion, focusRecipeId, savedTripsKey, clearFocusRecipe, clearShowSaved]);
 
   const clock = useMemo(() => {
     const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
@@ -3315,7 +3317,7 @@ function dealAccent(name: string) {
   return DEAL_ACCENTS[name] || DEAL_ACCENTS.sky;
 }
 
-function RecipesPanel({ onChanged, refreshKey = 0, focusRecipeId = null }: { onChanged: () => void; refreshKey?: number; focusRecipeId?: number | null }) {
+function RecipesPanel({ onChanged, refreshKey = 0, focusRecipeId = null, onFocusHandled }: { onChanged: () => void; refreshKey?: number; focusRecipeId?: number | null; onFocusHandled?: () => void }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [plan, setPlan] = useState<MealPlanEntry[]>([]);
   const [prompt, setPrompt] = useState("");
@@ -3340,7 +3342,10 @@ function RecipesPanel({ onChanged, refreshKey = 0, focusRecipeId = null }: { onC
   useEffect(() => {
     if (!focusRecipeId) return;
     const wanted = recipes.find((recipe) => recipe.id === focusRecipeId);
-    if (wanted) setOpen(wanted);
+    if (wanted) {
+      setOpen(wanted);
+      onFocusHandled?.();
+    }
   }, [focusRecipeId, recipes]);
 
   async function run(label: string, work: () => Promise<void>) {
@@ -3635,11 +3640,14 @@ function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose:
   );
 }
 
-function TravelPanel({ focusDealId, refreshKey = 0, showSaved = 0 }: { focusDealId?: number | null; refreshKey?: number; showSaved?: number }) {
+function TravelPanel({ focusDealId, refreshKey = 0, showSaved = 0, onShowSavedHandled }: { focusDealId?: number | null; refreshKey?: number; showSaved?: number; onShowSavedHandled?: () => void }) {
   const [tab, setTab] = useState<"ideas" | "planner">("ideas");
   // Saved trip ideas live on the planner tab; the share banner opens it there.
   useEffect(() => {
-    if (showSaved) setTab("planner");
+    if (showSaved) {
+      setTab("planner");
+      onShowSavedHandled?.();
+    }
   }, [showSaved]);
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
