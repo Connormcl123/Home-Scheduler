@@ -2,7 +2,7 @@ import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEv
 import QRCode from "qrcode";
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
-import type { ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -27,6 +27,9 @@ import {
   fetchRssFeeds,
   fetchTasks,
   fetchTravelInspirations,
+  fetchRecentShares,
+  moveSharedItem,
+  retryShare,
   fetchWatchlist,
   generateTravelItinerary,
   saveNote,
@@ -1180,7 +1183,7 @@ function Sparkline({ points, positive }: { points: number[]; positive: boolean }
 }
 
 /** Scan-to-open: the kiosk deliberately refuses to navigate away, so the phone is the way out. */
-function SlideQr({ url }: { url: string }) {
+function SlideQr({ url, label = "Scan to open on your phone" }: { url: string; label?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
@@ -1193,7 +1196,7 @@ function SlideQr({ url }: { url: string }) {
   return (
     <div className="flex items-center gap-4 rounded-2xl bg-white/95 p-4">
       <img src={src} alt="" className="h-28 w-28" />
-      <p className="max-w-[9rem] text-lg font-bold leading-tight text-amb-ink">Scan to open on your phone</p>
+      <p className="max-w-[9rem] text-lg font-bold leading-tight text-amb-ink">{label}</p>
     </div>
   );
 }
@@ -3451,8 +3454,10 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
               onClick={() => setOpen(recipe)}
               className="flex flex-col rounded-2xl bg-amb-card p-4 text-left transition active:scale-[0.98]"
             >
+              {recipe.imageUrl ? <img src={recipe.imageUrl} alt="" loading="lazy" className="mb-3 aspect-[4/3] w-full rounded-xl object-cover" /> : null}
               <p className="line-clamp-2 text-xl font-black leading-tight text-amb-ink">{recipe.title}</p>
               <p className="mt-1 line-clamp-2 text-base text-amb-muted">{recipe.summary}</p>
+              {recipe.sourceName ? <p className="mt-1 truncate text-sm font-semibold text-amb-muted">{recipe.sourceName}</p> : null}
               <div className="mt-auto flex flex-wrap gap-2 pt-3">
                 {recipe.totalMinutes ? (
                   <span className="rounded-full bg-amb-well px-3 py-1 text-sm font-bold text-amb-muted">
@@ -3534,12 +3539,19 @@ function MealPicker({
 
 function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose: () => void; onDeleted: () => void }) {
   const [confirming, setConfirming] = useState(false);
+  const [moveMessage, setMoveMessage] = useState<string | null>(null);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
       <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet" onClick={(event) => event.stopPropagation()}>
         <div className="shrink-0 border-b border-mirror-line p-8 pb-6">
-          <h2 className="text-4xl font-black leading-tight text-amb-ink">{recipe.title}</h2>
-          <p className="mt-2 text-xl text-amb-muted">{recipe.summary}</p>
+          <div className="flex gap-6">
+            {recipe.imageUrl ? <img src={recipe.imageUrl} alt="" className="h-36 w-48 shrink-0 rounded-2xl object-cover" /> : null}
+            <div className="min-w-0">
+              <h2 className="text-4xl font-black leading-tight text-amb-ink">{recipe.title}</h2>
+              {recipe.sourceName ? <p className="mt-1 text-lg font-semibold text-amb-muted">From {recipe.sourceName}</p> : null}
+              <p className="mt-2 text-xl text-amb-muted">{recipe.summary}</p>
+            </div>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {recipe.totalMinutes ? <span className="rounded-full bg-amb-well px-4 py-2 text-base font-bold text-amb-ink">{recipe.totalMinutes} min</span> : null}
             {recipe.servings ? <span className="rounded-full bg-amb-well px-4 py-2 text-base font-bold text-amb-ink">Serves {recipe.servings}</span> : null}
@@ -3562,6 +3574,7 @@ function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose:
           </div>
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-amb-muted">Method</p>
+            {!recipe.steps.length ? <p className="mt-4 text-xl font-semibold text-amb-ink">Method: see the original post</p> : null}
             <ol className="mt-4 space-y-4">
               {recipe.steps.map((step, index) => (
                 <li key={index} className="flex gap-4 text-xl leading-snug text-amb-ink">
@@ -3570,10 +3583,19 @@ function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose:
                 </li>
               ))}
             </ol>
+            {recipe.sourceUrl ? <div className="mt-6"><SlideQr url={recipe.sourceUrl} label="Open the original on your phone" /></div> : null}
           </div>
         </div>
 
         <div className="flex shrink-0 gap-3 border-t border-mirror-line p-6">
+          {recipe.sourceUrl ? (
+            <button
+              onClick={() => moveSharedItem("recipe", recipe.id, "trip").then((result) => (result.status === "saved" ? onDeleted() : setMoveMessage(result.message))).catch((err: Error) => setMoveMessage(err.message))}
+              className="min-h-16 w-64 rounded-2xl bg-amb-well text-xl font-bold text-amb-ink active:scale-95"
+            >
+              {moveMessage ?? "This is a trip idea"}
+            </button>
+          ) : null}
           <button
             onClick={() => (confirming ? deleteRecipe(recipe.id).then(onDeleted).catch(() => undefined) : setConfirming(true))}
             className="min-h-16 w-56 rounded-2xl bg-rose-100 text-xl font-black text-rose-700 active:scale-95"
@@ -4017,6 +4039,12 @@ function TravelHubPanel() {
     setInspirations((current) => current.filter((entry) => entry.id !== id));
   }
 
+  async function moveInspiration(id: number) {
+    const result = await moveSharedItem("trip", id, "recipe").catch((err: Error) => ({ status: "failed" as const, message: err.message }));
+    setTravelMessage(result.message);
+    if (result.status === "saved") setInspirations((current) => current.filter((entry) => entry.id !== id));
+  }
+
   async function buildItinerary() {
     setTravelBusy(true);
     setTravelMessage("Building itinerary from saved ideas...");
@@ -4155,6 +4183,11 @@ function TravelHubPanel() {
                       </button>
                       <div className="flex items-center justify-between gap-2 border-t border-amb-border px-3 py-2">
                         <span className="truncate text-sm font-bold text-amb-muted">{item.location || "Saved idea"}</span>
+                        {item.source !== "manual" ? (
+                          <button type="button" onClick={() => moveInspiration(item.id)} className="h-10 shrink-0 rounded-xl bg-amb-well px-3 text-sm font-bold text-amb-ink">
+                            This is a recipe
+                          </button>
+                        ) : null}
                         <button type="button" onClick={() => removeInspiration(item.id)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200" aria-label={`Delete ${item.title}`}>
                           <Trash2 className="h-5 w-5" />
                         </button>
@@ -4827,6 +4860,53 @@ function TravelMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** The last 10 shares from the phone, so a failed one can be seen and retried instead of vanishing. */
+function RecentShares() {
+  const [shares, setShares] = useState<ShareImport[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const load = () => fetchRecentShares().then(setShares).catch(() => undefined);
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function retry(id: number) {
+    setBusy(id);
+    try {
+      await retryShare(id);
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!shares.length) return null;
+  return (
+    <div className="mt-4 rounded-3xl bg-amb-card p-4 shadow-sm">
+      <p className="text-lg font-black text-amb-ink">Recent shares</p>
+      <ul className="mt-2 divide-y divide-amb-border">
+        {shares.map((share) => (
+          <li key={share.id} className="flex items-center gap-3 py-2">
+            <span className={`h-3 w-3 shrink-0 rounded-full ${share.status === "saved" ? "bg-emerald-500" : share.status === "failed" ? "bg-rose-500" : "bg-amb-muted"}`} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-semibold text-amb-ink">{share.title || share.url || "Shared text"}</p>
+              <p className="truncate text-sm text-amb-muted">{share.message}</p>
+            </div>
+            <span className="shrink-0 text-sm text-amb-muted">
+              {new Date(share.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </span>
+            {share.status === "failed" ? (
+              <button type="button" onClick={() => retry(share.id)} disabled={busy === share.id} className="h-10 shrink-0 rounded-xl bg-amb-accent px-4 text-sm font-bold text-amb-accent-ink disabled:opacity-50">
+                Retry
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SettingsPanel({ onChanged }: { onChanged: () => void }) {
   const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [watchlist, setWatchlist] = useState<FinanceWatchlistItem[]>([]);
@@ -4871,6 +4951,7 @@ function SettingsPanel({ onChanged }: { onChanged: () => void }) {
   return (
     <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <SectionTitle icon={Settings} title="Settings" />
+      <RecentShares />
       <div className="mt-4 grid grid-cols-4 gap-3">
         {(integrations?.items || []).map((item) => (
           <div key={item.key} className="rounded-3xl bg-amb-card p-4 shadow-sm">

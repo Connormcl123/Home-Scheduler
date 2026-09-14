@@ -1,4 +1,4 @@
-import type { ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -228,4 +228,16 @@ export function fetchHomePulse() {
 
 export function fetchMorningStory() {
   return request<MorningStory | null>("/api/home/story");
+}
+
+export function fetchRecentShares(after?: number) {
+  return request<ShareImport[]>(`/api/share/recent${after ? `?after=${after}` : ""}`);
+}
+
+export function retryShare(id: number) {
+  return request<ShareResult>(`/api/share/${id}/retry`, { method: "POST" });
+}
+
+export function moveSharedItem(from: ShareKind, id: number, to: ShareKind) {
+  return request<ShareResult>("/api/share/move", { method: "POST", body: JSON.stringify({ from, id, to }) });
 }
