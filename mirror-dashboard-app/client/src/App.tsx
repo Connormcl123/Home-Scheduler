@@ -4864,6 +4864,7 @@ function TravelMetric({ label, value }: { label: string; value: string }) {
 function RecentShares() {
   const [shares, setShares] = useState<ShareImport[]>([]);
   const [busy, setBusy] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = () => fetchRecentShares().then(setShares).catch(() => undefined);
   useEffect(() => {
@@ -4872,9 +4873,13 @@ function RecentShares() {
 
   async function retry(id: number) {
     setBusy(id);
+    setError(null);
     try {
-      await retryShare(id);
+      const result = await retryShare(id);
+      if (result.status !== "saved") setError(result.message);
       await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Retry didn't reach the Pi. Try again.");
     } finally {
       setBusy(null);
     }
@@ -4884,6 +4889,7 @@ function RecentShares() {
   return (
     <div className="mt-4 rounded-3xl bg-amb-card p-4 shadow-sm">
       <p className="text-lg font-black text-amb-ink">Recent shares</p>
+      {error ? <p className="mt-1 text-sm font-semibold text-rose-600 dark:text-rose-300">{error}</p> : null}
       <ul className="mt-2 divide-y divide-amb-border">
         {shares.map((share) => (
           <li key={share.id} className="flex items-center gap-3 py-2">
