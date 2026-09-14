@@ -26,10 +26,17 @@ import { chatInConversation, deleteConversation, getConversation, listConversati
 import { generateTravelDeals, listTravelDeals, startTravelDealScheduler } from "./services/travelDeals.js";
 import { generateMorningStory, getHomePulse, getMorningStory } from "./services/homeBrief.js";
 import { createRecipe, deleteRecipe, generateRecipe, getMealPlan, listRecipes, pushPlanToGrocery, setMeal, suggestWeek } from "./services/recipes.js";
+import { createShareDeps } from "./services/share/deps.js";
+import { SHARE_IMAGE_DIR } from "./services/share/images.js";
+import { handleShare, moveSharedItem, retryShare } from "./services/share/pipeline.js";
+import { listShares } from "./services/share/store.js";
 
 const app = express();
 
 app.use(cors());
+// Shares carry the whole page the phone downloaded, so this one route takes up
+// to 8 MB. It runs first; the global parser then sees the body already parsed.
+app.use("/api/share", express.json({ limit: "8mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", async (_req, res) => {
@@ -607,6 +614,56 @@ app.delete("/api/assistant/conversations/:id", async (req, res, next) => {
   }
 });
 
+const NOTHING_TO_SAVE = "Nothing to save: share a link or some text.";
+
+app.post("/api/share", async (req, res, next) => {
+  try {
+    const url = firstText(req.body, ["url", "URL", "link", "Link", "postUrl", "Post URL"]) || null;
+    const text = firstText(req.body, ["text", "Text"]) || null;
+    const html = typeof req.body?.html === "string" ? req.body.html : null;
+    if (!url && !text) {
+      return res.status(400).json({ status: "failed", kind: null, id: null, title: null, shareId: null, imageUrl: null, message: NOTHING_TO_SAVE });
+    }
+    res.json(await handleShare({ url, html, text }, createShareDeps()));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/share/recent", async (req, res, next) => {
+  try {
+    const after = Number(req.query.after);
+    res.json(await listShares(Number.isInteger(after) && after > 0 ? after : undefined));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/share/move", async (req, res, next) => {
+  try {
+    const { from, to } = req.body ?? {};
+    const id = Number(req.body?.id);
+    const kinds = ["recipe", "trip"];
+    if (!kinds.includes(from) || !kinds.includes(to) || !Number.isInteger(id)) {
+      return res.status(400).json({ status: "failed", kind: null, id: null, title: null, shareId: null, imageUrl: null, message: "Say what to move and where: recipe or trip." });
+    }
+    res.json(await moveSharedItem(from, id, to, createShareDeps()));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/share/:id/retry", async (req, res, next) => {
+  try {
+    res.json(await retryShare(Number(req.params.id), createShareDeps()));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Cover photos saved from shares. fallthrough: false turns a missing file into a 404 instead of the app shell.
+app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d" }));
+
 if (fs.existsSync(config.clientDistPath)) {
   app.use(express.static(config.clientDistPath));
   app.use((req, res, next) => {
@@ -615,7 +672,17 @@ if (fs.existsSync(config.clientDistPath)) {
   });
 }
 
-app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // The Shortcut shows `message` as a notification, so a share must never come back without one.
+  if (req.path.startsWith("/api/share")) {
+    const failure = { status: "failed", kind: null, id: null, title: null, shareId: null, imageUrl: null };
+    if (isBodyParserError(error)) {
+      const tooBig = error.type === "entity.too.large";
+      return res.status(tooBig ? 413 : 400).json({ ...failure, message: tooBig ? "That page was too big to send. Try sharing the link only." : NOTHING_TO_SAVE });
+    }
+    console.error(error);
+    return res.status(500).json({ ...failure, message: "Something went wrong on the Pi saving that share." });
+  }
   if (error instanceof VoiceCommandError) return res.status(error.status).json({ error: error.message });
   if (error instanceof AssistantError) return res.status(error.status).json({ error: error.message });
   console.error(error);
@@ -644,4 +711,12 @@ function firstText(body: unknown, keys: string[]) {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return "";
+}
+
+function isBodyParserError(error: unknown): error is { type: string; status: number } {
+  return Boolean(
+    error && typeof error === "object"
+    && typeof (error as { type?: unknown }).type === "string"
+    && typeof (error as { status?: unknown }).status === "number"
+  );
 }
