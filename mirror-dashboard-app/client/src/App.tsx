@@ -1,7 +1,8 @@
-import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
+import { ShareBanner } from "./ShareBanner";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
@@ -499,6 +500,21 @@ function DashboardApp() {
   const [externalLink, setExternalLink] = useState<string | null>(null);
   // Set when Home hands off to another tab, so that tab can open the exact item.
   const [focusDealId, setFocusDealId] = useState<number | null>(null);
+  // Shares from the phone: a counter the Recipes and Travel lists reload on,
+  // and which item the banner asked to open.
+  const [shareVersion, setShareVersion] = useState(0);
+  const [focusRecipeId, setFocusRecipeId] = useState<number | null>(null);
+  const [savedTripsKey, setSavedTripsKey] = useState(0);
+  const handleShareArrived = useCallback(() => setShareVersion((version) => version + 1), []);
+  const openShare = useCallback((share: ShareImport) => {
+    if (share.kind === "trip") {
+      setSavedTripsKey((key) => key + 1);
+      setView("travel");
+    } else {
+      setFocusRecipeId(share.itemId);
+      setView("recipes");
+    }
+  }, []);
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
@@ -661,11 +677,11 @@ function DashboardApp() {
   const content = useMemo(() => {
     if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
     if (view === "grocery") return <GroceryPanel />;
-    if (view === "recipes") return <RecipesPanel onChanged={refreshDashboard} />;
+    if (view === "recipes") return <RecipesPanel onChanged={refreshDashboard} refreshKey={shareVersion} focusRecipeId={focusRecipeId} />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
     if (view === "notes") return <NotesPanel onChanged={refreshDashboard} />;
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
-    if (view === "travel") return <TravelPanel focusDealId={focusDealId} />;
+    if (view === "travel") return <TravelPanel focusDealId={focusDealId} refreshKey={shareVersion} showSaved={savedTripsKey} />;
     if (view === "assistant") return <AssistantPanel onChanged={refreshDashboard} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return (
@@ -678,7 +694,7 @@ function DashboardApp() {
         }}
       />
     );
-  }, [dashboard, now, view, focusDealId]);
+  }, [dashboard, now, view, focusDealId, shareVersion, focusRecipeId, savedTripsKey]);
 
   const clock = useMemo(() => {
     const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
@@ -905,6 +921,7 @@ function DashboardApp() {
           </div>
         </div>
       )}
+      <ShareBanner onArrived={handleShareArrived} onOpen={openShare} />
       <OnScreenKeyboard
         visible={keyboardVisible}
         getTarget={() => keyboardTargetRef.current}
@@ -3298,7 +3315,7 @@ function dealAccent(name: string) {
   return DEAL_ACCENTS[name] || DEAL_ACCENTS.sky;
 }
 
-function RecipesPanel({ onChanged }: { onChanged: () => void }) {
+function RecipesPanel({ onChanged, refreshKey = 0, focusRecipeId = null }: { onChanged: () => void; refreshKey?: number; focusRecipeId?: number | null }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [plan, setPlan] = useState<MealPlanEntry[]>([]);
   const [prompt, setPrompt] = useState("");
@@ -3317,7 +3334,14 @@ function RecipesPanel({ onChanged }: { onChanged: () => void }) {
 
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
-  }, []);
+  }, [refreshKey]);
+
+  // The share banner asked for this recipe: open it once the list has it.
+  useEffect(() => {
+    if (!focusRecipeId) return;
+    const wanted = recipes.find((recipe) => recipe.id === focusRecipeId);
+    if (wanted) setOpen(wanted);
+  }, [focusRecipeId, recipes]);
 
   async function run(label: string, work: () => Promise<void>) {
     setBusy(label);
@@ -3611,8 +3635,12 @@ function RecipeDialog({ recipe, onClose, onDeleted }: { recipe: Recipe; onClose:
   );
 }
 
-function TravelPanel({ focusDealId }: { focusDealId?: number | null }) {
+function TravelPanel({ focusDealId, refreshKey = 0, showSaved = 0 }: { focusDealId?: number | null; refreshKey?: number; showSaved?: number }) {
   const [tab, setTab] = useState<"ideas" | "planner">("ideas");
+  // Saved trip ideas live on the planner tab; the share banner opens it there.
+  useEffect(() => {
+    if (showSaved) setTab("planner");
+  }, [showSaved]);
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex shrink-0 gap-3">
@@ -3630,7 +3658,7 @@ function TravelPanel({ focusDealId }: { focusDealId?: number | null }) {
           </button>
         ))}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">{tab === "ideas" ? <TravelDealsPanel focusDealId={focusDealId} /> : <TravelHubPanel />}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{tab === "ideas" ? <TravelDealsPanel focusDealId={focusDealId} /> : <TravelHubPanel refreshKey={refreshKey} />}</div>
     </div>
   );
 }
@@ -3978,7 +4006,7 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
   );
 }
 
-function TravelHubPanel() {
+function TravelHubPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [tripType, setTripType] = useState<TravelTripType>("low-effort");
   const [duration, setDuration] = useState(5);
   const [budget, setBudget] = useState(5000);
@@ -4005,7 +4033,7 @@ function TravelHubPanel() {
     fetchTravelInspirations()
       .then(setInspirations)
       .catch(() => setTravelMessage("Saved Instagram ideas could not load."));
-  }, []);
+  }, [refreshKey]);
 
   async function saveInspiration() {
     if (!inspirationUrl.trim() || !inspirationTitle.trim()) {
