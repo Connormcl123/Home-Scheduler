@@ -471,13 +471,7 @@ npm run start
 
 The Express server serves the built React client from `client/dist`.
 
-On the Raspberry Pi, use this command when you also want the ngrok tunnel to start:
-
-```bash
-npm run start:pi
-```
-
-`start:pi` runs `scripts/start-server-with-ngrok.sh`, which starts `ngrok http 4174` in the background if it is not already running, then starts the Express server.
+On the Raspberry Pi the systemd service runs `npm run start`. Deploy from Windows with `scripts/deploy.ps1`; the Pi never builds. Remote access is over Tailscale only, never a public tunnel: the server has no login.
 
 ## Raspberry Pi Deployment
 

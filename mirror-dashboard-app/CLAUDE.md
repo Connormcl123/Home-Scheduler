@@ -10,7 +10,7 @@ npm workspaces monorepo:
 - `server/` — Express 5 + TypeScript (ESM, `tsx` in dev) + SQLite (`sqlite`/`sqlite3`). All routes are defined inline in `server/src/index.ts`; business logic lives in `server/src/services/*` (one file per domain: calendar, weather, news, tasks, notes, grocery, rssFeeds, financeWatchlist, finance/ market quotes, personalFinance, plaidProvider, travelInspirations, travelPlaces, travelLodging, settings, integrations, voiceCommands).
 - `shared/` — TypeScript types shared by both (`@mirror-dashboard/shared`).
 - **Assistant** — `server/src/services/assistant.ts` is a Claude agent that drives the same service layer the REST API uses. It owns its tool-use loop explicitly (rather than the SDK beta tool runner) so the Pi stays on the stable Messages API and every mutation is recorded for the UI to refresh. Add a capability by adding a tool definition plus a handler in that one file. UI is `AssistantPanel` in `App.tsx`, laid out like the Claude app (Recents list + thread); chats are saved in `assistant_conversations` / `assistant_messages` through `services/assistantHistory.ts`.
-- `scripts/` — Pi deployment: systemd unit, kiosk launcher (Chromium + xset no-blank), ngrok tunnel starter.
+- `scripts/` — Pi deployment: systemd unit, kiosk launcher (Chromium + xset no-blank), `deploy.ps1` and `provision-pi.sh`.
 - `alexa-skill/` — Alexa interaction model + Lambda bridge that forwards voice intents to `/api/voice/*` webhooks (Bearer token auth via `ALEXA_WEBHOOK_TOKEN`).
 
 ## Commands
@@ -20,8 +20,8 @@ Run from the repo root (`mirror-dashboard-app/`):
 - `npm run dev` — Vite client on :5174 + Express server on :4174 concurrently (client proxies `/api` to the server).
 - `npm run build` — builds shared → server → client.
 - `npm run start` — production: Express serves `client/dist` on :4174.
-- `npm run start:pi` — same but also starts an ngrok tunnel (Pi only).
-- `npm run typecheck` — all three workspaces. **Run this after changes; there are no automated tests.**
+- `npm test` — server unit tests (Node's test runner through tsx, files in `server/test/`).
+- `npm run typecheck` — all three workspaces. **Run this and `npm test` after changes.**
 - `npm run db:init` — initialize/seed the SQLite database at `data/mirror-dashboard.sqlite`.
 
 ## Conventions & gotchas
