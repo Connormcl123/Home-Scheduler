@@ -129,16 +129,33 @@ test("when Claude is unavailable the share is kept for retry, and retry saves it
   assert.equal(retry.calls.updates[0][1].status, "saved");
 });
 
+test("retry on a failed share whose link is now a duplicate reports it without calling Claude", async () => {
+  const stored = { url: "https://www.instagram.com/reel/x", kind: null, status: "failed" as const, itemId: null, title: null, message: MESSAGES.unavailable, content: "2 tbsp butter", imageUrl: "/media/cover.jpg" };
+  const { deps, calls } = fake({
+    getShare: async () => ({ id: 1, ...stored }),
+    findDuplicate: async () => ({ kind: "recipe", id: 5, title: "Soup" })
+  });
+  const result = await retryShare(1, deps);
+  assert.equal(result.message, "Already in Recipes: Soup");
+  assert.equal(calls.classified.length, 0);
+  assert.equal(calls.recipes.length, 0);
+  assert.equal(calls.updates[0][1].status, "duplicate");
+});
+
 test("moving a recipe to Trips saves the trip first, then removes the recipe", async () => {
   const share = { id: 3, url: "https://www.instagram.com/p/abc", kind: "recipe" as const, status: "saved" as const, itemId: 11, title: "Soup", message: "Saved to Recipes: Soup", content: "Savannah caption", imageUrl: "/media/c.jpg" };
+  const log: string[] = [];
   const { deps, calls } = fake({
     findShareByItem: async () => share,
-    classify: async (input) => { calls.classified.push(input); return { kind: "trip", title: "Savannah", summary: null, sourceName: null, location: "Savannah, GA", notes: null, tags: [] }; }
+    classify: async (input) => { calls.classified.push(input); return { kind: "trip", title: "Savannah", summary: null, sourceName: null, location: "Savannah, GA", notes: null, tags: [] }; },
+    saveTrip: async (trip) => { calls.trips.push(trip); log.push("saveTrip"); return { id: 22, title: trip.title }; },
+    deleteItem: async (kind, id) => { log.push(`delete:${kind}:${id}`); }
   });
   const result = await moveSharedItem("recipe", 11, "trip", deps);
   assert.equal(result.message, "Saved to Trips: Savannah");
   assert.equal((calls.classified[0] as { forceKind: string }).forceKind, "trip");
-  assert.deepEqual(calls.deleted, ["recipe:11"]);
+  assert.deepEqual(log, ["saveTrip", "delete:recipe:11"]);
+  assert.equal(calls.trips.length, 1);
   assert.equal(calls.updates[0][1].kind, "trip");
 });
 

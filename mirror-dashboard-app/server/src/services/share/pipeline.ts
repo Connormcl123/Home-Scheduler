@@ -186,6 +186,18 @@ export async function retryShare(id: number, deps: ShareDeps): Promise<ShareResu
   const share = await deps.getShare(id);
   if (!share) return failed(MESSAGES.gone);
   if (share.status !== "failed" || !share.content) return toResult(share, share.id);
+  if (share.url) {
+    // The link may have been shared again and saved while this one sat failed; don't save it twice.
+    const duplicate = await deps.findDuplicate(share.url);
+    if (duplicate) {
+      const entry: Outcome = {
+        kind: duplicate.kind, status: "duplicate", itemId: duplicate.id, title: duplicate.title,
+        message: `Already in ${label(duplicate.kind)}: ${duplicate.title}`, content: null, imageUrl: null
+      };
+      await deps.update(share.id, { url: share.url, ...entry });
+      return toResult(entry, share.id);
+    }
+  }
   let extraction: ShareExtraction;
   try {
     extraction = await deps.classify({ url: share.url, text: share.content });

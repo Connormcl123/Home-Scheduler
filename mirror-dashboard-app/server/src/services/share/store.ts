@@ -61,10 +61,14 @@ export async function getShare(id: number) {
   return row ? toRecord(row) : null;
 }
 
-/** The most recent share that produced this recipe or trip, so the wall can move it. */
+/** The most recent share that produced this recipe or trip, so the wall can move it. A later re-share of the
+ *  same link is recorded as a duplicate with no content, so it is skipped in favour of the original. */
 export async function findShareByItem(kind: ShareKind, itemId: number) {
   const db = await getDb();
-  const row = await db.get<ShareRow>("SELECT * FROM share_imports WHERE kind = ? AND item_id = ? ORDER BY id DESC LIMIT 1", kind, itemId);
+  const row = await db.get<ShareRow>(
+    "SELECT * FROM share_imports WHERE kind = ? AND item_id = ? AND content IS NOT NULL ORDER BY id DESC LIMIT 1",
+    kind, itemId
+  );
   return row ? toRecord(row) : null;
 }
 

@@ -35,11 +35,17 @@ test("finds duplicates in recipes and trips", async () => {
 
 test("records, updates, lists and looks up shares", async () => {
   const first = await store.recordShare({ url: "https://a.example", kind: null, status: "failed", itemId: null, title: null, message: "Couldn't read that one right now. It's in Recent shares to retry.", content: "caption text", imageUrl: null });
-  const second = await store.recordShare({ url: "https://b.example", kind: "recipe", status: "saved", itemId: 1, title: "Soup", message: "Saved to Recipes: Soup", content: null, imageUrl: "/media/x.jpg" });
+  const second = await store.recordShare({ url: "https://b.example", kind: "recipe", status: "saved", itemId: 1, title: "Soup", message: "Saved to Recipes: Soup", content: "the full caption", imageUrl: "/media/x.jpg" });
   assert.equal((await store.getShare(first))?.content, "caption text");
   assert.deepEqual((await store.listShares(first)).map((share) => share.id), [second]);
   assert.deepEqual((await store.listShares()).map((share) => share.id), [second, first]);
   assert.equal((await store.findShareByItem("recipe", 1))?.id, second);
   await store.updateShare(first, { url: "https://a.example", kind: "trip", status: "saved", itemId: 7, title: "Trip", message: "Saved to Trips: Trip", content: "caption text", imageUrl: null });
   assert.equal((await store.getShare(first))?.status, "saved");
+});
+
+test("findShareByItem skips a later re-share recorded as a duplicate with no content", async () => {
+  const saved = await store.recordShare({ url: "https://c.example", kind: "recipe", status: "saved", itemId: 42, title: "Soup", message: "Saved to Recipes: Soup", content: "the full caption", imageUrl: null });
+  await store.recordShare({ url: "https://c.example?again", kind: "recipe", status: "duplicate", itemId: 42, title: "Soup", message: "Already in Recipes: Soup", content: null, imageUrl: null });
+  assert.equal((await store.findShareByItem("recipe", 42))?.id, saved);
 });
