@@ -28,11 +28,14 @@ If a site still refuses (Allrecipes, Serious Eats and their sister sites block a
 | Notification | Meaning |
 |---|---|
 | Saved to Recipes: … / Saved to Trips: … | Saved; the wall shows a banner within 30 seconds |
-| Already in Recipes: … | That link was saved before |
+| Already in Recipes: … / Already in Trips: … | That link was saved before |
 | That site blocked the Pi. Share it from Safari so your phone sends the page. | Share from Safari |
 | Instagram hid that post. Copy the caption and share the text instead. | Private or hidden post |
 | Couldn't read that one right now. It's in Recent shares to retry. | Claude was unavailable; retry from Settings on the wall |
 | Couldn't find a recipe or trip idea in that post | Nothing to save |
+| That page was too big to send. Try sharing the link only. | The page was over 8 MB; share just the link |
+| Nothing to save: share a link or some text. | The Shortcut sent no link and no text; check its Request Body fields |
+| Something went wrong on the Pi saving that share. | An unexpected error on the Pi; try again, and check Recent shares in Settings on the wall |
 
 A wrong guess is fixed on the wall: **This is a trip idea** on a recipe, or **This is a recipe** on a trip idea.
 

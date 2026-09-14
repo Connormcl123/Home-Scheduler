@@ -8,7 +8,7 @@ Type=simple
 WorkingDirectory=/home/connor/Home-Scheduler/mirror-dashboard-app
 Environment=NODE_ENV=production
 Environment=PORT=4174
-ExecStart=/usr/bin/npm run start:pi
+ExecStart=/usr/bin/npm run start
 Restart=always
 RestartSec=10
 User=connor

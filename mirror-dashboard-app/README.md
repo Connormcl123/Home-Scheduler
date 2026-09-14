@@ -456,7 +456,7 @@ If touch still feels laggy, run the built production app instead of Vite dev mod
 
 ```bash
 npm run build
-npm run start:pi
+npm run start
 ./scripts/start-kiosk.sh
 ```
 
@@ -491,7 +491,7 @@ cd mirror-dashboard-app
 npm install
 cp .env.example .env
 npm run build
-npm run start:pi
+npm run start
 ```
 
 Then open Chromium on the Pi:
