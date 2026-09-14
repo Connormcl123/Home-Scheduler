@@ -683,6 +683,12 @@ app.use((error: unknown, req: express.Request, res: express.Response, _next: exp
     console.error(error);
     return res.status(500).json({ ...failure, message: "Something went wrong on the Pi saving that share." });
   }
+  // Saved photos: a missing file is a plain 404, not a server error.
+  if (req.path.startsWith("/media")) {
+    const status = error && typeof error === "object" && typeof (error as { status?: unknown }).status === "number" ? (error as { status: number }).status : 500;
+    if (status >= 500) console.error(error);
+    return res.sendStatus(status);
+  }
   if (error instanceof VoiceCommandError) return res.status(error.status).json({ error: error.message });
   if (error instanceof AssistantError) return res.status(error.status).json({ error: error.message });
   console.error(error);
