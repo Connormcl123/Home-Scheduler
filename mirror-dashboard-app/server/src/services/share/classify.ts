@@ -11,7 +11,7 @@ export class ClassifyUnavailableError extends Error {}
 
 export type CreateMessage = (
   body: Anthropic.MessageCreateParamsNonStreaming,
-  options?: { timeout?: number }
+  options?: { timeout?: number; maxRetries?: number }
 ) => Promise<Pick<Anthropic.Message, "content">>;
 
 // Structured outputs have no nulls here: 0 and "" mean unknown, and toExtraction turns them into null.
@@ -119,7 +119,7 @@ export async function classifyShare(
         system,
         messages: [{ role: "user", content: `${input.url ? `Link: ${input.url}\n\n` : ""}${input.text.slice(0, 20000)}` }]
       },
-      { timeout: 12_000 }
+      { timeout: 12_000, maxRetries: 0 }
     );
   } catch (error) {
     throw new ClassifyUnavailableError(error instanceof Error ? error.message : "Claude could not be reached.");

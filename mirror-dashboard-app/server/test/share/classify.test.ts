@@ -47,6 +47,16 @@ test("classifyShare tells the model about a forced kind", async () => {
   assert.match(system, /this is a trip/i);
 });
 
+test("classifyShare passes maxRetries: 0 so the SDK's own retries can't blow the 12s Claude budget", async () => {
+  let options: unknown;
+  const create = (async (_body: unknown, opts: unknown) => {
+    options = opts;
+    return { content: [{ type: "text", text: JSON.stringify(soup) }] };
+  }) as never;
+  await classifyShare({ url: null, text: "caption" }, create);
+  assert.deepEqual(options, { timeout: 12_000, maxRetries: 0 });
+});
+
 test("classifyShare turns API failures and empty answers into ClassifyUnavailableError", async () => {
   const failing = (async () => { throw new Error("529 overloaded"); }) as never;
   await assert.rejects(classifyShare({ url: null, text: "x" }, failing), ClassifyUnavailableError);

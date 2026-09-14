@@ -104,6 +104,47 @@ test("a hidden Instagram post asks for the caption", async () => {
   assert.equal(result.message, MESSAGES.hidden);
 });
 
+// The real Shortcut always sends `text` = Shortcut Input, which for a shared link is the link
+// itself. That link text must not be treated as content, or "blocked"/"hidden" never fire.
+test("a blocked site is reported even with the real Shortcut payload (url, a short block page as html, and the link as text)", async () => {
+  const { deps, calls } = fake({ fetchPage: async () => ({ status: 403, html: "<title>Simple Page</title>" }) });
+  const result = await handleShare(
+    {
+      url: "https://www.allrecipes.com/recipe/2/",
+      html: "<html><head><title>Simple Page</title></head><body><p>Access denied</p></body></html>",
+      text: "https://www.allrecipes.com/recipe/2/"
+    },
+    deps
+  );
+  assert.equal(result.status, "failed");
+  assert.equal(result.message, MESSAGES.blocked);
+  assert.equal(calls.classified.length, 0);
+});
+
+test("a hidden Instagram post is reported even with the real Shortcut payload (url, a login page as html, and the link as text)", async () => {
+  const { deps, calls } = fake({ fetchPage: async () => ({ status: 200, html: "<html><head></head><body>Log in to Instagram</body></html>" }) });
+  const result = await handleShare(
+    {
+      url: "https://www.instagram.com/p/private/",
+      html: "<html><head></head><body>Log in to Instagram</body></html>",
+      text: "https://www.instagram.com/p/private/"
+    },
+    deps
+  );
+  assert.equal(result.message, MESSAGES.hidden);
+  assert.equal(calls.classified.length, 0);
+});
+
+const BLOG_PAGE = `<html><head><title>Soup</title></head><body>${"<p>This soup takes forty minutes and feeds a crowd on a cold winter night. </p>".repeat(10)}</body></html>`;
+
+test("a normal page is read even when the Shortcut's shared text is just the link, and the link is never sent to Claude", async () => {
+  const { deps, calls } = fake({ classify: async (input) => { calls.classified.push(input); return soup; } });
+  const result = await handleShare({ url: "https://blog.example/soup", html: BLOG_PAGE, text: "https://blog.example/soup" }, deps);
+  assert.equal(result.status, "saved");
+  const classified = calls.classified[0] as { text: string };
+  assert.ok(!classified.text.includes("https://blog.example/soup"), `text should not contain the URL: ${classified.text}`);
+});
+
 test("shared text alone is classified", async () => {
   const { deps, calls } = fake({ classify: async (input) => { calls.classified.push(input); return soup; } });
   const result = await handleShare({ url: null, html: null, text: "Creamy soup\n2 tbsp butter" }, deps);

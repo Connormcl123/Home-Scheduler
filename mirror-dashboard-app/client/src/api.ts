@@ -16,7 +16,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     // Surface the server's message when it sends one - the kiosk shows this text.
     const detail = await response.json().catch(() => null);
-    const message = detail && typeof detail.error === "string" ? detail.error : null;
+    const message = detail && typeof detail.error === "string" ? detail.error : detail && typeof detail.message === "string" ? detail.message : null;
     throw new Error(message || `${path} failed: ${response.status}`);
   }
   if (response.status === 204) return undefined as T;

@@ -662,7 +662,8 @@ app.post("/api/share/:id/retry", async (req, res, next) => {
 });
 
 // Cover photos saved from shares. fallthrough: false turns a missing file into a 404 instead of the app shell.
-app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d" }));
+// The file type is trusted from the remote server's Content-Type, so nosniff stops the browser guessing another one.
+app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
 
 if (fs.existsSync(config.clientDistPath)) {
   app.use(express.static(config.clientDistPath));

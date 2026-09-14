@@ -9,7 +9,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": "http://localhost:4174"
+      "/api": "http://localhost:4174",
+      "/media": "http://localhost:4174"
     }
   }
 });

@@ -12,13 +12,15 @@ Apple only installs signed shortcut files, and signing needs a Mac, so edit the 
 2. Tap the **(i)** details button: turn on **Show in Share Sheet** and allow **URLs**, **Safari web pages** and **Text**.
 3. Remove the old actions and add these, in order:
    1. **Get URLs from Input** (input: Shortcut Input). Then **Set Variable** `Link`.
-   2. **Get Contents of URL** with URL `Link` and method **GET**. This downloads the page on your phone, which gets past sites that block the Pi. Then **Get Text from Input** and **Set Variable** `Page`.
+   2. **If** `Link` **has any value**: **Get Contents of URL** with URL `Link` and method **GET**, then **Get Text from Input**, then **Set Variable** `Page`. **End If.** (With no link, `Page` stays empty and only the text is sent.) This downloads the page on your phone, which gets past sites that block the Pi.
    3. **Get Contents of URL** with:
       - URL: `http://100.81.206.101:4174/api/share`
       - Method: **POST**
       - Request Body: **JSON**, with three Text fields: `url` = `Link`, `html` = `Page`, `text` = `Shortcut Input`
    4. **Get Dictionary Value** for key `message` from the result.
    5. **Show Notification** with the Dictionary Value.
+
+   Whether **Get Text from Input** passes the page's source code or only its visible text is checked during the first real shares; if only text arrives, recipe sites still save through Claude but without their structured data.
 4. Tap **Done**.
 
 If a site still refuses (Allrecipes, Serious Eats and their sister sites block anything that isn't a browser), share it from **Safari** instead. As a fallback, add **Run JavaScript on Web Page** with `completion(document.documentElement.outerHTML);` and send its result as `html`; that action only runs on Safari pages.

@@ -77,10 +77,17 @@ function toResult(entry: Outcome, shareId: number): ShareResult {
   return { status: entry.status, kind: entry.kind, id: entry.itemId, title: entry.title, message: entry.message, shareId, imageUrl: entry.imageUrl };
 }
 
+// A phone-sent, non-Instagram page below this many characters of visible text is probably a
+// bot-check or login wall, not real content, so it's dropped and the Pi fetches the page itself.
+const MIN_PAGE_TEXT = 400;
+
 /** Get the words to read, in the order: the page the phone sent, Instagram's embed page, the Pi's own fetch, the shared text. */
 async function gather(input: ShareInput, url: string | null, deps: ShareDeps): Promise<Gathered> {
   const post = url ? instagramPost(url) : null;
   let html = input.html && input.html.length > 200 ? input.html : null;
+  if (html && !post && !findJsonLdRecipe(html) && readableText(html).trim().length < MIN_PAGE_TEXT) {
+    html = null;
+  }
   let embed: InstagramEmbed | null = null;
   let problem: Gathered["problem"] = null;
 
@@ -97,8 +104,10 @@ async function gather(input: ShareInput, url: string | null, deps: ShareDeps): P
   const jsonLd = html ? findJsonLdRecipe(html) : null;
   // A phone-sent Instagram page only has the caption in its preview tag.
   const pageText = embed ? embed.caption : html ? (post ? metaContent(html, ["og:description"]) ?? "" : readableText(html)) : "";
-  const shared = input.text?.trim() ?? "";
-  const text = [pageText, shared && shared !== pageText ? shared : ""].filter(Boolean).join("\n\n").slice(0, 20000);
+  // Shared text that is only a link (the Shortcut's Input for a shared link is the link itself) is not content.
+  let shared = input.text?.trim() ?? "";
+  if (tidyUrl(shared) !== null) shared = "";
+  const text = [pageText, shared && shared !== pageText.trim() ? shared : ""].filter(Boolean).join("\n\n").slice(0, 20000);
 
   return {
     url,
