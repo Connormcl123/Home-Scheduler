@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
+import { guardWindowOpen } from "./kioskGuard";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
@@ -569,7 +570,11 @@ function DashboardApp() {
       setExternalLink(url.href);
     }
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    const restoreOpen = guardWindowOpen(window, setExternalLink);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      restoreOpen();
+    };
   }, []);
 
   useEffect(() => {
