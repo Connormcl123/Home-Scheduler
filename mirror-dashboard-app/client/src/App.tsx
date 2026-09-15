@@ -5,9 +5,11 @@ import { ShareBanner } from "./ShareBanner";
 import { SlideQr } from "./SlideQr";
 import { mergeNavOrder } from "./navOrder";
 import { PackagesPanel } from "./packages/PackagesPanel";
+import { PackageMeter } from "./packages/PackageMeter";
+import { homeSlots } from "./packages/packageText";
 import { guardWindowOpen } from "./kioskGuard";
 import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
-import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, PackagesResponse, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Package, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -59,6 +61,7 @@ import {
   moveCalendarEvent,
   fetchHomePulse,
   fetchMorningStory,
+  fetchPackages,
   fetchTravelDeals,
   refreshTravelDeals,
   sendAssistantMessage,
@@ -1076,6 +1079,15 @@ function HomePanel({
     fetchHomePulse().then(setPulse).catch(() => setPulse(null));
   }, []);
 
+  // Packages keep their own refresh: the wall should notice a delivery within a couple of minutes.
+  const [packages, setPackages] = useState<PackagesResponse | null>(null);
+  useEffect(() => {
+    const load = () => fetchPackages().then(setPackages).catch(() => undefined);
+    load();
+    const timer = window.setInterval(load, 120_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   // Auto-play once per day, and only in the morning, so it never ambushes
   // anyone walking past at dinner time.
   useEffect(() => {
@@ -1096,6 +1108,8 @@ function HomePanel({
   const weather = dashboard.weather;
   const today = weather.daily[0];
   const cards = pulse?.cards ?? [];
+  const active = packages?.active ?? [];
+  const slots = homeSlots(active.length);
   const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
   const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? "";
   const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -1139,7 +1153,29 @@ function HomePanel({
 
       {/* Ranked cards. The model decides what appears and in what order. */}
       <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-6">
-        {cards.slice(0, 6).map((card, index) => {
+        {/* Pinned, not ranked: whenever something is on its way it sits in the right-hand column. */}
+        {slots > 0 && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...rise(0), delay: 0.32 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onNavigate("packages")}
+            className={`col-start-3 row-start-1 ${slots === 2 ? "row-span-2" : ""} flex min-h-0 flex-col gap-4 overflow-hidden rounded-[30px] border border-amb-border bg-amb-card px-[30px] py-7 text-left shadow-ambient`}
+          >
+            <span className="flex items-center gap-2.5 text-lg font-semibold text-amb-muted">
+              <Package className="h-5 w-5" />
+              Packages
+            </span>
+            {active.slice(0, 3).map((pkg) => <PackageMeter key={pkg.id} pkg={pkg} now={now} animate />)}
+            {active.length > 3 && <p className="mt-auto text-lg font-semibold text-amb-muted">+{active.length - 3} more in Packages</p>}
+            {packages?.gmail.status === "needs_reconnect" && (
+              <p className="text-base font-medium text-amber-700 dark:text-amber-300">Gmail disconnected, showing last known</p>
+            )}
+          </motion.button>
+        )}
+        {cards.slice(0, 6 - slots).map((card, index) => {
           const look = CARD_LOOK[card.kind] || CARD_LOOK.note;
           const Icon = look.icon;
           const countdown = card.startsAt ? countdownTo(card.startsAt, now) : null;
@@ -1176,7 +1212,7 @@ function HomePanel({
           );
         })}
 
-        {!cards.length && (
+        {!cards.length && !slots && (
           <div className="col-span-3 row-span-2 flex items-center justify-center rounded-[30px] border border-amb-border bg-amb-card text-2xl text-amb-muted">
             Working out what matters today...
           </div>

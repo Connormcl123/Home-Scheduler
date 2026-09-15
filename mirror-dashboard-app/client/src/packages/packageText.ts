@@ -115,3 +115,8 @@ export function trackingUrl(pkg: Pick<PackageView, "carrier" | "store" | "tracki
   }
   return null;
 }
+
+/** Home grid slots for the package card: one package fits one slot; more take the right-hand column. */
+export function homeSlots(count: number): 0 | 1 | 2 {
+  return count === 0 ? 0 : count === 1 ? 1 : 2;
+}

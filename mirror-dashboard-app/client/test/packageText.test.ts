@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PackageView } from "@mirror-dashboard/shared";
-import { arrivalLine, arrivalPhrase, groupByDay, stepIndex, trackingUrl, updatedAgo } from "../src/packages/packageText";
+import { arrivalLine, arrivalPhrase, groupByDay, homeSlots, stepIndex, trackingUrl, updatedAgo } from "../src/packages/packageText";
 
 // Tuesday 15 September 2026, 10:00 local time.
 const now = new Date(2026, 8, 15, 10, 0);
@@ -73,4 +73,8 @@ test("tracking links go to the carrier, or the Amazon order", () => {
   assert.equal(trackingUrl({ carrier: "FedEx", store: null, trackingNumber: "7777", orderNumber: null }), "https://www.fedex.com/fedextrack/?trknbr=7777");
   assert.equal(trackingUrl({ carrier: "Amazon", store: "Amazon", trackingNumber: "TBA1", orderNumber: "112-1" }), "https://www.amazon.com/gp/your-account/order-details?orderID=112-1");
   assert.equal(trackingUrl({ carrier: null, store: "Etsy", trackingNumber: null, orderNumber: "5" }), null);
+});
+
+test("the Home card takes one slot for one package and the right-hand column for more", () => {
+  assert.deepEqual([0, 1, 2, 3, 7].map(homeSlots), [0, 1, 2, 2, 2]);
 });
