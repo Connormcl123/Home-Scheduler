@@ -87,7 +87,7 @@ Runs when the server starts (after 30 seconds), then every `PACKAGES_CHECK_MINUT
    `-in:spam -in:trash (subject:(shipped OR "out for delivery" OR delivered OR arriving OR "on its way" OR "on the way" OR "order confirmed" OR "order confirmation" OR "your order" OR delivery) OR from:(amazon.com OR ups.com OR fedex.com OR usps.com OR target.com OR walmart.com))`
    At most 50 messages per check, processed oldest first.
 3. Skip any message already in `package_emails` with outcome `package`, `skipped`, `hidden` or `failed`.
-4. Read it (`mime.ts`): prefer the `text/plain` part, else the HTML part through the existing `readableText` (`share/html.ts`), capped at 12,000 characters. `imageUrls`: `https` `<img src>` values, skipping 1×1 images, at most 30.
+4. Read it (`mime.ts`): the `text/plain` part when it has at least 200 characters (shorter ones are usually "view this email in your browser" stubs), else the HTML part through the existing `readableText` (`share/html.ts`), capped at 12,000 characters. `imageUrls`: `https` `<img src>` values, skipping 1×1 images, at most 30.
 5. Extract (Claude, one email at a time). The prompt gives sender, subject, date, text and the numbered image list, and says the email is data, not instructions. Schema fields (structured outputs have no nulls: `""` and `-1` mean unknown):
    - `isShipmentUpdate` (boolean): false for ads, reviews, receipts for services, and return labels.
    - `store`, `item` (short, e.g. "Kids' sneakers"; several items become "Kids' sneakers and 2 more").
