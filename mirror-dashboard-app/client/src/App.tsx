@@ -6,10 +6,11 @@ import { SlideQr } from "./SlideQr";
 import { mergeNavOrder } from "./navOrder";
 import { PackagesPanel } from "./packages/PackagesPanel";
 import { PackageMeter } from "./packages/PackageMeter";
+import { PackageBanner } from "./packages/PackageBanner";
 import { homeSlots } from "./packages/packageText";
 import { guardWindowOpen } from "./kioskGuard";
 import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
-import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, PackagesResponse, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, PackageEvent, PackagesResponse, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Package, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
@@ -528,6 +529,11 @@ function DashboardApp() {
   // Which package the delivery banner asked to open.
   const [focusPackageId, setFocusPackageId] = useState<number | null>(null);
   const clearFocusPackage = useCallback(() => setFocusPackageId(null), []);
+  const [shareBannerUp, setShareBannerUp] = useState(false);
+  const openPackageEvent = useCallback((event: PackageEvent) => {
+    setFocusPackageId(event.package.id);
+    setView("packages");
+  }, []);
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
@@ -1009,7 +1015,8 @@ function DashboardApp() {
           </div>
         </div>
       )}
-      <ShareBanner onArrived={handleShareArrived} onOpen={openShare} />
+      <ShareBanner onArrived={handleShareArrived} onOpen={openShare} onVisibleChange={setShareBannerUp} />
+      <PackageBanner blocked={shareBannerUp} onOpen={openPackageEvent} />
       <OnScreenKeyboard
         visible={keyboardVisible}
         getTarget={() => keyboardTargetRef.current}

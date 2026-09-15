@@ -1,4 +1,4 @@
-import type { PackageStatus, PackageView } from "@mirror-dashboard/shared";
+import type { PackageEvent, PackageEventsResponse, PackageStatus, PackageView } from "@mirror-dashboard/shared";
 
 export const STEPS: Array<{ status: PackageStatus; label: string }> = [
   { status: "ordered", label: "Ordered" },
@@ -119,4 +119,22 @@ export function trackingUrl(pkg: Pick<PackageView, "carrier" | "store" | "tracki
 /** Home grid slots for the package card: one package fits one slot; more take the right-hand column. */
 export function homeSlots(count: number): 0 | 1 | 2 {
   return count === 0 ? 0 : count === 1 ? 1 : 2;
+}
+
+/** The event worth announcing from a batch: the newest one. */
+export function newestEvent(events: PackageEvent[]): PackageEvent | null {
+  return events.reduce<PackageEvent | null>((best, event) => (!best || event.id > best.id ? event : best), null);
+}
+
+export function eventLabel(event: PackageEvent): string {
+  return `${event.status === "delivered" ? "Delivered" : "Out for delivery"}: ${event.package.item}`;
+}
+
+/** The first poll only records where the list ends, so a restart never replays old news. */
+export function nextBanner(lastId: number | null, response: PackageEventsResponse): { lastId: number; announce: PackageEvent | null } {
+  if (lastId === null) return { lastId: response.lastId, announce: null };
+  return {
+    lastId: Math.max(lastId, response.lastId),
+    announce: newestEvent(response.events.filter((event) => event.id > lastId))
+  };
 }

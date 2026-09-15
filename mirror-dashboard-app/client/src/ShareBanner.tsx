@@ -9,7 +9,7 @@ import { fetchRecentShares } from "./api";
  * dashboard refresh is every 5 minutes) and shows the newest saved one for
  * 20 seconds. Tapping it opens the item.
  */
-export function ShareBanner({ onArrived, onOpen }: { onArrived: (share: ShareImport) => void; onOpen: (share: ShareImport) => void }) {
+export function ShareBanner({ onArrived, onOpen, onVisibleChange }: { onArrived: (share: ShareImport) => void; onOpen: (share: ShareImport) => void; onVisibleChange?: (visible: boolean) => void }) {
   const [current, setCurrent] = useState<ShareImport | null>(null);
   const lastId = useRef<number | null>(null);
 
@@ -50,6 +50,10 @@ export function ShareBanner({ onArrived, onOpen }: { onArrived: (share: ShareImp
     const timer = window.setTimeout(() => setCurrent(null), 20_000);
     return () => window.clearTimeout(timer);
   }, [current]);
+
+  useEffect(() => {
+    onVisibleChange?.(current !== null);
+  }, [current, onVisibleChange]);
 
   if (!current) return null;
   // The wrapper does the centring, because Motion's transform would override a translate class on the button.

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { PackageView } from "@mirror-dashboard/shared";
-import { arrivalLine, arrivalPhrase, groupByDay, homeSlots, stepIndex, trackingUrl, updatedAgo } from "../src/packages/packageText";
+import type { PackageEvent, PackageView } from "@mirror-dashboard/shared";
+import { arrivalLine, arrivalPhrase, eventLabel, groupByDay, homeSlots, newestEvent, nextBanner, stepIndex, trackingUrl, updatedAgo } from "../src/packages/packageText";
 
 // Tuesday 15 September 2026, 10:00 local time.
 const now = new Date(2026, 8, 15, 10, 0);
@@ -77,4 +77,16 @@ test("tracking links go to the carrier, or the Amazon order", () => {
 
 test("the Home card takes one slot for one package and the right-hand column for more", () => {
   assert.deepEqual([0, 1, 2, 3, 7].map(homeSlots), [0, 1, 2, 2, 2]);
+});
+
+test("the banner starts where the list ends, then announces the newest new event", () => {
+  const event = (id: number, status: PackageEvent["status"], item: string): PackageEvent => ({ id, status, createdAt: now.toISOString(), package: pkg({ item }) });
+  assert.deepEqual(nextBanner(null, { lastId: 9, events: [] }), { lastId: 9, announce: null });
+  const later = nextBanner(9, { lastId: 11, events: [event(10, "out_for_delivery", "Lamp"), event(11, "delivered", "Kids' sneakers")] });
+  assert.equal(later.lastId, 11);
+  assert.equal(later.announce?.id, 11);
+  assert.equal(eventLabel(later.announce!), "Delivered: Kids' sneakers");
+  assert.equal(eventLabel(event(10, "out_for_delivery", "Lamp")), "Out for delivery: Lamp");
+  assert.deepEqual(nextBanner(11, { lastId: 11, events: [] }), { lastId: 11, announce: null });
+  assert.equal(newestEvent([]), null);
 });
