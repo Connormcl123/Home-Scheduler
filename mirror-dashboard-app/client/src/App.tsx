@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
 import { guardWindowOpen } from "./kioskGuard";
+import { acceptsDragScroll, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
@@ -624,17 +625,57 @@ function DashboardApp() {
     return () => document.removeEventListener("focusin", onFocus);
   }, []);
 
+  // labwc runs the touchscreen with mouseEmulation="yes", so a finger arrives
+  // as a left-button mouse and Chromium never scrolls it natively. Drag to
+  // scroll here for touch and mouse alike, with a short fling on release.
   useEffect(() => {
-    let activeScroll: { pointerId: number; lastY: number; startY: number; element: HTMLElement; moved: boolean } | null = null;
+    let activeScroll: {
+      pointerId: number;
+      lastY: number;
+      startY: number;
+      element: HTMLElement;
+      moved: boolean;
+      samples: ScrollSample[];
+    } | null = null;
     let suppressNextClick = false;
+    let flingFrame = 0;
+
+    function stopFling() {
+      if (flingFrame) window.cancelAnimationFrame(flingFrame);
+      flingFrame = 0;
+    }
+
+    function startFling(element: HTMLElement, velocity: number) {
+      let last = performance.now();
+      const frame = (now: number) => {
+        const step = flingStep(velocity, now - last);
+        last = now;
+        velocity = step.velocity;
+        element.scrollTop -= step.distance;
+        const atEdge = velocity > 0
+          ? element.scrollTop <= 0
+          : element.scrollTop >= element.scrollHeight - element.clientHeight - 1;
+        flingFrame = velocity !== 0 && !atEdge ? window.requestAnimationFrame(frame) : 0;
+      };
+      flingFrame = window.requestAnimationFrame(frame);
+    }
 
     function onPointerDown(event: PointerEvent) {
-      if (!event.isPrimary || event.pointerType === "mouse") return;
+      // A touch during a fling catches the list, like a phone.
+      stopFling();
+      if (!acceptsDragScroll(event)) return;
       const target = event.target;
       if (!(target instanceof HTMLElement) || shouldSkipTouchScroll(target)) return;
       const element = findScrollableParent(target);
       if (!element) return;
-      activeScroll = { pointerId: event.pointerId, lastY: event.clientY, startY: event.clientY, element, moved: false };
+      activeScroll = {
+        pointerId: event.pointerId,
+        lastY: event.clientY,
+        startY: event.clientY,
+        element,
+        moved: false,
+        samples: [{ time: event.timeStamp, y: event.clientY }]
+      };
     }
 
     function onPointerMove(event: PointerEvent) {
@@ -643,6 +684,8 @@ function DashboardApp() {
       if (Math.abs(deltaY) < 1) return;
       activeScroll.element.scrollTop -= deltaY;
       activeScroll.lastY = event.clientY;
+      activeScroll.samples.push({ time: event.timeStamp, y: event.clientY });
+      if (activeScroll.samples.length > 12) activeScroll.samples.shift();
       if (Math.abs(event.clientY - activeScroll.startY) > 6) {
         activeScroll.moved = true;
         event.preventDefault();
@@ -656,6 +699,10 @@ function DashboardApp() {
         window.setTimeout(() => {
           suppressNextClick = false;
         }, 120);
+        if (event.type === "pointerup") {
+          const velocity = releaseVelocity(activeScroll.samples, event.timeStamp);
+          if (velocity) startFling(activeScroll.element, velocity);
+        }
       }
       activeScroll = null;
     }
@@ -667,17 +714,26 @@ function DashboardApp() {
       suppressNextClick = false;
     }
 
+    // With emulated touch, pressing an image or link starts a native drag that
+    // cancels the scroll. Nothing on the dashboard uses drag and drop.
+    function onDragStart(event: DragEvent) {
+      event.preventDefault();
+    }
+
     document.addEventListener("pointerdown", onPointerDown, { passive: true });
     document.addEventListener("pointermove", onPointerMove, { passive: false });
     document.addEventListener("pointerup", endScroll, { passive: true });
     document.addEventListener("pointercancel", endScroll, { passive: true });
     document.addEventListener("click", onClick, true);
+    document.addEventListener("dragstart", onDragStart, true);
     return () => {
+      stopFling();
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", endScroll);
       document.removeEventListener("pointercancel", endScroll);
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("dragstart", onDragStart, true);
     };
   }, []);
 
