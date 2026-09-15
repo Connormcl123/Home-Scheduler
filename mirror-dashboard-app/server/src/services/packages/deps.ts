@@ -1,10 +1,12 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
+import type { PackagesResponse } from "@mirror-dashboard/shared";
+import { config } from "../../config.js";
 import { getConnection, recordCheck } from "../gmail/account.js";
 import { gmail } from "../gmail/deps.js";
 import { parseGmailMessage } from "../gmail/mime.js";
 import { SHARE_IMAGE_DIR, saveShareImage } from "../share/images.js";
-import type { CheckerDeps } from "./checker.js";
+import { checkOnce, type CheckResult, type CheckerDeps } from "./checker.js";
 import { extractPackageUpdate } from "./extract.js";
 import * as store from "./store.js";
 
@@ -25,4 +27,14 @@ export function createCheckerDeps(): CheckerDeps {
     recordCheck,
     now: () => new Date()
   };
+}
+
+export async function listPackages(): Promise<PackagesResponse> {
+  // `connection`, not `gmail`: that name is the imported Gmail client.
+  const [connection, lists] = await Promise.all([getConnection(), store.listPackageViews(new Date(), config.weather.timezone)]);
+  return { gmail: connection, ...lists };
+}
+
+export function checkPackagesNow(): Promise<CheckResult> {
+  return checkOnce(createCheckerDeps());
 }

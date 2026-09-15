@@ -32,6 +32,10 @@ import { handleShare, moveSharedItem, retryShare } from "./services/share/pipeli
 import { listShares } from "./services/share/store.js";
 import { createGmailRouteDeps } from "./services/gmail/deps.js";
 import { createGmailRouter } from "./services/gmail/routes.js";
+import { startPackageChecker } from "./services/packages/checker.js";
+import { checkPackagesNow, createCheckerDeps, listPackages } from "./services/packages/deps.js";
+import { createPackagesRouter } from "./services/packages/routes.js";
+import { hidePackage, listEvents } from "./services/packages/store.js";
 
 const app = express();
 
@@ -667,8 +671,13 @@ app.post("/api/share/:id/retry", async (req, res, next) => {
 // The file type is trusted from the remote server's Content-Type, so nosniff stops the browser guessing another one.
 app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
 
+app.use("/api/packages", createPackagesRouter({ list: listPackages, events: listEvents, checkNow: checkPackagesNow, hide: hidePackage }));
+
 // Gmail sign-in pages. Loopback only: the Pi itself or the SSH tunnel (docs/gmail-setup.md).
-app.use("/gmail", createGmailRouter(createGmailRouteDeps(() => undefined)));
+// A new sign-in reads mail straight away rather than waiting for the next check.
+app.use("/gmail", createGmailRouter(createGmailRouteDeps(() => {
+  checkPackagesNow().catch((error) => console.error("Package check failed:", error instanceof Error ? error.message : error));
+})));
 
 if (fs.existsSync(config.clientDistPath)) {
   app.use(express.static(config.clientDistPath));
@@ -704,6 +713,7 @@ app.use((error: unknown, req: express.Request, res: express.Response, _next: exp
 app.listen(config.port, async () => {
   await getDb();
   startTravelDealScheduler();
+  startPackageChecker(createCheckerDeps, config.packages.checkMinutes);
   console.log(`Mirror dashboard server listening on http://localhost:${config.port}`);
 });
 

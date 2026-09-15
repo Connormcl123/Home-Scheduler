@@ -11,6 +11,8 @@ import { getWeather } from "./weather.js";
 import { listTravelDeals } from "./travelDeals.js";
 import { getFinanceSummary } from "./finance/index.js";
 import { getTonightsMeal } from "./recipes.js";
+import { listPackageViews } from "./packages/store.js";
+import { describePackages } from "./packages/text.js";
 import { todayIso } from "../utils/dates.js";
 
 function currency(value: number | null | undefined) {
@@ -27,7 +29,7 @@ function getClient() {
 /** Everything the model needs to judge what matters, gathered once. */
 async function collectContext() {
   const now = new Date();
-  const [events, tasks, grocery, weather, news, note, deals, finance, meal] = await Promise.all([
+  const [events, tasks, grocery, weather, news, note, deals, finance, meal, packages] = await Promise.all([
     getCalendarEvents().catch(() => []),
     listTasks().catch(() => []),
     listGroceryItems({ activeOnly: true }).catch(() => []),
@@ -36,7 +38,8 @@ async function collectContext() {
     getNoteByDate(todayIso()).catch(() => null),
     listTravelDeals().catch(() => ({ deals: [] as Awaited<ReturnType<typeof listTravelDeals>>["deals"] })),
     getFinanceSummary().catch(() => null),
-    getTonightsMeal().catch(() => null)
+    getTonightsMeal().catch(() => null),
+    listPackageViews(now, config.weather.timezone).then((lists) => lists.active).catch(() => [])
   ]);
 
   const upcoming = events
@@ -44,7 +47,7 @@ async function collectContext() {
     .slice(0, 8);
   const openTasks = tasks.filter((task) => !task.completed).slice(0, 10);
 
-  return { now, events: upcoming, tasks: openTasks, grocery, weather, news, note, deal: deals.deals[0] || null, finance, meal };
+  return { now, events: upcoming, tasks: openTasks, grocery, weather, news, note, deal: deals.deals[0] || null, finance, meal, packages };
 }
 
 function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
@@ -76,6 +79,8 @@ function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
     ctx.meal?.recipe
       ? `Tonight's dinner is planned: ${ctx.meal.recipe.title}${ctx.meal.recipe.totalMinutes ? `, about ${ctx.meal.recipe.totalMinutes} minutes` : ""}.`
       : "No dinner planned for tonight.",
+    "",
+    describePackages(ctx.packages, todayIso(ctx.now)),
     "",
     "Markets:",
     (ctx.finance?.quotes || [])
