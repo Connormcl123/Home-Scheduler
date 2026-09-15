@@ -178,6 +178,8 @@ If `GOOGLE_MAPS_API_KEY` is set, the server also calls Google Places API (New) b
 
 The Settings tab includes an API readiness board backed by `GET /api/integrations/status`. Use it to confirm whether OpenAI, Google Places/Maps, Plaid, iCal, RSS, and future travel booking providers are live, partial, or still missing setup.
 
+Packages: with Gmail connected (read-only; see `docs/gmail-setup.md`), the Pi checks for shipping emails every 10 minutes and shows what is on its way on Home, in the Packages tab and in a banner when something is out for delivery or delivered. Without Gmail, the Home card stays hidden and the Packages tab shows the setup steps.
+
 For the researched trip-package mode on the Pi:
 
 ```bash

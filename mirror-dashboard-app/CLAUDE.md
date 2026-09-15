@@ -7,7 +7,7 @@ Family command-center touchscreen dashboard. Runs in production on a **Raspberry
 npm workspaces monorepo:
 
 - `client/` — React 19 + Vite + TypeScript + Tailwind 3. Almost the entire UI lives in `client/src/App.tsx` (~5,000 lines: nav rail, Home/Calendar/Grocery/Recipes/Tasks/Notes/Finance/Travel/Assistant/Settings panels and all their modals). The time-of-day palette is `client/src/ambient.ts`. `KidsApp.tsx` is a small secondary view. API client helpers in `client/src/api.ts`.
-- `server/` — Express 5 + TypeScript (ESM, `tsx` in dev) + SQLite (`sqlite`/`sqlite3`). All routes are defined inline in `server/src/index.ts`; business logic lives in `server/src/services/*` (one file per domain: calendar, weather, news, tasks, notes, grocery, rssFeeds, financeWatchlist, finance/ market quotes, personalFinance, plaidProvider, travelInspirations, travelPlaces, travelLodging, settings, integrations, voiceCommands, share). `services/share/` turns links shared from the iPhone Shortcut into recipes or trip ideas (`POST /api/share`).
+- `server/` — Express 5 + TypeScript (ESM, `tsx` in dev) + SQLite (`sqlite`/`sqlite3`). All routes are defined inline in `server/src/index.ts`; business logic lives in `server/src/services/*` (one file per domain: calendar, weather, news, tasks, notes, grocery, rssFeeds, financeWatchlist, finance/ market quotes, personalFinance, plaidProvider, travelInspirations, travelPlaces, travelLodging, settings, integrations, voiceCommands, share, gmail, packages). `services/share/` turns links shared from the iPhone Shortcut into recipes or trip ideas (`POST /api/share`). `services/gmail/` is a read-only Gmail connection (sign-in through an SSH tunnel, `docs/gmail-setup.md`); `services/packages/` turns shipping emails into the Packages tab, the Home package card and the delivery banner, checking every `PACKAGES_CHECK_MINUTES`.
 - `shared/` — TypeScript types shared by both (`@mirror-dashboard/shared`).
 - **Assistant** — `server/src/services/assistant.ts` is a Claude agent that drives the same service layer the REST API uses. It owns its tool-use loop explicitly (rather than the SDK beta tool runner) so the Pi stays on the stable Messages API and every mutation is recorded for the UI to refresh. Add a capability by adding a tool definition plus a handler in that one file. UI is `AssistantPanel` in `App.tsx`, laid out like the Claude app (Recents list + thread); chats are saved in `assistant_conversations` / `assistant_messages` through `services/assistantHistory.ts`.
 - `scripts/` — Pi deployment: systemd unit, kiosk launcher (Chromium + xset no-blank), `deploy.ps1` and `provision-pi.sh`.
@@ -20,7 +20,7 @@ Run from the repo root (`mirror-dashboard-app/`):
 - `npm run dev` — Vite client on :5174 + Express server on :4174 concurrently (client proxies `/api` to the server).
 - `npm run build` — builds shared → server → client.
 - `npm run start` — production: Express serves `client/dist` on :4174.
-- `npm test` — server unit tests (Node's test runner through tsx, files in `server/test/`).
+- `npm test` — server and client unit tests (Node's test runner through tsx, files in `server/test/` and `client/test/`).
 - `npm run typecheck` — all three workspaces. **Run this and `npm test` after changes.**
 - `npm run db:init` — initialize/seed the SQLite database at `data/mirror-dashboard.sqlite`.
 
@@ -33,8 +33,8 @@ Run from the repo root (`mirror-dashboard-app/`):
 - **Remote access is Tailscale only.** The server has no authentication, and the dashboard holds finance data and can spend the Anthropic key via `/api/assistant/chat` - never expose port 4174 publicly (no ngrok, no port forwarding). The Pi's tailnet name is `connor`; set `MIRROR_PI_HOST=connor` to deploy from anywhere.
 - `sudo` on the Pi is **not** passwordless. Only `systemctl restart mirror-dashboard` is, via `/etc/sudoers.d/mirror-dashboard`. Installing packages needs the user.
 - Config is centralized in `server/src/config.ts`, reading `.env` at repo root (copy from `.env.example`). Never commit real keys.
-- Every external provider (iCal, Open-Meteo weather, RSS, Yahoo finance, Plaid, Google Places, OpenAI travel itineraries) must degrade gracefully to mock/local fallback data when unconfigured or offline — the Pi should never show a broken panel.
-- `data/mirror-dashboard.sqlite` holds Plaid access tokens and personal finance data — treat as sensitive, never commit.
+- Every external provider (iCal, Open-Meteo weather, RSS, Yahoo finance, Plaid, Google Places, OpenAI travel itineraries, Gmail) must degrade gracefully to mock/local fallback data when unconfigured or offline — the Pi should never show a broken panel.
+- `data/mirror-dashboard.sqlite` holds Plaid access tokens, the Gmail refresh token and personal finance data — treat as sensitive, never commit.
 - UI is touch-first: large tap targets, no hover-only affordances. Performance matters — the Pi 4 is weak, so avoid heavy blur/shadow effects (there is a "performance mode" that strips them) and keep re-renders cheap.
 - Colours come from the Ambient tokens, not hard-coded white/slate classes (see Design below). The rail's moon button pins the night palette (`mirror-dashboard-force-night` in localStorage).
 - Burn-in protection: layout shifts a few pixels every 10 min; auto-refresh every 5 min.
