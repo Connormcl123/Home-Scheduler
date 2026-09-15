@@ -1,12 +1,14 @@
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import QRCode from "qrcode";
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
+import { SlideQr } from "./SlideQr";
+import { mergeNavOrder } from "./navOrder";
+import { PackagesPanel } from "./packages/PackagesPanel";
 import { guardWindowOpen } from "./kioskGuard";
 import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
+import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Package, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -62,7 +64,7 @@ import {
   sendAssistantMessage,
 } from "./api";
 
-type View = "home" | "calendar" | "grocery" | "recipes" | "tasks" | "notes" | "finance" | "travel" | "assistant" | "settings";
+type View = "home" | "calendar" | "grocery" | "recipes" | "tasks" | "notes" | "finance" | "travel" | "assistant" | "packages" | "settings";
 type CalendarMode = "Day" | "Week" | "Month" | "Schedule";
 type TravelTripType = "low-effort" | "beach" | "new-england" | "city" | "nature" | "splurge";
 
@@ -186,6 +188,7 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: "finance", label: "Finance", icon: Landmark },
   { view: "travel", label: "Travel", icon: Plane },
   { view: "assistant", label: "Assistant", icon: Bot },
+  { view: "packages", label: "Packages", icon: Package },
   { view: "settings", label: "Settings", icon: Settings }
 ];
 
@@ -519,6 +522,9 @@ function DashboardApp() {
   }, []);
   const clearFocusRecipe = useCallback(() => setFocusRecipeId(null), []);
   const clearShowSaved = useCallback(() => setSavedTripsKey(0), []);
+  // Which package the delivery banner asked to open.
+  const [focusPackageId, setFocusPackageId] = useState<number | null>(null);
+  const clearFocusPackage = useCallback(() => setFocusPackageId(null), []);
   const [navOrder, setNavOrder] = useState<View[]>(() => readNavOrder());
   const [navEditMode, setNavEditMode] = useState(false);
   const [draggingView, setDraggingView] = useState<View | null>(null);
@@ -761,6 +767,7 @@ function DashboardApp() {
     if (view === "finance") return <FinancePanel quotes={dashboard.finance.quotes} initialSummary={dashboard.finance.personal} />;
     if (view === "travel") return <TravelPanel focusDealId={focusDealId} refreshKey={shareVersion} showSaved={savedTripsKey} onShowSavedHandled={clearShowSaved} />;
     if (view === "assistant") return <AssistantPanel onChanged={refreshDashboard} />;
+    if (view === "packages") return <PackagesPanel focusPackageId={focusPackageId} onFocusHandled={clearFocusPackage} />;
     if (view === "settings") return <SettingsPanel onChanged={refreshDashboard} />;
     return (
       <HomePanel
@@ -772,7 +779,7 @@ function DashboardApp() {
         }}
       />
     );
-  }, [dashboard, now, view, focusDealId, shareVersion, focusRecipeId, savedTripsKey, clearFocusRecipe, clearShowSaved]);
+  }, [dashboard, now, view, focusDealId, shareVersion, focusRecipeId, savedTripsKey, clearFocusRecipe, clearShowSaved, focusPackageId, clearFocusPackage]);
 
   const clock = useMemo(() => {
     const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
@@ -1274,25 +1281,6 @@ function Sparkline({ points, positive }: { points: number[]; positive: boolean }
         className={`story-spark ${positive ? "stroke-emerald-400" : "stroke-rose-400"}`}
       />
     </svg>
-  );
-}
-
-/** Scan-to-open: the kiosk deliberately refuses to navigate away, so the phone is the way out. */
-function SlideQr({ url, label = "Scan to open on your phone" }: { url: string; label?: string }) {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    QRCode.toDataURL(url, { margin: 1, width: 220, color: { dark: "#0f172a", light: "#ffffff" } })
-      .then((data) => { if (live) setSrc(data); })
-      .catch(() => undefined);
-    return () => { live = false; };
-  }, [url]);
-  if (!src) return null;
-  return (
-    <div className="flex items-center gap-4 rounded-2xl bg-white/95 p-4">
-      <img src={src} alt="" className="h-28 w-28" />
-      <p className="max-w-[9rem] text-lg font-bold leading-tight text-amb-ink">{label}</p>
-    </div>
   );
 }
 
@@ -5374,10 +5362,7 @@ function readNavOrder(): View[] {
 }
 
 function normalizeNavOrder(order: unknown[]): View[] {
-  const knownViews = new Set(defaultNavOrder);
-  const ordered = order.filter((view): view is View => typeof view === "string" && knownViews.has(view as View));
-  const missing = defaultNavOrder.filter((view) => !ordered.includes(view));
-  return [...ordered, ...missing];
+  return mergeNavOrder(order, defaultNavOrder);
 }
 
 function getNavViewAtPoint(clientX: number, clientY: number): View | null {
