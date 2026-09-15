@@ -198,9 +198,14 @@ The user connects Gmail; the first check reads 14 days. Compare the wall with th
 
 1. Google Cloud console: new project "Home Scheduler"; enable the Gmail API.
 2. OAuth consent screen: External; app name and the user's email; scope `gmail.readonly`; add the user as a test user; then **Publish app** so the status is **In production** (in Testing, Google expires the sign-in every 7 days).
-3. Credentials: create an OAuth client ID of type **Desktop app**; copy the client ID and secret into `~/mirror-dashboard-app/.env` on the Pi; `sudo systemctl restart mirror-dashboard`.
+3. Credentials: create an OAuth client ID of type **Desktop app**; copy the client ID and secret into `~/Home-Scheduler/mirror-dashboard-app/.env` on the Pi; `sudo systemctl restart mirror-dashboard`.
 4. PC: `ssh -L 4175:localhost:4174 connor@192.168.1.185`, open `http://localhost:4175/gmail/connect`, sign in, choose **Advanced → Go to Home Scheduler** on the unverified-app warning, allow read-only access.
 5. Reconnecting later: repeat step 4.
+
+### Running cost (checked 2026-09-15)
+
+- **Google:** the Gmail API has no charge for standard use. Projects created after 2026-05-01 get 6,000 quota units per user per minute and 80,000,000 per project per day; `messages.list` costs 5 units, `messages.get` 20, `getProfile` 1. This design uses about 1,100 units a day (144 searches plus about 20 reads) and at most about 1,000 in one minute (the first check's 50 reads). Google plans to charge for going over quota later in 2026, with 90 days' notice. The project needs no billing account; leaving billing off means Google has nothing to charge.
+- **Claude:** `claude-haiku-4-5` (the Pi's `ANTHROPIC_MODEL`) at $1 per million input tokens and $5 per million output. One email is about 3,500 input and 150 output tokens, about $0.004. At 40 to 80 matching emails a week (shipping updates plus the look-alikes that get skipped), about $0.70 to $1.50 a month; the first 14-day check about $0.20 once.
 
 ### Privacy and safety
 
