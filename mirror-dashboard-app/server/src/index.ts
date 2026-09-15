@@ -30,6 +30,8 @@ import { createShareDeps } from "./services/share/deps.js";
 import { SHARE_IMAGE_DIR } from "./services/share/images.js";
 import { handleShare, moveSharedItem, retryShare } from "./services/share/pipeline.js";
 import { listShares } from "./services/share/store.js";
+import { createGmailRouteDeps } from "./services/gmail/deps.js";
+import { createGmailRouter } from "./services/gmail/routes.js";
 
 const app = express();
 
@@ -664,6 +666,9 @@ app.post("/api/share/:id/retry", async (req, res, next) => {
 // Cover photos saved from shares. fallthrough: false turns a missing file into a 404 instead of the app shell.
 // The file type is trusted from the remote server's Content-Type, so nosniff stops the browser guessing another one.
 app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
+
+// Gmail sign-in pages. Loopback only: the Pi itself or the SSH tunnel (docs/gmail-setup.md).
+app.use("/gmail", createGmailRouter(createGmailRouteDeps(() => undefined)));
 
 if (fs.existsSync(config.clientDistPath)) {
   app.use(express.static(config.clientDistPath));

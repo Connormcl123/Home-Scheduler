@@ -1,12 +1,15 @@
 import type { ApiIntegrationStatus } from "@mirror-dashboard/shared";
 import { config } from "../config.js";
+import { getConnection } from "./gmail/account.js";
+import { gmailStatusItem } from "./gmail/status.js";
 import { getPlaidStatus } from "./plaidProvider.js";
 import { getSettings } from "./settings.js";
 
 export async function getIntegrationStatus(): Promise<ApiIntegrationStatus> {
-  const [settings, plaid] = await Promise.all([
+  const [settings, plaid, gmail] = await Promise.all([
     getSettings(),
-    getPlaidStatus().catch(() => ({ configured: false, itemCount: 0, environment: config.plaid.env, items: [] }))
+    getPlaidStatus().catch(() => ({ configured: false, itemCount: 0, environment: config.plaid.env, items: [] })),
+    getConnection().catch(() => ({ configured: false, status: "not_connected" as const, email: null, lastCheckedAt: null, lastError: null }))
   ]);
 
   const calendarFeedCount = settings.calendarFeedUrls.length || (settings.calendarFeedUrl ? 1 : 0);
@@ -67,6 +70,7 @@ export async function getIntegrationStatus(): Promise<ApiIntegrationStatus> {
           : "Calendar will show local/demo events until an iCloud or Google iCal feed is added.",
         nextStep: calendarFeedCount > 0 ? undefined : "Add ICAL_FEED_URLS or configure feeds in Settings."
       },
+      gmailStatusItem(gmail),
       {
         key: "rss",
         label: "RSS news feeds",
