@@ -42,11 +42,13 @@ export function PackageBanner({ blocked, onOpen }: { blocked: boolean; onOpen: (
     setQueued(null);
   }, [queued, blocked]);
 
+  // The countdown runs only while the banner is on screen, so a share banner
+  // defers the announcement instead of using up its 20 seconds unseen.
   useEffect(() => {
-    if (!current) return;
+    if (!current || blocked) return;
     const timer = window.setTimeout(() => setCurrent(null), 20_000);
     return () => window.clearTimeout(timer);
-  }, [current]);
+  }, [current, blocked]);
 
   if (!current || blocked) return null;
   const Icon = current.status === "delivered" ? House : Truck;
