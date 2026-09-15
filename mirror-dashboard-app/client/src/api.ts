@@ -1,4 +1,4 @@
-import type { ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
+import type { ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -240,4 +240,21 @@ export function retryShare(id: number) {
 
 export function moveSharedItem(from: ShareKind, id: number, to: ShareKind) {
   return request<ShareResult>("/api/share/move", { method: "POST", body: JSON.stringify({ from, id, to }) });
+}
+
+export function fetchPackages() {
+  return request<PackagesResponse>("/api/packages");
+}
+
+export function checkPackagesNow() {
+  return request<PackagesResponse>("/api/packages/check", { method: "POST" });
+}
+
+export function hidePackage(id: number) {
+  return request<PackagesResponse>(`/api/packages/${id}/hide`, { method: "POST" });
+}
+
+/** Without `after`, only where the event list ends (the banner starts there). */
+export function fetchPackageEvents(after?: number) {
+  return request<PackageEventsResponse>(`/api/packages/events${after !== undefined ? `?after=${after}` : ""}`);
 }
