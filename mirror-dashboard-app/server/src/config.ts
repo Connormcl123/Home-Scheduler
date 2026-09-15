@@ -43,6 +43,14 @@ export const config = {
   google: {
     mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ""
   },
+  gmail: {
+    clientId: process.env.GMAIL_CLIENT_ID || "",
+    clientSecret: process.env.GMAIL_CLIENT_SECRET || ""
+  },
+  packages: {
+    // Never more often than every 5 minutes: each check is a Gmail search.
+    checkMinutes: Math.max(5, Number(process.env.PACKAGES_CHECK_MINUTES) || 10)
+  },
   travelProviders: {
     amadeusClientId: process.env.AMADEUS_CLIENT_ID || "",
     amadeusClientSecret: process.env.AMADEUS_CLIENT_SECRET || "",

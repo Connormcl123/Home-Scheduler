@@ -492,3 +492,55 @@ export interface ShareImport {
   imageUrl: string | null;
   createdAt: string;
 }
+
+/** A package's place on the wall's four-step meter. */
+export type PackageStatus = "ordered" | "shipped" | "out_for_delivery" | "delivered";
+
+/** One package as the wall shows it. Dates are YYYY-MM-DD; times are ISO. */
+export interface PackageView {
+  id: number;
+  store: string | null;
+  item: string;
+  imageUrl: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  orderNumber: string | null;
+  status: PackageStatus;
+  arrivalStart: string | null;
+  arrivalEnd: string | null;
+  issue: string | null;
+  deliveredAt: string | null;
+  /** When the newest email about it arrived. */
+  updatedAt: string;
+  /** Subjects of the emails this package came from, oldest first. */
+  subjects: string[];
+}
+
+export interface GmailConnection {
+  /** GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are set on the Pi. */
+  configured: boolean;
+  status: "not_connected" | "connected" | "needs_reconnect";
+  email: string | null;
+  lastCheckedAt: string | null;
+  lastError: string | null;
+}
+
+export interface PackagesResponse {
+  gmail: GmailConnection;
+  /** On its way, plus anything delivered today. */
+  active: PackageView[];
+  /** Delivered in the last 7 days, newest first. */
+  delivered: PackageView[];
+}
+
+export interface PackageEvent {
+  id: number;
+  status: "out_for_delivery" | "delivered";
+  createdAt: string;
+  package: PackageView;
+}
+
+export interface PackageEventsResponse {
+  lastId: number;
+  events: PackageEvent[];
+}

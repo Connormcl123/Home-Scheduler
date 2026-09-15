@@ -238,6 +238,53 @@ export async function initializeSchema(database: Database) {
       image_url TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS gmail_account (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      email TEXT NOT NULL,
+      refresh_token TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'needs_reconnect')),
+      connected_at TEXT NOT NULL,
+      last_checked_at TEXT,
+      last_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS packages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      store TEXT,
+      item TEXT NOT NULL,
+      image_url TEXT,
+      carrier TEXT,
+      tracking_number TEXT,
+      order_number TEXT,
+      status TEXT NOT NULL CHECK (status IN ('ordered', 'shipped', 'out_for_delivery', 'delivered')),
+      arrival_start TEXT,
+      arrival_end TEXT,
+      issue TEXT,
+      delivered_at TEXT,
+      hidden INTEGER NOT NULL DEFAULT 0,
+      last_email_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS package_emails (
+      gmail_id TEXT PRIMARY KEY,
+      package_id INTEGER REFERENCES packages(id) ON DELETE SET NULL,
+      received_at TEXT NOT NULL,
+      subject TEXT,
+      outcome TEXT NOT NULL CHECK (outcome IN ('package', 'skipped', 'hidden', 'pending', 'failed')),
+      attempts INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_package_emails_package ON package_emails(package_id);
+
+    CREATE TABLE IF NOT EXISTS package_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+      status TEXT NOT NULL CHECK (status IN ('out_for_delivery', 'delivered')),
+      created_at TEXT NOT NULL
+    );
   `);
 
   await ensureColumn(database, "finance_accounts", "provider_item_id", "TEXT");
