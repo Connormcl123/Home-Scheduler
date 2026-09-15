@@ -20,9 +20,18 @@ const STOP_SPEED = 0.02;
 /** A stalled frame must not turn into one big jump. */
 const MAX_FRAME_MS = 50;
 
+/** Finger travel (px) before a press becomes a scroll; the direction is decided there. */
+const DRAG_SLOP = 6;
+
 /** A primary touch or pen, or a left-button mouse (which is what emulated touch sends). */
 export function acceptsDragScroll(event: Pick<PointerEvent, "isPrimary" | "pointerType" | "button">): boolean {
   return event.isPrimary && (event.pointerType !== "mouse" || event.button === 0);
+}
+
+/** Whether a press has become an up-and-down scroll, a sideways swipe left to others, or neither yet. */
+export function dragAxis(dx: number, dy: number): "pending" | "vertical" | "horizontal" {
+  if (Math.max(Math.abs(dx), Math.abs(dy)) <= DRAG_SLOP) return "pending";
+  return Math.abs(dy) >= Math.abs(dx) ? "vertical" : "horizontal";
 }
 
 /** Finger speed in px/ms (positive = moving down) at release; 0 for a pause or a slow drag. */

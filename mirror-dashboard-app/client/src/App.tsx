@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
 import { guardWindowOpen } from "./kioskGuard";
-import { acceptsDragScroll, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
+import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
 import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
@@ -633,6 +633,7 @@ function DashboardApp() {
       pointerId: number;
       lastY: number;
       startY: number;
+      startX: number;
       element: HTMLElement;
       moved: boolean;
       samples: ScrollSample[];
@@ -672,6 +673,7 @@ function DashboardApp() {
         pointerId: event.pointerId,
         lastY: event.clientY,
         startY: event.clientY,
+        startX: event.clientX,
         element,
         moved: false,
         samples: [{ time: event.timeStamp, y: event.clientY }]
@@ -680,16 +682,29 @@ function DashboardApp() {
 
     function onPointerMove(event: PointerEvent) {
       if (!activeScroll || event.pointerId !== activeScroll.pointerId) return;
+      // A component that has taken this drag over (a held calendar event)
+      // marks the move handled; stop scrolling underneath it.
+      if (event.defaultPrevented) {
+        activeScroll = null;
+        return;
+      }
+      if (!activeScroll.moved) {
+        const axis = dragAxis(event.clientX - activeScroll.startX, event.clientY - activeScroll.startY);
+        if (axis === "pending") return;
+        // Sideways belongs to swipes, such as changing weeks on the calendar.
+        if (axis === "horizontal") {
+          activeScroll = null;
+          return;
+        }
+        activeScroll.moved = true;
+      }
+      event.preventDefault();
       const deltaY = event.clientY - activeScroll.lastY;
       if (Math.abs(deltaY) < 1) return;
       activeScroll.element.scrollTop -= deltaY;
       activeScroll.lastY = event.clientY;
       activeScroll.samples.push({ time: event.timeStamp, y: event.clientY });
       if (activeScroll.samples.length > 12) activeScroll.samples.shift();
-      if (Math.abs(event.clientY - activeScroll.startY) > 6) {
-        activeScroll.moved = true;
-        event.preventDefault();
-      }
     }
 
     function endScroll(event: PointerEvent) {
@@ -2027,6 +2042,8 @@ function CalendarMonthView({
       return;
     }
     if (!hold.held) return;
+    // The held event follows the finger now; tell the page not to scroll under it.
+    pointerEvent.preventDefault();
     setDragging({ event: hold.event, x: pointerEvent.clientX, y: pointerEvent.clientY });
     setHoverDay(dayUnderPointer(pointerEvent.clientX, pointerEvent.clientY));
   }

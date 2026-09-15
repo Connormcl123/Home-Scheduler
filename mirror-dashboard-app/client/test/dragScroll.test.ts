@@ -1,12 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { acceptsDragScroll, flingStep, releaseVelocity } from "../src/dragScroll";
+import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity } from "../src/dragScroll";
 
 test("a finger reported as a left-button mouse can drag to scroll", () => {
   assert.equal(acceptsDragScroll({ isPrimary: true, pointerType: "mouse", button: 0 }), true);
   assert.equal(acceptsDragScroll({ isPrimary: true, pointerType: "touch", button: 0 }), true);
   assert.equal(acceptsDragScroll({ isPrimary: true, pointerType: "mouse", button: 2 }), false);
   assert.equal(acceptsDragScroll({ isPrimary: false, pointerType: "touch", button: 0 }), false);
+});
+
+test("a drag scrolls only once it has clearly gone up or down", () => {
+  assert.equal(dragAxis(3, 4), "pending");
+  assert.equal(dragAxis(2, -9), "vertical");
+  assert.equal(dragAxis(-20, 5), "horizontal", "a sideways swipe is left to the week calendar");
+  assert.equal(dragAxis(7, 7), "vertical");
 });
 
 test("release speed comes from the last 100 ms of the drag", () => {
