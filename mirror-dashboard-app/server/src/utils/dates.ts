@@ -16,3 +16,8 @@ export function toIsoDateTime(value: Date | string | number | undefined) {
   if (!value) return new Date().toISOString();
   return new Date(value).toISOString();
 }
+
+/** The calendar date (YYYY-MM-DD) in a given time zone, e.g. the household's WEATHER_TIMEZONE. */
+export function localDateIn(date: Date, timeZone: string) {
+  return date.toLocaleDateString("en-CA", { timeZone });
+}
