@@ -21,7 +21,8 @@ Tap Share on anything in Instagram, Safari or another app, pick **Send to Home S
 
 - **Instagram:** `https://www.instagram.com/reel/DOmW6LTkqcq/embed/captioned/` returned HTTP 200 without login, with the full caption (title and complete ingredient list) and the cover image. The normal reel page also returned 200 with `og:title`, a truncated `og:description` and `og:image`.
 - **Recipe sites:** Budget Bytes and Bon Appétit return 200 to the Pi. Allrecipes and Serious Eats return a 403 "Simple Page" with no recipe data, including to Node 22 `fetch` with browser headers and over IPv4. The laptop gets the full page with a schema.org `Recipe` JSON-LD block.
-- **Open question to settle during the real-world check:** whether the iPhone's own download ("Get Contents of URL" in Shortcuts) gets past the Allrecipes check. If not, the Shortcut takes the page from Safari instead (see Shortcut, step 2).
+- **Real-world check (2026-09-14, after deploy):** four shares from the phone reached the Pi and behaved as designed: an Instagram reel saved as a recipe with its photo (credited "Instagram" rather than the creator), an Instagram reel saved as a trip with its photo, a Salt & Lavender recipe page saved with 7 steps and a 40-minute time, and an App Store link answered "Couldn't find a recipe or trip idea". Still open: Allrecipes itself was not tried, and the Salt & Lavender recipe saved without a photo, so it is not yet known whether **Get Text from Input** passes the page source (with its JSON-LD and `og:image`) or only the visible text. Check both on the next Allrecipes share.
+- **Deviation from the first draft:** for Instagram links the Pi reads the `/embed/captioned/` page first and uses the phone's page only for its `og:description` when the embed has no caption, because the phone's copy of an Instagram page is a login wall with a truncated caption.
 
 ## Components
 
