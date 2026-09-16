@@ -60,6 +60,9 @@ async function applyDecision(decision: Decision, deps: CheckerDeps): Promise<{ o
 
 /** One check: search, read and extract each new email, apply it, then clean up. */
 export async function runCheck(deps: CheckerDeps): Promise<CheckResult> {
+  // Old packages and photos are tidied even while Gmail is disconnected, so a
+  // wall nobody logs into cannot grow without bound.
+  for (const photo of await deps.store.cleanup(deps.now())) await deps.removePhoto(photo);
   const connection = await deps.connection();
   if (connection.status !== "connected") return { ran: false, processed: 0, error: null };
   const startedAt = deps.now().toISOString();
@@ -92,8 +95,11 @@ export async function runCheck(deps: CheckerDeps): Promise<CheckResult> {
     await deps.store.recordEmail({ gmailId: id, packageId: result.packageId, receivedAt: email.receivedAt, subject: email.subject || null, outcome: result.outcome, attempts });
     processed += 1;
   }
-  for (const photo of await deps.store.cleanup(deps.now())) await deps.removePhoto(photo);
-  await deps.recordCheck({ checkedAt: startedAt, error: null });
+  // A full page means Gmail had more matches than one check can read: leave the
+  // watermark where it is so the next check re-reads the window. Emails already
+  // recorded are skipped, so this costs one extra search, not 50 extra Claude calls.
+  const truncated = found.length >= MAX_EMAILS_PER_CHECK;
+  await deps.recordCheck({ checkedAt: truncated ? null : startedAt, error: null });
   return { ran: true, processed, error: null };
 }
 

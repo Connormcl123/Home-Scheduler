@@ -17,7 +17,7 @@ export function gmailStatusItem(connection: GmailConnection): ApiIntegrationStat
       configured: true,
       mode: "partial",
       detail: `Google stopped accepting the sign-in for ${connection.email}. Packages show what they last knew.`,
-      nextStep: "Sign in again: see docs/gmail-setup.md."
+      nextStep: "Sign in again from your PC: the steps are in docs/gmail-setup.md."
     };
   }
   if (connection.configured) {
@@ -26,7 +26,7 @@ export function gmailStatusItem(connection: GmailConnection): ApiIntegrationStat
       configured: true,
       mode: "partial",
       detail: "Google credentials are set, but no Gmail account is connected.",
-      nextStep: "Sign in through the SSH tunnel: see docs/gmail-setup.md."
+      nextStep: "Sign in from your PC through the SSH tunnel: the steps are in docs/gmail-setup.md."
     };
   }
   return {
@@ -34,6 +34,6 @@ export function gmailStatusItem(connection: GmailConnection): ApiIntegrationStat
     configured: false,
     mode: "missing",
     detail: "Packages stay hidden until Gmail is set up.",
-    nextStep: "Add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET: see docs/gmail-setup.md."
+    nextStep: "Add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET on the Pi: the steps are in docs/gmail-setup.md."
   };
 }

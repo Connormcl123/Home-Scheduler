@@ -127,6 +127,29 @@ test("clean-up after a check removes photos of packages it deletes", async () =>
   assert.deepEqual(calls.removed, ["/media/old.jpg"]);
 });
 
+test("a full page of results leaves the watermark alone, so the next check re-reads the window", async () => {
+  await reset();
+  const ids = Array.from({ length: 50 }, (_, i) => `m${i}`);
+  const { deps, calls } = harness({ ids });
+  await runCheck(deps);
+  assert.deepEqual(calls.checks, [{ checkedAt: null, error: null }]);
+});
+
+test("a short page advances the watermark", async () => {
+  await reset();
+  const { deps, calls } = harness({ ids: ["m1", "m2"] });
+  await runCheck(deps);
+  assert.deepEqual(calls.checks, [{ checkedAt: now.toISOString(), error: null }]);
+});
+
+test("clean-up runs even while Gmail is disconnected", async () => {
+  await reset();
+  await store.createPackage({ store: "Amazon", item: "Old", carrier: null, trackingNumber: null, orderNumber: null, status: "delivered", arrivalStart: null, arrivalEnd: null, issue: null, deliveredAt: "2026-09-07T12:00:00.000Z", lastEmailAt: "2026-09-07T12:00:00.000Z" }, "/media/old.jpg", now);
+  const { deps, calls } = harness({ ids: [], connection: { ...connected, status: "needs_reconnect" } });
+  assert.deepEqual(await runCheck(deps), { ran: false, processed: 0, error: null });
+  assert.deepEqual(calls.removed, ["/media/old.jpg"]);
+});
+
 test("only one check runs at a time", async () => {
   await reset();
   const { deps } = harness({ ids: [] });

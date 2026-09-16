@@ -134,8 +134,8 @@ function GmailBox({ gmail, busy, now, onCheck }: { gmail: GmailConnection | unde
     : gmail.status === "connected"
       ? `Connected as ${gmail.email}`
       : gmail.status === "needs_reconnect"
-        ? `Sign in again for ${gmail.email}; the steps are in docs/gmail-setup.md.`
-        : "Not connected yet; the steps are in docs/gmail-setup.md.";
+        ? `Sign in again for ${gmail.email} from your PC; the steps are in docs/gmail-setup.md.`
+        : "Not connected yet; set it up from your PC: docs/gmail-setup.md.";
   return (
     <section className="rounded-[28px] border border-amb-border bg-amb-card p-6">
       <h2 className="text-2xl font-semibold text-amb-ink">Gmail</h2>
@@ -164,7 +164,7 @@ function SetupSteps() {
         <li>Create an OAuth client of type Desktop app and put its ID and secret in the Pi's .env as GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET, then restart the dashboard.</li>
         <li>On a PC, run ssh -L 4175:localhost:4174 connor@192.168.1.185 and open http://localhost:4175/gmail/connect.</li>
       </ol>
-      <p className="mt-4 text-amb-muted">The full steps are in docs/gmail-setup.md.</p>
+      <p className="mt-4 text-amb-muted">The full steps are in docs/gmail-setup.md, on the PC you deploy from.</p>
     </div>
   );
 }
