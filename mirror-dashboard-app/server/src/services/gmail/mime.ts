@@ -39,6 +39,9 @@ export function imageUrlsFrom(html: string, max = 30): string[] {
     const src = /\ssrc\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1]?.replace(/&amp;/g, "&");
     if (!src || !src.startsWith("https://")) continue;
     if (/\s(width|height)\s*=\s*["']?1(px)?["'\s>]/i.test(tag)) continue;
+    // A retailer's own artwork (Amazon's animated box, banners, spacers) is GIF;
+    // real product photos from every store we have seen are JPEG or PNG.
+    if (/\.gif(\?|#|$)/i.test(src)) continue;
     if (!urls.includes(src)) urls.push(src);
     if (urls.length >= max) break;
   }

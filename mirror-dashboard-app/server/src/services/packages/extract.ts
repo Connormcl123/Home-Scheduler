@@ -54,7 +54,7 @@ const SYSTEM =
   "about a physical package coming to this household. It is false (status none) for ads, deals, review requests, receipts for services or digital items, and returns or return labels. " +
   "status: ordered (placed or confirmed, not shipped yet), shipped (on its way), out_for_delivery, delivered, delayed (running late), attempted (a delivery attempt failed), cancelled. " +
   "item is what was bought, as a person would say it. store is the shop; carrier is who delivers. " +
-  "imageIndex is the number of the product photo in the image list; logos, banners and icons are not product photos, so use -1 when none fits. " +
+  "imageIndex is the number of the product photo in the image list; a retailer's own artwork - a cardboard-box graphic, mascot, banner, icon or logo - is not a product photo, so use -1 when the email shows no picture of the item itself. " +
   "Dates are YYYY-MM-DD, using the email's date to work out the year; for a single day use it for both arrivalStart and arrivalEnd. " +
   "Use an empty string or -1 for anything the email does not say.";
 

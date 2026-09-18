@@ -61,7 +61,14 @@ test("image lists skip http, tracking pixels and repeats, and stop at the limit"
     '<img width="1" src="https://a.example/pixel.gif">',
     "<img src='https://a.example/1.jpg'>",
     '<IMG SRC="https://a.example/2.jpg?x=1&amp;y=2">',
-    '<img src="https://a.example/3.jpg">'
+    '<img src="https://a.example/3.jpg">',
+    '<img src="https://a.example/amazon-box.gif">',
+    '<img src="https://a.example/banner.gif?v=2">'
   ].join("");
   assert.deepEqual(imageUrlsFrom(html, 2), ["https://a.example/1.jpg", "https://a.example/2.jpg?x=1&y=2"]);
+});
+
+test("a retailer's own animated artwork never becomes a product photo", () => {
+  const html = '<img src="https://m.media-amazon.com/box.gif"><img src="https://m.media-amazon.com/shoe.jpg">';
+  assert.deepEqual(imageUrlsFrom(html), ["https://m.media-amazon.com/shoe.jpg"]);
 });

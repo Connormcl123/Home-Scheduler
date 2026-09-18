@@ -221,3 +221,14 @@ More than one Gmail account; other email features; sending or changing mail; liv
 ## Branch
 
 Work continues on `feature/standalone-mirror-dashboard`, after the share feature; how the branch is merged is decided when this sub-project finishes.
+
+## Real-world check (2026-09-17, mrsoundsweet@gmail.com)
+
+The first checks read 11 packages from two weeks of mail, all Amazon. Two findings:
+
+- **Item names are Amazon's categories, not product names.** Amazon's subject lines read "Ordered 1 item: Electronics", "Shipped 2 items: Tops, Electronics", "Delivered 1 item: Pest Control". The emails carry nothing more specific, so the wall shows "Electronics" or "Pest Control". No fix is possible from the email alone.
+- **The "product photo" was Amazon's own artwork.** The extraction chose the animated cardboard-box GIF from the email template for 7 packages, the same file twice. Fixed by skipping GIFs in `imageUrlsFrom` and by naming retailer artwork in the extraction prompt.
+
+The first check's search came back full (50 matches), so the watermark deliberately stayed put and later checks continued through the same window - the behaviour added after the final review.
+
+The Home card was verified on the wall with three packages: three meters plus "+1 more in Packages" fit the tall card with no clipping.
