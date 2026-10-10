@@ -298,6 +298,18 @@ Then add this module to `MagicMirror/config/config.js`:
 }
 ```
 
+## Movie Server (Stream to the TV)
+
+The Pi can also store movies and stream them to the TV over Wi-Fi with [Jellyfin](https://jellyfin.org). It runs in the background next to MagicMirror.
+
+```bash
+cd ~/Home-Scheduler
+bash scripts/install-media-server-pi.sh                    # Jellyfin on :8096
+bash scripts/install-media-server-pi.sh --with-downloader  # + qBittorrent web UI on :8081
+```
+
+Then install the Jellyfin app on the TV and point it at `http://<pi-ip>:8096`. See [docs/media-server.md](docs/media-server.md) for drive setup, getting movies onto the Pi, DLNA and HDMI options, and 4K/direct-play tips.
+
 ## Standalone Prototype
 
 The standalone prototype can still run without MagicMirror:
