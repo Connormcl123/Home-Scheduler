@@ -5,3 +5,5 @@ Thumbs.db
 secrets/
 *credentials*.json
 *token*.json
+.env
+config/torrent/qbt-config/
