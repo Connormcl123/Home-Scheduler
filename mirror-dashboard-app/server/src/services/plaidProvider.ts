@@ -11,6 +11,19 @@ type PlaidItemRow = {
   cursor?: string | null;
 };
 
+/**
+ * Plaid answers with its own reason (bad keys, a bank that needs a fresh
+ * sign-in); show that instead of a blank 500, since it says what to fix.
+ */
+export function plaidErrorMessage(error: unknown): string | null {
+  const data = (error as { response?: { data?: { error_message?: string; error_code?: string } } })?.response?.data;
+  if (!data?.error_message) return null;
+  const invalidKeys = data.error_code === "INVALID_API_KEYS";
+  return invalidKeys
+    ? "Plaid rejected the keys on the Pi. Check PLAID_CLIENT_ID and PLAID_SECRET in .env, and that the secret matches PLAID_ENV."
+    : `Plaid: ${data.error_message}`;
+}
+
 export function isPlaidConfigured() {
   return Boolean(config.plaid.clientId && config.plaid.secret);
 }
@@ -78,6 +91,20 @@ async function clearPlaceholderFinanceData() {
   const db = await getDb();
   await db.run("DELETE FROM finance_transactions WHERE provider_transaction_id IS NULL");
   await db.run("DELETE FROM finance_accounts WHERE provider_account_id IS NULL");
+}
+
+/**
+ * Keeps the wall's money figures current without anyone pressing Sync. Plaid
+ * itself refreshes a few times a day, so checking every few hours is plenty; a
+ * failure (an expired login, the Pi offline) is logged and retried next tick.
+ */
+export function startPlaidSyncScheduler(minutes: number): void {
+  const tick = () => {
+    if (!isPlaidConfigured()) return;
+    syncAllPlaidItems().catch((error) => console.error("Plaid sync failed:", error instanceof Error ? error.message : error));
+  };
+  setTimeout(tick, 60_000).unref?.();
+  setInterval(tick, minutes * 60_000).unref?.();
 }
 
 export async function syncAllPlaidItems(options: { forceFull?: boolean } = {}) {
@@ -197,8 +224,11 @@ async function upsertFinanceTransaction(providerItemId: string, accountId: numbe
   const db = await getDb();
   const merchant = transaction.merchant_name || transaction.name || "Transaction";
   const providerCategory = transaction.personal_finance_category?.primary || transaction.category?.[0] || null;
-  const categorization = await categorizeMerchant(merchant, providerCategory);
   const normalizedAmount = -Number(transaction.amount || 0);
+  const categorization = await categorizeMerchant(merchant, providerCategory, {
+    detailed: transaction.personal_finance_category?.detailed || null,
+    amount: normalizedAmount
+  });
   const existing = await db.get<{ id: number }>("SELECT id FROM finance_transactions WHERE provider_transaction_id = ?", transaction.transaction_id);
 
   if (existing) {

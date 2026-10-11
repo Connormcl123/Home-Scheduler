@@ -63,3 +63,31 @@ export async function deleteGroceryItem(id: number) {
   const db = await getDb();
   await db.run("DELETE FROM grocery_items WHERE id = ?", id);
 }
+
+/**
+ * The list as a text message: grouped by aisle, what has run out marked, one
+ * item per line so it reads on a phone. `now` names the day at the top.
+ */
+export function groceryText(items: GroceryItem[], now: Date): string {
+  const needed = items.filter((item) => !item.purchased);
+  if (!needed.length) return "The grocery list is empty.";
+  const day = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const groups = new Map<string, GroceryItem[]>();
+  for (const item of needed) {
+    const aisle = item.category?.trim() || "Other";
+    groups.set(aisle, [...(groups.get(aisle) ?? []), item]);
+  }
+  const sections = [...groups.entries()]
+    .sort(([a], [b]) => (a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b)))
+    .map(([aisle, list]) => {
+      const lines = list
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+        .map((item) => {
+          const name = item.name.trim().charAt(0).toUpperCase() + item.name.trim().slice(1);
+          const quantity = item.quantity?.trim() ? `, ${item.quantity.trim()}` : "";
+          return `- ${name}${quantity}${item.status === "out" ? " (out)" : ""}`;
+        });
+      return `${aisle}\n${lines.join("\n")}`;
+    });
+  return `Groceries for ${day} (${needed.length})\n\n${sections.join("\n\n")}`;
+}

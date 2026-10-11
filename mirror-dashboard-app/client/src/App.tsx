@@ -7,7 +7,14 @@ import { mergeNavOrder } from "./navOrder";
 import { PackagesPanel } from "./packages/PackagesPanel";
 import { PackageMeter } from "./packages/PackageMeter";
 import { PackageBanner } from "./packages/PackageBanner";
-import { homeSlots } from "./packages/packageText";
+import { HomeBoard } from "./home/HomeBoard";
+import { BudgetsPanel } from "./finance/BudgetsPanel";
+import { TripPlanner } from "./travel/TripPlanner";
+import { CarouselControls, DealCarousel } from "./travel/DealCarousel";
+import { dealAccent } from "./travel/dealAccent";
+import { safeStorageGet, safeStorageSet } from "./storage";
+import { FINANCE_CATEGORIES } from "@mirror-dashboard/shared";
+import { stepIndex } from "./packages/packageText";
 import { guardWindowOpen } from "./kioskGuard";
 import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, PackageEvent, PackagesResponse, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
@@ -1026,42 +1033,6 @@ function DashboardApp() {
   );
 }
 
-/** Which tab owns each kind of card. news is handled in place instead. */
-const CARD_TARGET: Partial<Record<HomeCardKind, View>> = {
-  event: "calendar",
-  task: "tasks",
-  grocery: "grocery",
-  note: "notes",
-  finance: "finance",
-  travel: "travel",
-  meal: "recipes"
-};
-
-const CARD_LOOK: Record<HomeCardKind, { icon: LucideIcon; tint: string; label: string }> = {
-  event: { icon: CalendarDays, tint: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300", label: "Calendar" },
-  task: { icon: CheckCircle2, tint: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", label: "Task" },
-  grocery: { icon: ShoppingBasket, tint: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", label: "Grocery" },
-  weather: { icon: CloudSun, tint: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300", label: "Weather" },
-  news: { icon: Newspaper, tint: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300", label: "News" },
-  note: { icon: StickyNote, tint: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300", label: "Note" },
-  travel: { icon: Plane, tint: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", label: "Travel" },
-  finance: { icon: Landmark, tint: "bg-slate-200 text-amb-ink dark:bg-slate-700", label: "Finance" },
-  meal: { icon: UtensilsCrossed, tint: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", label: "Tonight" }
-};
-
-/** "in 25 min" / "in 2h 10m" — the thing you actually want from a wall display. */
-function countdownTo(iso: string, now: Date) {
-  const ms = new Date(iso).getTime() - now.getTime();
-  if (Number.isNaN(ms)) return null;
-  if (ms < -60000) return null;
-  const minutes = Math.round(ms / 60000);
-  if (minutes <= 0) return "now";
-  if (minutes < 60) return `in ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `in ${hours}h ${rest}m` : `in ${hours}h`;
-}
-
 /**
  * Shared entrance: a short rise, staggered by position. Transform and opacity
  * only, so the Pi composites it rather than repainting.
@@ -1078,6 +1049,8 @@ function HomePanel({
   onNavigate: (view: View, dealId?: number) => void;
 }) {
   const [article, setArticle] = useState<HomeCard | null>(null);
+  // A trip idea opened from Home's carousel, in the same sheet the Travel tab uses.
+  const [deal, setDeal] = useState<TravelDeal | null>(null);
   const [pulse, setPulse] = useState<HomePulse | null>(null);
   const [story, setStory] = useState<MorningStory | null>(null);
   const [storyOpen, setStoryOpen] = useState(false);
@@ -1116,24 +1089,39 @@ function HomePanel({
   const today = weather.daily[0];
   const cards = pulse?.cards ?? [];
   const active = packages?.active ?? [];
-  const slots = homeSlots(active.length);
   const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(now);
   const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? "";
   const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-6 px-2 pt-2">
+    <div className="flex h-full min-h-0 flex-col gap-4 px-2 pt-1">
       <div className="flex shrink-0 items-end justify-between gap-8">
         <motion.div className="flex flex-col gap-1.5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(0)}>
-          <p className="text-[26px] font-medium text-amb-muted">{greetingFor(now)}, it&rsquo;s {dateLine}</p>
-          <p className="font-display text-[184px] leading-[0.86] tracking-[-0.02em]">
+          <p className="text-[24px] font-medium text-amb-muted">{greetingFor(now)}, it&rsquo;s {dateLine}</p>
+          <p className="font-display text-[118px] leading-[0.86] tracking-[-0.02em]">
             {part("hour")}:{part("minute")}
-            <span className="ml-3.5 text-[66px] italic tracking-normal">{part("dayPeriod")}</span>
+            <span className="ml-3 text-[44px] italic tracking-normal">{part("dayPeriod")}</span>
           </p>
         </motion.div>
+        {/* Whatever is on its way, unboxed, between the clock and the weather. */}
+        {active.length > 0 && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={rise(1)}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onNavigate("packages")}
+            className="flex min-w-0 max-w-[520px] flex-1 flex-col gap-2 self-center text-left"
+          >
+            {/* The one closest to the door; the rest are a tap away. */}
+            <PackageMeter pkg={[...active].sort((a, b) => stepIndex(b.status) - stepIndex(a.status))[0]} now={now} animate bare />
+            {active.length > 1 && <p className="text-center text-lg font-semibold text-amb-muted">{active.length - 1} more on the way</p>}
+          </motion.button>
+        )}
         <motion.div className="flex items-center gap-7" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(1)}>
           <div className="flex flex-col items-end gap-1">
-            <p className="font-display text-[120px] leading-[0.9]">{Math.round(weather.current.temperature)}&deg;</p>
+            <p className="font-display text-[84px] leading-[0.9]">{Math.round(weather.current.temperature)}&deg;</p>
             <p className="text-[22px] font-medium text-amb-muted">
               {weather.current.description}
               {today ? `, high ${Math.round(today.high)}°, low ${Math.round(today.low)}°` : ""}
@@ -1153,79 +1141,24 @@ function HomePanel({
       </div>
 
       {/* The one line worth walking over for. */}
-      <motion.div className="flex max-w-[1480px] shrink-0 flex-col gap-2.5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(2)}>
-        <p className="text-xl font-medium text-amb-muted">Right now</p>
-        <p className="text-pretty text-[46px] font-semibold leading-[1.12] tracking-[-0.01em]">{pulse?.headline ?? "Reading the day..."}</p>
+      <motion.div className="flex max-w-[1560px] shrink-0 items-baseline gap-5" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(2)}>
+        <Sparkles className="h-6 w-6 shrink-0 translate-y-0.5 text-amb-muted" aria-label="Right now" />
+        <p className="line-clamp-2 text-pretty text-[32px] font-semibold leading-[1.15] tracking-[-0.01em]">{pulse?.headline ?? "Reading the day..."}</p>
       </motion.div>
 
-      {/* Ranked cards. The model decides what appears and in what order. */}
-      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-6">
-        {/* Pinned, not ranked: whenever something is on its way it sits in the right-hand column. */}
-        {slots > 0 && (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...rise(0), delay: 0.32 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate("packages")}
-            className={`col-start-3 row-start-1 ${slots === 2 ? "row-span-2" : ""} flex min-h-0 flex-col gap-4 overflow-hidden rounded-[30px] border border-amb-border bg-amb-card px-[30px] py-7 text-left shadow-ambient`}
-          >
-            <span className="flex items-center gap-2.5 text-lg font-semibold text-amb-muted">
-              <Package className="h-5 w-5" />
-              Packages
-            </span>
-            {active.slice(0, 3).map((pkg) => <PackageMeter key={pkg.id} pkg={pkg} now={now} animate />)}
-            {active.length > 3 && <p className="mt-auto text-lg font-semibold text-amb-muted">+{active.length - 3} more in Packages</p>}
-            {packages?.gmail.status === "needs_reconnect" && (
-              <p className="text-base font-medium text-amber-700 dark:text-amber-300">Gmail disconnected, showing last known</p>
-            )}
-          </motion.button>
-        )}
-        {cards.slice(0, 6 - slots).map((card, index) => {
-          const look = CARD_LOOK[card.kind] || CARD_LOOK.note;
-          const Icon = look.icon;
-          const countdown = card.startsAt ? countdownTo(card.startsAt, now) : null;
-          return (
-            <motion.button
-              key={`${card.kind}-${index}`}
-              type="button"
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...rise(0), delay: 0.32 + index * 0.06 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                // News opens here rather than navigating: the kiosk has no way
-                // back from an external site.
-                if (card.kind === "news") { setArticle(card); return; }
-                const target = CARD_TARGET[card.kind];
-                if (target) onNavigate(target, card.dealId);
-              }}
-              className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-[30px] border border-amb-border bg-amb-card px-[30px] py-7 text-left shadow-ambient"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2.5 text-lg font-semibold text-amb-muted">
-                  <Icon className="h-5 w-5" />
-                  {look.label}
-                </span>
-                {card.urgency === "now" && (
-                  <span className="rounded-full bg-amb-accent px-3.5 py-1.5 text-sm font-bold text-amb-accent-ink">Now</span>
-                )}
-              </div>
-              <p className="line-clamp-3 font-display text-[44px] leading-[1.02]">{card.title}</p>
-              {countdown && <p className="text-[21px] font-semibold text-amb-ink first-letter:uppercase">{countdown}</p>}
-              <p className="line-clamp-3 text-[21px] leading-[1.4] text-amb-muted">{card.detail}</p>
-            </motion.button>
-          );
-        })}
+      <HomeBoard
+        dashboard={dashboard}
+        now={now}
+        onNavigate={onNavigate}
+        onOpenDeal={setDeal}
+        onOpenNews={(item) => {
+          // News opens here rather than navigating: the kiosk has no way back from an external site.
+          const summary = cards.find((card) => card.kind === "news" && card.title === item.title);
+          setArticle({ kind: "news", title: item.title, detail: summary?.detail ?? "", urgency: "later", imageUrl: item.imageUrl, link: item.link, source: item.source });
+        }}
+      />
 
-        {!cards.length && !slots && (
-          <div className="col-span-3 row-span-2 flex items-center justify-center rounded-[30px] border border-amb-border bg-amb-card text-2xl text-amb-muted">
-            Working out what matters today...
-          </div>
-        )}
-      </div>
-
+      {deal && <TravelDealDetailView deal={deal} onClose={() => setDeal(null)} />}
       {article && <ArticleReader card={article} onClose={() => setArticle(null)} />}
       {storyOpen && story && <MorningStoryPlayer story={story} onClose={() => setStoryOpen(false)} />}
     </div>
@@ -2287,8 +2220,16 @@ function GroceryPanel() {
           <p className="rounded-full bg-amber-100 px-5 py-3 text-xl font-bold text-amber-800">{activeItems.length} to buy this week</p>
         </div>
       </div>
-      <div className="mt-4 grid shrink-0 grid-cols-[1.2fr_0.7fr_0.8fr_0.8fr_150px_90px] gap-3">
-        <input value={name} onChange={(event) => setName(event.target.value)} className="touch-input" placeholder="Food or supply" />
+      {/* minmax(0, …) lets the inputs shrink so the Add button stays on screen;
+          a form makes Enter on any keyboard add the item too. */}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          addItem().catch(() => undefined);
+        }}
+        className="mt-4 grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_150px_90px] [&>*]:min-w-0"
+      >
+        <input value={name} onChange={(event) => setName(event.target.value)} className="touch-input col-span-2 lg:col-span-1" placeholder="Food or supply" enterKeyHint="done" />
         <input value={quantity} onChange={(event) => setQuantity(event.target.value)} className="touch-input" placeholder="Qty" />
         <input value={category} onChange={(event) => setCategory(event.target.value)} className="touch-input" placeholder="Category" />
         <input value={supplier} onChange={(event) => setSupplier(event.target.value)} className="touch-input" placeholder="Store" />
@@ -2297,8 +2238,8 @@ function GroceryPanel() {
           <option value="out">Out</option>
           <option value="ok">Stocked</option>
         </select>
-        <button onClick={addItem} className="touch-button bg-emerald-600 text-white"><Plus className="h-7 w-7" /></button>
-      </div>
+        <button type="submit" aria-label="Add to grocery list" className="touch-button bg-emerald-600 text-white"><Plus className="h-7 w-7" /></button>
+      </form>
 
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-[1fr_320px] gap-4">
         <div className="min-h-0 overflow-y-auto rounded-3xl bg-amb-card p-4">
@@ -3160,7 +3101,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
 
   const budgetPercent = summary.budgetLimit ? Math.min(100, Math.round((summary.budgetSpent / summary.budgetLimit) * 100)) : 0;
   const maxTrend = Math.max(1, ...summary.trend.flatMap((point) => [point.income, point.spending]));
-  const categoryOptions = Array.from(new Set([...summary.budgets.map((budget) => budget.category), "Groceries", "Dining", "Gas", "Bills", "Shopping", "Home", "Health", "Travel", "Entertainment", "Income", "Transfers", "Fees", "Uncategorized"]));
+  const categoryOptions = Array.from(new Set([...FINANCE_CATEGORIES, ...summary.budgets.map((budget) => budget.category)]));
   const lastPlaidSync = plaidStatus?.items
     .map((item) => item.lastSyncedAt)
     .filter(Boolean)
@@ -3208,29 +3149,7 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
           <p className={`text-3xl font-black ${summary.cashFlow >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{money(summary.cashFlow)} cash flow</p>
         </div>
 
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-black">Budget Checks</h3>
-            <p className="rounded-full bg-amb-well px-4 py-2 text-lg font-bold text-amb-muted">{summary.budgets.length} groups</p>
-          </div>
-          <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
-            {summary.budgets.map((budget) => {
-              const percent = budget.limitAmount ? Math.min(100, Math.round((budget.spentAmount / budget.limitAmount) * 100)) : 0;
-              return (
-                <div key={budget.id} className="rounded-2xl bg-amb-well p-4">
-                  <div className="mb-2 flex items-center justify-between text-xl font-bold">
-                    <span>{budget.category}</span>
-                    <span>{percent}%</span>
-                  </div>
-                  <div className="h-4 overflow-hidden rounded-full bg-slate-200">
-                    <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: budget.color }} />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-amb-muted">{money(budget.spentAmount)} of {money(budget.limitAmount)}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <BudgetsPanel onChanged={loadPersonalFinance} />
 
         <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -3411,19 +3330,6 @@ function loadPlaidScript() {
     script.onerror = () => reject(new Error("Plaid Link failed to load."));
     document.head.appendChild(script);
   });
-}
-
-const DEAL_ACCENTS: Record<string, { card: string; chip: string; ring: string }> = {
-  sky: { card: "from-sky-500 to-sky-700", chip: "bg-sky-100 text-sky-800", ring: "ring-sky-300" },
-  amber: { card: "from-amber-500 to-orange-600", chip: "bg-amber-100 text-amber-900", ring: "ring-amber-300" },
-  emerald: { card: "from-emerald-500 to-teal-700", chip: "bg-emerald-100 text-emerald-900", ring: "ring-emerald-300" },
-  rose: { card: "from-rose-500 to-pink-700", chip: "bg-rose-100 text-rose-900", ring: "ring-rose-300" },
-  violet: { card: "from-violet-500 to-indigo-700", chip: "bg-violet-100 text-violet-900", ring: "ring-violet-300" },
-  teal: { card: "from-teal-500 to-cyan-700", chip: "bg-teal-100 text-teal-900", ring: "ring-teal-300" }
-};
-
-function dealAccent(name: string) {
-  return DEAL_ACCENTS[name] || DEAL_ACCENTS.sky;
 }
 
 function RecipesPanel({ onChanged, refreshKey = 0, focusRecipeId = null, onFocusHandled }: { onChanged: () => void; refreshKey?: number; focusRecipeId?: number | null; onFocusHandled?: () => void }) {
@@ -3786,10 +3692,6 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
   const [expanded, setExpanded] = useState<TravelDeal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [dragDx, setDragDx] = useState(0);
-  const dragRef = useRef<{ startX: number; startIndex: number; moved: boolean } | null>(null);
-  const suppressClickRef = useRef(false);
-
   useEffect(() => {
     fetchTravelDeals()
       .then((data) => {
@@ -3822,64 +3724,6 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
   function step(direction: number) {
     if (!deals.length) return;
     setIndex((current) => Math.min(deals.length - 1, Math.max(0, current + direction)));
-  }
-
-  // Finger travel that equates to advancing one card.
-  const CARD_STEP = 240;
-
-  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!deals.length) return;
-    // Deliberately no pointer capture yet. Capturing here retargets the
-    // pointerup to the rail, so the browser fires click on the rail rather than
-    // the card and a plain tap never opens the trip. Capture is taken only once
-    // the gesture has actually become a drag (see onPointerMove).
-    dragRef.current = { startX: event.clientX, startIndex: index, moved: false };
-    setDragDx(0);
-  }
-
-  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    const dx = event.clientX - drag.startX;
-    // Past this the gesture is a drag, not a tap - and now it is safe to
-    // capture, so the drag survives the finger sliding off the rail.
-    if (!drag.moved && Math.abs(dx) > 8) {
-      drag.moved = true;
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } catch {
-        // Capture is a nicety - if the pointer has already gone, the drag
-        // still works while the finger stays on the rail.
-      }
-    }
-    // Set straight from the event rather than deferring to rAF: the browser
-    // already coalesces pointermove to one per frame, so a rAF hop only adds a
-    // frame of lag between finger and card - and if rAF is throttled the rail
-    // stops tracking entirely while still snapping on release, which reads as
-    // a broken gesture.
-    setDragDx(dx);
-  }
-
-  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    if (!drag) return;
-    const dx = event.clientX - drag.startX;
-    // Snap to whichever card the finger left nearest the middle.
-    const landed = Math.round(drag.startIndex - dx / CARD_STEP);
-    setIndex(Math.min(deals.length - 1, Math.max(0, landed)));
-    setDragDx(0);
-    // pointerup is followed by click; a drag must not also open the card.
-    suppressClickRef.current = drag.moved;
-  }
-
-  function openOrCentre(deal: TravelDeal, position: number, centred: boolean) {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
-    if (centred) setExpanded(deal);
-    else setIndex(position);
   }
 
   return (
@@ -3915,69 +3759,26 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
 
       {deals.length > 0 && (
         <>
-          {/* Lazy-susan rail: only transform/opacity animate, so the Pi composites on the GPU. */}
-          <div
-            className="relative mt-4 min-h-[420px] flex-1 touch-none select-none overflow-hidden"
-            style={{ perspective: "1400px" }}
-            data-no-touch-scroll
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
-          >
-            {deals.map((deal, position) => {
-              // While dragging this is fractional, so the rail tracks the finger
-              // instead of jumping a whole card at a time.
-              const offset = position - (index - dragDx / CARD_STEP);
-              const distance = Math.abs(offset);
-              if (distance > 3) return null;
-              const accent = dealAccent(deal.accent);
-              const isCenter = distance < 0.5;
-              return (
-                <button
-                  key={deal.id}
-                  onClick={() => openOrCentre(deal, position, isCenter)}
-                  aria-label={isCenter ? `Open ${deal.destination}` : `Show ${deal.destination}`}
-                  className={`absolute left-1/2 top-1/2 flex h-[400px] w-[460px] flex-col justify-between overflow-hidden rounded-[28px] bg-gradient-to-br p-7 text-left text-white ${dragRef.current ? "" : "transition-transform duration-500 ease-out"} ${accent.card} ${
-                    isCenter ? "shadow-xl" : ""
-                  }`}
-                  style={{
-                    transform: `translate(-50%, -50%) translateX(${offset * 46}%) rotateY(${offset * -32}deg) scale(${1 - Math.min(distance, 1) * 0.18})`,
-                    zIndex: 10 - Math.round(distance),
-                    opacity: Math.max(0, Math.min(1, 2.6 - distance)),
-                    pointerEvents: distance > 2 ? "none" : "auto"
-                  }}
-                >
-                  {deal.imageUrl && (
-                    <>
-                      <img
-                        src={deal.imageUrl}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="absolute inset-0 h-full w-full object-cover"
-                        // A dead image link should leave the gradient, not a broken icon.
-                        onError={(event) => { event.currentTarget.style.display = "none"; }}
-                      />
-                      {/* Scrim: the photo is arbitrary, so text needs a guaranteed contrast floor. */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25" />
-                    </>
-                  )}
-                  <div className="relative">
-                    <span className="text-6xl leading-none">{deal.emoji}</span>
-                    <p className="mt-4 text-4xl font-black leading-tight">{deal.destination}</p>
+          <div className="mt-4 flex min-h-0 flex-1">
+            <DealCarousel deals={deals} index={index} onIndex={setIndex} onOpen={setExpanded} accentOf={dealAccent}>
+              {(deal, centred) => (
+                // One padded box filling the card, so the chips stay on it however long the hook runs.
+                <div className="relative flex h-full flex-col justify-between gap-3 p-7">
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    <span className="text-5xl leading-none">{deal.emoji}</span>
+                    <p className="mt-3 text-4xl font-black leading-tight">{deal.destination}</p>
                     <p className="text-xl font-semibold text-white/80">{deal.country}</p>
                     <p className="mt-3 text-2xl font-bold leading-snug">{deal.headline}</p>
-                    {isCenter && <p className="mt-3 text-xl leading-relaxed text-white/90">{deal.hook}</p>}
+                    {centred && <p className="mt-3 line-clamp-2 text-xl leading-snug text-white/90">{deal.hook}</p>}
                   </div>
-                  <div className="relative flex flex-wrap gap-2 text-lg font-bold">
+                  <div className="mt-3 flex shrink-0 flex-wrap gap-2 text-lg font-bold">
                     {deal.tripLength && <span className="rounded-full bg-white/25 px-4 py-2">{deal.tripLength}</span>}
                     {deal.estCost && <span className="rounded-full bg-white/25 px-4 py-2">{deal.estCost}</span>}
                     {deal.bestMonths && <span className="rounded-full bg-white/25 px-4 py-2">{deal.bestMonths}</span>}
                   </div>
-                </button>
-              );
-            })}
+                </div>
+              )}
+            </DealCarousel>
           </div>
 
           <div className="mt-4 flex shrink-0 items-center justify-center gap-5">
@@ -4021,6 +3822,7 @@ function TravelDealsPanel({ focusDealId }: { focusDealId?: number | null }) {
 
 function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: () => void }) {
   const accent = dealAccent(deal.accent);
+  const [planning, setPlanning] = useState(false);
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-6">
       <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-amb-sheet">
@@ -4043,9 +3845,15 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
             <p className="text-xl font-semibold text-white/80">{deal.country}</p>
             <p className="mt-2 text-2xl font-bold">{deal.headline}</p>
           </div>
-          <button onClick={onClose} className="relative touch-button w-20 bg-white/25 text-white" aria-label="Close trip details">
-            <X className="h-8 w-8" />
-          </button>
+          <div className="relative flex shrink-0 items-center gap-3">
+            <button onClick={() => setPlanning(true)} className="touch-button bg-white px-6 text-slate-900">
+              <Plane className="h-7 w-7" />
+              Plan this trip
+            </button>
+            <button onClick={onClose} className="touch-button w-20 bg-white/25 text-white" aria-label="Close trip details">
+              <X className="h-8 w-8" />
+            </button>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-7 text-amb-ink">
@@ -4119,6 +3927,7 @@ function TravelDealDetailView({ deal, onClose }: { deal: TravelDeal; onClose: ()
           )}
         </div>
       </div>
+      {planning && <TripPlanner deal={deal} onClose={() => setPlanning(false)} />}
     </div>
   );
 }
@@ -5568,18 +5377,3 @@ function clearField(field: HTMLInputElement | HTMLTextAreaElement | null) {
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function safeStorageGet(key: string) {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function safeStorageSet(key: string, value: string) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // Local storage can be unavailable in some kiosk/privacy modes.
-  }
-}

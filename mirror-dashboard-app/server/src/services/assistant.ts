@@ -402,7 +402,7 @@ async function buildLiveContext() {
  * ANTHROPIC_MODEL to a faster model breaks every call.
  */
 function supportsEffort(model: string) {
-  return /^claude-(opus-5|opus-4-[5-8]|sonnet-5|sonnet-4-6|fable-5|mythos-5)/.test(model);
+  return /^claude-(opus-5|opus-4-[5-8]|sonnet-5|sonnet-4-6|fable-5|mythos-5)(-|$)/.test(model);
 }
 
 /** Turns SDK/network failures into something readable on a wall display. */

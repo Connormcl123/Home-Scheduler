@@ -38,7 +38,9 @@ export const config = {
     clientName: process.env.PLAID_CLIENT_NAME || "Home Scheduler",
     products: (process.env.PLAID_PRODUCTS || "transactions").split(",").map((product) => product.trim()).filter(Boolean),
     countryCodes: (process.env.PLAID_COUNTRY_CODES || "US").split(",").map((country) => country.trim()).filter(Boolean),
-    userId: process.env.PLAID_USER_ID || "home-scheduler-local-user"
+    userId: process.env.PLAID_USER_ID || "home-scheduler-local-user",
+    // Banks post transactions a few times a day; hourly at most.
+    syncMinutes: Math.max(60, Number(process.env.PLAID_SYNC_MINUTES) || 360)
   },
   google: {
     mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ""
@@ -50,6 +52,12 @@ export const config = {
   packages: {
     // Never more often than every 5 minutes: each check is a Gmail search.
     checkMinutes: Math.max(5, Number(process.env.PACKAGES_CHECK_MINUTES) || 10)
+  },
+  trips: {
+    /** Flights are priced from here; PBI is the family's airport. */
+    homeAirport: process.env.HOME_AIRPORT || "PBI",
+    /** Where a scanned trip page opens: the Pi's tailnet address, so it works away from home. */
+    publicBase: process.env.TRIPS_PUBLIC_BASE || "http://100.81.206.101:4174"
   },
   travelProviders: {
     amadeusClientId: process.env.AMADEUS_CLIENT_ID || "",

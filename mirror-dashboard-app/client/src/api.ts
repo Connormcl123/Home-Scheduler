@@ -1,4 +1,4 @@
-import type { ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse } from "@mirror-dashboard/shared";
+import type { BudgetSummary, BudgetView, TripArrangements, TripPlan, TripSelection, ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -77,6 +77,22 @@ export function fetchWatchlist() {
 
 export function fetchPersonalFinanceSummary() {
   return request<PersonalFinanceSummary>("/api/finance/personal");
+}
+
+export function fetchBudgets() {
+  return request<BudgetSummary>("/api/finance/budgets");
+}
+
+export function saveBudget(input: { category: string; limitAmount: number }) {
+  return request<BudgetView>("/api/finance/budgets", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateBudget(id: number, input: { limitAmount?: number; category?: string }) {
+  return request<BudgetView>(`/api/finance/budgets/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function deleteBudget(id: number) {
+  return request<void>(`/api/finance/budgets/${id}`, { method: "DELETE" });
 }
 
 export function fetchPlaidStatus() {
@@ -177,6 +193,19 @@ export function fetchAssistantConversation(id: number) {
 export async function deleteAssistantConversation(id: number) {
   const response = await fetch(`/api/assistant/conversations/${id}`, { method: "DELETE" });
   if (!response.ok) throw new Error(`Could not delete the chat (${response.status}).`);
+}
+
+export function fetchTripArrangements(dealId: number, input: { adults: number; children: number; weekShift: number }) {
+  const query = new URLSearchParams({ adults: String(input.adults), children: String(input.children), weekShift: String(input.weekShift) });
+  return request<TripArrangements>(`/api/travel/deals/${dealId}/arrangements?${query.toString()}`);
+}
+
+export function commitTrip(input: { dealId: number; selection: TripSelection; weekShift: number; travelers: { adults: number; children: number } }) {
+  return request<TripPlan>("/api/travel/trips", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function fetchTripPlans() {
+  return request<TripPlan[]>("/api/travel/trips");
 }
 
 export function fetchTravelDeals() {

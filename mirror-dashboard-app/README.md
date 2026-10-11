@@ -50,7 +50,9 @@ Important settings:
 - `FINANCE_WATCHLIST`: used by the mock finance provider to shape placeholder cards.
 - `FINANCE_PROVIDER`: `yahoo` for the unofficial test provider, or `mock` for local-only testing.
 - `PERSONAL_FINANCE_PROVIDER`: currently `local-demo`, which seeds SQLite with accounts, budgets, and transactions for the Monarch-style dashboard.
-- `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: reserved for a future bank/credit-card aggregation provider.
+- `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`: bank and credit-card aggregation. Setup steps are in `docs/plaid-setup.md`.
+- `HOME_AIRPORT`, `TRIPS_PUBLIC_BASE`: trip planning. Setup and behaviour are in `docs/trip-planning.md`.
+- `PLAID_SYNC_MINUTES`: how often the Pi re-syncs Plaid on its own (default 360, minimum 60).
 - `PLAID_CLIENT_NAME`, `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_USER_ID`: Plaid Link settings. The first implementation uses the Transactions product.
 - `GOOGLE_MAPS_API_KEY`: optional Google Maps Platform key for Places API travel research. Enable Places API (New) in Google Cloud.
 - `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`: optional future flight-search provider credentials. These are surfaced in integration status but not used for booking yet.
@@ -82,6 +84,9 @@ Implemented endpoints:
 - `GET /api/news`
 - `GET /api/finance/summary`
 - `GET /api/finance/personal`
+- `GET /api/travel/deals/:id/arrangements`, `POST /api/travel/trips`, `GET /api/travel/trips`, `DELETE /api/travel/trips/:id`, `GET /trips/:token`
+- `GET /api/finance/budgets`, `POST /api/finance/budgets`, `PATCH /api/finance/budgets/:id`, `DELETE /api/finance/budgets/:id`
+- `GET /api/finance/categories`
 - `GET /api/finance/plaid/status`
 - `POST /api/finance/plaid/link-token`
 - `POST /api/finance/plaid/exchange-public-token`

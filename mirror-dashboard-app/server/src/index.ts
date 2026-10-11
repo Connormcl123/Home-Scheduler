@@ -8,19 +8,25 @@ import { getDashboard } from "./services/dashboard.js";
 import { getCalendarEvents, moveCalendarEvent } from "./services/calendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
 import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
-import { createGroceryItem, deleteGroceryItem, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
+import { createGroceryItem, deleteGroceryItem, groceryText, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
+import { BudgetError, deleteBudget, listBudgets, renameOldCategories, setBudget, updateBudget } from "./services/budgets.js";
+import { FINANCE_CATEGORIES } from "./services/finance/categories.js";
+import { arrangementsFor } from "./services/trips/arrange.js";
+import { commitTrip, deleteTripPlan, listTripPlans, tripByToken } from "./services/trips/commit.js";
+import { tripPage } from "./services/trips/page.js";
+import { budgetsSpoken, budgetSaidBack } from "./services/voiceCommands.js";
 import { getIntegrationStatus } from "./services/integrations.js";
 import { getNews } from "./services/news.js";
 import { deleteNoteByDate, getNoteByDate, getTodayNote, listNotes, upsertNote } from "./services/notes.js";
 import { createCategoryRule, getPersonalFinanceSummary, listCategoryRules, updateTransactionCategory } from "./services/personalFinance.js";
-import { createPlaidLinkToken, exchangePlaidPublicToken, getPlaidStatus, syncAllPlaidItems } from "./services/plaidProvider.js";
+import { createPlaidLinkToken, exchangePlaidPublicToken, getPlaidStatus, plaidErrorMessage, startPlaidSyncScheduler, syncAllPlaidItems } from "./services/plaidProvider.js";
 import { createRssFeed, deleteRssFeed, listRssFeeds, updateRssFeed } from "./services/rssFeeds.js";
 import { getSettings, patchSettings } from "./services/settings.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.js";
 import { createEnrichedTravelInspiration, deleteTravelInspiration, generateTravelItinerary, listTravelInspirations, updateTravelInspiration } from "./services/travelInspirations.js";
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
-import { createCalendarEventFromVoice, createTaskFromVoice, VoiceCommandError } from "./services/voiceCommands.js";
+import { addGroceriesFromVoice, createCalendarEventFromVoice, createTaskFromVoice, openTasksForVoice, VoiceCommandError } from "./services/voiceCommands.js";
 import { AssistantError, getAssistantStatus } from "./services/assistant.js";
 import { chatInConversation, deleteConversation, getConversation, listConversations } from "./services/assistantHistory.js";
 import { generateTravelDeals, listTravelDeals, startTravelDealScheduler } from "./services/travelDeals.js";
@@ -237,6 +243,48 @@ app.post("/api/finance/plaid/sync", async (_req, res, next) => {
   }
 });
 
+// Budgets: the wall creates and edits them, Home and Siri read them.
+app.get("/api/finance/budgets", async (_req, res, next) => {
+  try {
+    res.json(await listBudgets());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/finance/categories", (_req, res) => {
+  res.json({ categories: FINANCE_CATEGORIES });
+});
+
+app.post("/api/finance/budgets", async (req, res, next) => {
+  try {
+    if (!req.body?.category) return res.status(400).json({ error: "A category is required." });
+    res.status(201).json(await setBudget({ category: req.body.category, limitAmount: req.body.limitAmount, color: req.body.color }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/finance/budgets/:id", async (req, res, next) => {
+  try {
+    const budget = await updateBudget(Number(req.params.id), req.body || {});
+    if (!budget) return res.status(404).json({ error: "That budget no longer exists." });
+    res.json(budget);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/finance/budgets/:id", async (req, res, next) => {
+  try {
+    const removed = await deleteBudget(Number(req.params.id));
+    if (!removed) return res.status(404).json({ error: "That budget no longer exists." });
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/finance/category-rules", async (_req, res, next) => {
   try {
     res.json(await listCategoryRules());
@@ -361,6 +409,17 @@ app.delete("/api/finance/watchlist/:id", async (req, res, next) => {
   }
 });
 
+// The iPhone "Grocery list" Shortcut texts `message` to the phone.
+app.get("/api/grocery/text", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    const items = await listGroceryItems({ activeOnly: true });
+    res.json({ ok: true, count: items.length, message: groceryText(items, new Date()) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/grocery", async (req, res, next) => {
   try {
     res.json(await listGroceryItems({ activeOnly: req.query.activeOnly === "true" }));
@@ -458,11 +517,123 @@ app.post("/api/voice/task", async (req, res, next) => {
   }
 });
 
+// "Hey Siri, add groceries" - `items` can name several: "milk, eggs and bread".
+app.post("/api/voice/grocery", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    const result = await addGroceriesFromVoice(req.body || {});
+    res.status(201).json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// "Hey Siri, set my grocery budget to 600".
+app.post("/api/voice/budget", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    const budget = await setBudget({ category: req.body?.category, limitAmount: req.body?.amount ?? req.body?.limitAmount });
+    res.status(201).json({ ok: true, message: budgetSaidBack(budget), budget });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// "Hey Siri, how are my budgets" - spoken, so it names only what needs attention.
+app.get("/api/voice/budgets", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    res.json({ ok: true, message: budgetsSpoken(await listBudgets()) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Siri reads `message` aloud: open tasks due today or earlier, plus any without a date.
+app.get("/api/voice/tasks", async (req, res, next) => {
+  try {
+    if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
+    res.json({ ok: true, message: await openTasksForVoice(todayIso()) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/voice/calendar-event", async (req, res, next) => {
   try {
     if (!isVoiceRequestAllowed(req)) return res.status(401).json({ error: "Voice webhook token is required." });
     const event = await createCalendarEventFromVoice(req.body || {});
     res.status(201).json({ ok: true, message: `Added calendar event: ${event.title}`, event });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// The deep dive behind a trip idea: dates, flights, stays, things to do, and what each costs.
+app.get("/api/travel/deals/:id/arrangements", async (req, res, next) => {
+  try {
+    const deals = await listTravelDeals();
+    const deal = deals.deals.find((entry) => entry.id === Number(req.params.id));
+    if (!deal) return res.status(404).json({ error: "That trip idea is no longer on the board." });
+    res.json(await arrangementsFor(deal, {
+      travelers: travelersFrom(req.query),
+      weekShift: Number(req.query.weekShift) || 0,
+      origin: config.trips.homeAirport,
+      refresh: req.query.refresh === "true"
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// One tap on the wall: hold the dates, budget the cost, and put the booking links on a phone.
+app.post("/api/travel/trips", async (req, res, next) => {
+  try {
+    const deals = await listTravelDeals();
+    const deal = deals.deals.find((entry) => entry.id === Number(req.body?.dealId));
+    if (!deal) return res.status(404).json({ error: "That trip idea is no longer on the board." });
+    const selection = req.body?.selection;
+    if (!selection?.flightId || !selection?.stayId) return res.status(400).json({ error: "Choose a flight and a place to stay first." });
+    const arrangements = await arrangementsFor(deal, {
+      travelers: travelersFrom(req.body?.travelers ?? {}),
+      weekShift: Number(req.body?.weekShift) || 0,
+      origin: config.trips.homeAirport
+    });
+    res.status(201).json(await commitTrip({
+      arrangements,
+      selection: { flightId: selection.flightId, stayId: selection.stayId, activityIds: Array.isArray(selection.activityIds) ? selection.activityIds : [] },
+      holdInCalendar: req.body?.holdInCalendar !== false,
+      addToBudget: req.body?.addToBudget !== false
+    }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/travel/trips", async (_req, res, next) => {
+  try {
+    res.json(await listTripPlans());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/travel/trips/:id", async (req, res, next) => {
+  try {
+    const removed = await deleteTripPlan(Number(req.params.id));
+    if (!removed) return res.status(404).json({ error: "That trip is no longer saved." });
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Scanned from the wall. No API shape, just the page a phone books from.
+app.get("/trips/:token", async (req, res, next) => {
+  try {
+    const trip = await tripByToken(req.params.token);
+    if (!trip) return res.status(404).type("html").send("<h1>That trip link has expired.</h1>");
+    res.type("html").send(tripPage(trip));
   } catch (error) {
     next(error);
   }
@@ -688,6 +859,12 @@ if (fs.existsSync(config.clientDistPath)) {
 }
 
 app.use((error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Plaid's own reason names what to fix, so pass it through on the finance routes.
+  if (req.path.startsWith("/api/finance/plaid")) {
+    const message = plaidErrorMessage(error);
+    if (message) return res.status(400).json({ error: message });
+  }
+
   // The Shortcut shows `message` as a notification, so a share must never come back without one.
   if (req.path.startsWith("/api/share")) {
     const failure = { status: "failed", kind: null, id: null, title: null, shareId: null, imageUrl: null };
@@ -704,6 +881,7 @@ app.use((error: unknown, req: express.Request, res: express.Response, _next: exp
     if (status >= 500) console.error(error);
     return res.sendStatus(status);
   }
+  if (error instanceof BudgetError) return res.status(error.status).json({ error: error.message });
   if (error instanceof VoiceCommandError) return res.status(error.status).json({ error: error.message });
   if (error instanceof AssistantError) return res.status(error.status).json({ error: error.message });
   console.error(error);
@@ -714,6 +892,8 @@ app.listen(config.port, async () => {
   await getDb();
   startTravelDealScheduler();
   startPackageChecker(createCheckerDeps, config.packages.checkMinutes);
+  startPlaidSyncScheduler(config.plaid.syncMinutes);
+  renameOldCategories().catch((error) => console.error("Category rename failed:", error));
   console.log(`Mirror dashboard server listening on http://localhost:${config.port}`);
 });
 
@@ -723,6 +903,15 @@ function isVoiceRequestAllowed(req: express.Request) {
   const headerToken = req.get("x-alexa-token") || "";
   const bearerToken = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7) : "";
   return [headerToken, bearerToken].some((token) => token && token === config.voice.webhookToken);
+}
+
+/** Who is going: the wall remembers the family, and the defaults suit this house. */
+function travelersFrom(source: Record<string, unknown>) {
+  const count = (value: unknown, fallback: number) => {
+    const number = Math.round(Number(value));
+    return Number.isFinite(number) && number >= 0 && number <= 12 ? number : fallback;
+  };
+  return { adults: Math.max(1, count(source.adults, 2)), children: count(source.children, 2) };
 }
 
 function firstText(body: unknown, keys: string[]) {

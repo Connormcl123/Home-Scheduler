@@ -116,6 +116,27 @@ export async function initializeSchema(database: Database) {
       last_synced_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS trip_arrangements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cache_key TEXT NOT NULL UNIQUE,
+      deal_id INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS trip_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      deal_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      destination TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      calendar_event_id INTEGER,
+      budget_category TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS grocery_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,

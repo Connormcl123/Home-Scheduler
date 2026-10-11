@@ -1,5 +1,6 @@
 import type { FinanceAccount, FinanceBudget, FinanceCategoryRule, FinanceTransaction, FinanceTrendPoint, PersonalFinanceSummary } from "@mirror-dashboard/shared";
 import { getDb } from "../db.js";
+import { categoryFor, tidyCategory } from "./finance/categories.js";
 
 const demoAccounts = [
   ["Everyday Checking", "Local Bank", "checking", 4280.22],
@@ -86,10 +87,18 @@ export async function getPersonalFinanceSummary(): Promise<PersonalFinanceSummar
   };
 }
 
-export async function categorizeMerchant(merchant: string, providerCategory?: string | null) {
+export async function categorizeMerchant(
+  merchant: string,
+  providerCategory?: string | null,
+  detail?: { detailed?: string | null; amount?: number }
+) {
   const ruleCategory = await getRuleCategoryForMerchant(merchant);
-  if (ruleCategory) return { category: ruleCategory, categorizedBy: "rule" as const };
-  return { category: normalizeCategory(providerCategory), categorizedBy: "provider" as const };
+  // A rule is the household's own decision, so it beats anything the bank says.
+  if (ruleCategory) return { category: tidyCategory(ruleCategory), categorizedBy: "rule" as const };
+  return {
+    category: categoryFor({ merchant, primary: providerCategory, detailed: detail?.detailed, amount: detail?.amount }),
+    categorizedBy: "provider" as const
+  };
 }
 
 export async function listCategoryRules(): Promise<FinanceCategoryRule[]> {

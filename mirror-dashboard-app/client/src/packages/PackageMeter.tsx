@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Check, House, Package, Truck } from "lucide-react";
+import { Check, House, Package, Truck, type LucideIcon } from "lucide-react";
 import type { PackageView } from "@mirror-dashboard/shared";
 import { STEPS, arrivalLine, stepIndex } from "./packageText";
 
@@ -19,11 +19,20 @@ function labelShift(index: number) {
  * the meter. On Home the icon slides in from the first dot as part of the
  * entrance; it moves by transform only, so the Pi composites it.
  */
-export function PackageMeter({ pkg, now, size = "home", animate = false }: { pkg: PackageView; now: Date; size?: "home" | "full"; animate?: boolean }) {
+export function PackageMeter({ pkg, now, size = "home", animate = false, bare = false }: { pkg: PackageView; now: Date; size?: "home" | "full"; animate?: boolean; bare?: boolean }) {
   const current = stepIndex(pkg.status);
   const percent = (current / LAST) * 100;
   const Icon = ICONS[pkg.status];
   const full = size === "full";
+  // Bare is the Home header strip: just what it is and the meter.
+  if (bare) {
+    return (
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="truncate text-center font-display text-[30px] leading-tight text-amb-ink">{pkg.item}</p>
+        <Steps current={current} percent={percent} Icon={Icon} full={false} animate={animate} />
+      </div>
+    );
+  }
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex min-w-0 items-center gap-4">
@@ -41,7 +50,16 @@ export function PackageMeter({ pkg, now, size = "home", animate = false }: { pkg
         </div>
       </div>
 
-      {/* Dots sit 12px in from each end of this padded box. */}
+      <Steps current={current} percent={percent} Icon={Icon} full={full} animate={animate} />
+
+      {pkg.issue && <p className={`${full ? "text-xl" : "text-base"} font-semibold text-amber-700 dark:text-amber-300`}>{pkg.issue}</p>}
+    </div>
+  );
+}
+
+function Steps({ current, percent, Icon, full, animate }: { current: number; percent: number; Icon: LucideIcon; full: boolean; animate: boolean }) {
+  return (
+      /* Dots sit 12px in from each end of this padded box. */
       <div className="px-3">
         <div className="relative h-9">
           <motion.div
@@ -81,8 +99,5 @@ export function PackageMeter({ pkg, now, size = "home", animate = false }: { pkg
           ))}
         </div>
       </div>
-
-      {pkg.issue && <p className={`${full ? "text-xl" : "text-base"} font-semibold text-amber-700 dark:text-amber-300`}>{pkg.issue}</p>}
-    </div>
   );
 }

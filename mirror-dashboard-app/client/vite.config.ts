@@ -8,9 +8,10 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) }
   },
   server: {
+    // MIRROR_API_TARGET=http://192.168.1.185:4174 previews against the Pi's real data.
     proxy: {
-      "/api": "http://localhost:4174",
-      "/media": "http://localhost:4174"
+      "/api": process.env.MIRROR_API_TARGET || "http://localhost:4174",
+      "/media": process.env.MIRROR_API_TARGET || "http://localhost:4174"
     }
   }
 });

@@ -87,6 +87,55 @@ export interface FinanceBudget {
   color: string;
 }
 
+/**
+ * The spending categories budgets are built from: one list for the server's
+ * sorting, the wall's pickers and the Siri commands.
+ */
+export const FINANCE_CATEGORIES = [
+  "Groceries",
+  "Dining & Drinks",
+  "Shopping",
+  "Gas & Auto",
+  "Home",
+  "Utilities",
+  "Health",
+  "Entertainment",
+  "Subscriptions",
+  "Travel",
+  "Kids",
+  "Pets",
+  "Personal",
+  "Fees",
+  "Debt",
+  "Income",
+  "Transfers",
+  "Other"
+] as const;
+
+export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number];
+
+export interface BudgetView extends FinanceBudget {
+  /** Limit minus what has been spent; negative once the budget is blown. */
+  remaining: number;
+  percent: number;
+  /** What this month ends at if spending carries on at today's pace. */
+  projected: number;
+  state: "under" | "ahead" | "over";
+}
+
+export interface BudgetSummary {
+  monthLabel: string;
+  dayOfMonth: number;
+  daysInMonth: number;
+  budgets: BudgetView[];
+  totalLimit: number;
+  totalSpent: number;
+  /** Spending this month in categories with no budget. */
+  unbudgetedSpent: number;
+  /** Spending categories that have no budget yet. */
+  available: string[];
+}
+
 export interface FinanceTransaction {
   id: number;
   accountId?: number | null;
@@ -351,6 +400,92 @@ export interface TravelDealDetail {
   gettingThere: string;
   familyTip: string;
   budgetBreakdown: Array<{ label: string; amount: string }>;
+}
+
+export interface TripTravelers {
+  adults: number;
+  children: number;
+}
+
+export interface TripFlightOption {
+  id: string;
+  airline: string;
+  route: string;
+  departs: string;
+  returns: string;
+  stops: string;
+  /** An estimate. The link opens the live fare. */
+  pricePerPerson: number;
+  note: string;
+  link: string;
+}
+
+export interface TripStayOption {
+  id: string;
+  name: string;
+  kind: "hotel" | "rental" | "boutique";
+  area: string;
+  nightlyPrice: number;
+  note: string;
+  link: string;
+}
+
+export interface TripActivityOption {
+  id: string;
+  name: string;
+  when: string;
+  pricePerPerson: number;
+  note: string;
+  link: string;
+}
+
+/** Everything needed to decide on a trip: the dates, the options and what each costs. */
+export interface TripArrangements {
+  dealId: number;
+  destination: string;
+  origin: string;
+  startDate: string;
+  endDate: string;
+  nights: number;
+  travelers: TripTravelers;
+  flights: TripFlightOption[];
+  stays: TripStayOption[];
+  activities: TripActivityOption[];
+  dailyFoodPerPerson: number;
+  generatedAt: string;
+  source: "ai" | "local";
+}
+
+export interface TripSelection {
+  flightId: string;
+  stayId: string;
+  activityIds: string[];
+}
+
+export interface TripTotals {
+  flights: number;
+  stay: number;
+  activities: number;
+  food: number;
+  total: number;
+  perPerson: number;
+}
+
+/** A trip the family has decided to move on: held in the calendar, budgeted, and waiting on a phone. */
+export interface TripPlan {
+  id: number;
+  dealId: number;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  travelers: TripTravelers;
+  selection: TripSelection;
+  totals: TripTotals;
+  /** Opened by scanning the wall: every booking link in one page. */
+  phoneUrl: string;
+  heldInCalendar: boolean;
+  budgetCategory?: string | null;
+  createdAt: string;
 }
 
 export interface TravelDeal {
