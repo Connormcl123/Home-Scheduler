@@ -11,7 +11,8 @@ export default defineConfig({
     // MIRROR_API_TARGET=http://192.168.1.185:4174 previews against the Pi's real data.
     proxy: {
       "/api": process.env.MIRROR_API_TARGET || "http://localhost:4174",
-      "/media": process.env.MIRROR_API_TARGET || "http://localhost:4174"
+      "/media": process.env.MIRROR_API_TARGET || "http://localhost:4174",
+      "/screensaver": process.env.MIRROR_API_TARGET || "http://localhost:4174"
     }
   }
 });

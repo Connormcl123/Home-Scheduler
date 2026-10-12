@@ -206,6 +206,14 @@ export interface FinanceWatchlistItem {
   enabled: boolean;
 }
 
+/** The idle-screen photos and timing, from GET /api/screensaver. */
+export interface ScreensaverSettings {
+  idleMinutes: number;
+  slideSeconds: number;
+  /** Same-origin paths, served from the Pi's data/screensaver folder. */
+  photos: string[];
+}
+
 export interface GroceryItem {
   id: number;
   name: string;

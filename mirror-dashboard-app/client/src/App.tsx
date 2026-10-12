@@ -2,6 +2,7 @@ import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEv
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
+import { Screensaver } from "./screensaver/Screensaver";
 import { SlideQr } from "./SlideQr";
 import { mergeNavOrder } from "./navOrder";
 import { PackagesPanel } from "./packages/PackagesPanel";
@@ -1024,6 +1025,7 @@ function DashboardApp() {
       )}
       <ShareBanner onArrived={handleShareArrived} onOpen={openShare} onVisibleChange={setShareBannerUp} />
       <PackageBanner blocked={shareBannerUp} onOpen={openPackageEvent} />
+      <Screensaver />
       <OnScreenKeyboard
         visible={keyboardVisible}
         getTarget={() => keyboardTargetRef.current}

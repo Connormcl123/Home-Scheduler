@@ -1,4 +1,4 @@
-import type { BudgetSummary, BudgetView, TripArrangements, TripPlan, TripSelection, ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse } from "@mirror-dashboard/shared";
+import type { BudgetSummary, BudgetView, TripArrangements, TripPlan, TripSelection, ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse, ScreensaverSettings } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -133,6 +133,10 @@ export function deleteWatchlistItem(id: number) {
 
 export function fetchIntegrationStatus() {
   return request<ApiIntegrationStatus>("/api/integrations/status");
+}
+
+export function fetchScreensaver() {
+  return request<ScreensaverSettings>("/api/screensaver");
 }
 
 export function fetchGroceryItems(activeOnly = false) {
