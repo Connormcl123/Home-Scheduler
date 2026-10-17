@@ -217,6 +217,8 @@ export interface ScreensaverSettings {
 export interface GroceryItem {
   id: number;
   name: string;
+  /** Meal-plan recipes this item was sent from; empty when added by hand. */
+  recipes: string[];
   quantity?: string | null;
   category?: string | null;
   supplier?: string | null;

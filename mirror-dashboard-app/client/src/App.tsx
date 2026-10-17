@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
 import { Screensaver } from "./screensaver/Screensaver";
+import { groupByRecipe, type RecipeGroup } from "./grocery/groceryGroups";
 import { SlideQr } from "./SlideQr";
 import { mergeNavOrder } from "./navOrder";
 import { PackagesPanel } from "./packages/PackagesPanel";
@@ -34,6 +35,7 @@ import {
   deleteTravelInspiration,
   deleteWatchlistItem,
   fetchDashboard,
+  fetchTodayTasks,
   fetchGroceryItems,
   fetchIntegrationStatus,
   fetchNote,
@@ -610,6 +612,21 @@ function DashboardApp() {
     refreshDashboard();
     const refreshTimer = window.setInterval(refreshDashboard, 5 * 60 * 1000);
     return () => window.clearInterval(refreshTimer);
+  }, []);
+
+  // The full summary (weather, news, money) only refreshes every five minutes,
+  // but tasks also arrive from Siri and Alexa, so Home re-reads just the task
+  // list often enough that a dictated task shows up while you are still there.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      fetchTodayTasks()
+        .then((tasks) => {
+          const latest = tasks.slice(0, 8);
+          setDashboard((current) => (JSON.stringify(current.tasks) === JSON.stringify(latest) ? current : { ...current, tasks: latest }));
+        })
+        .catch(() => undefined);
+    }, 20 * 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -2170,6 +2187,25 @@ function GroceryPanel() {
   const [shareOpen, setShareOpen] = useState(false);
   const activeItems = items.filter((item) => !item.purchased);
   const purchasedItems = items.filter((item) => item.purchased);
+  const recipeGroups = groupByRecipe(activeItems);
+  // Recipe folders start closed; the wall remembers which ones were left open.
+  const [openRecipes, setOpenRecipes] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(safeStorageGet("mirror-dashboard-grocery-open-recipes") || "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+
+  function toggleRecipe(recipe: string) {
+    setOpenRecipes((current) => {
+      const next = new Set(current);
+      if (next.has(recipe)) next.delete(recipe);
+      else next.add(recipe);
+      safeStorageSet("mirror-dashboard-grocery-open-recipes", JSON.stringify([...next]));
+      return next;
+    });
+  }
 
   async function load() {
     setItems(await fetchGroceryItems());
@@ -2247,7 +2283,11 @@ function GroceryPanel() {
         <div className="min-h-0 overflow-y-auto rounded-3xl bg-amb-card p-4">
           <h3 className="mb-4 text-2xl font-bold">Low or Out</h3>
           <div className="space-y-3">
-            {activeItems.map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} />)}
+            {recipeGroups.groups.map((group) => (
+              <RecipeBucket key={group.recipe} group={group} open={openRecipes.has(group.recipe)} onToggle={() => toggleRecipe(group.recipe)} onChanged={load} />
+            ))}
+            {recipeGroups.groups.length > 0 && recipeGroups.other.length > 0 && <h4 className="pt-3 text-xl font-bold text-amb-muted">Other items</h4>}
+            {recipeGroups.other.map((item) => <GroceryItemRow key={item.id} item={item} onChanged={load} />)}
             {!activeItems.length && <p className="rounded-2xl bg-amb-well p-6 text-2xl font-bold text-amb-muted">Nothing on the grocery list yet.</p>}
           </div>
         </div>
@@ -2262,6 +2302,41 @@ function GroceryPanel() {
       {quickAddOpen && <QuickGroceryModal onClose={() => setQuickAddOpen(false)} onAdd={quickAddItem} />}
       {shareOpen && <GroceryShareModal items={activeItems} onClose={() => setShareOpen(false)} />}
     </Card>
+  );
+}
+
+function RecipeBucket({ group, open, onToggle, onChanged }: { group: RecipeGroup; open: boolean; onToggle: () => void; onChanged: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+
+  async function boughtAll() {
+    setBusy(true);
+    try {
+      await Promise.all(group.items.map((item) => updateGroceryItem(item.id, { purchased: true })));
+      await onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-amb-well">
+      <div className="flex items-center gap-3 p-3">
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-2xl px-2 text-left active:opacity-60">
+          <ChevronRight className={`h-8 w-8 shrink-0 text-amb-muted transition-transform ${open ? "rotate-90" : ""}`} />
+          <ChefHat className="h-7 w-7 shrink-0 text-amb-accent" />
+          <span className="min-w-0 flex-1 truncate text-3xl font-bold">{group.recipe}</span>
+          <span className="shrink-0 rounded-full bg-amb-card px-4 py-2 text-lg font-bold text-amb-muted">{group.items.length} to buy</span>
+        </button>
+        <button type="button" onClick={boughtAll} disabled={busy} className="touch-button shrink-0 bg-emerald-100 px-5 text-emerald-700 disabled:opacity-60">
+          {busy ? "Saving..." : "Bought all"}
+        </button>
+      </div>
+      {open && (
+        <div className="space-y-3 px-3 pb-3">
+          {group.items.map((item) => <GroceryItemRow key={item.id} item={item} onChanged={onChanged} />)}
+        </div>
+      )}
+    </div>
   );
 }
 

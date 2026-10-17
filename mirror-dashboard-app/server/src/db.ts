@@ -317,6 +317,8 @@ export async function initializeSchema(database: Database) {
   await ensureColumn(database, "travel_deals", "image_url", "TEXT");
   await ensureColumn(database, "recipes", "source_url", "TEXT");
   await ensureColumn(database, "recipes", "source_name", "TEXT");
+  // JSON array of recipe titles, so the grocery list can fold items by recipe.
+  await ensureColumn(database, "grocery_items", "recipes", "TEXT");
   // A shared link is saved once; manual and AI recipes have no link and are not affected.
   await database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_recipes_source_url ON recipes(source_url) WHERE source_url IS NOT NULL");
 }

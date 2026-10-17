@@ -5,6 +5,7 @@ function rowToGroceryItem(row: any): GroceryItem {
   return {
     id: row.id,
     name: row.name,
+    recipes: parseRecipes(row.recipes),
     quantity: row.quantity,
     category: row.category,
     supplier: row.supplier,
@@ -15,6 +16,20 @@ function rowToGroceryItem(row: any): GroceryItem {
   };
 }
 
+function parseRecipes(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((title): title is string => typeof title === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeRecipes(recipes: string[] | undefined): string | null {
+  return recipes?.length ? JSON.stringify(recipes) : null;
+}
+
 export async function listGroceryItems(filter: { activeOnly?: boolean } = {}) {
   const db = await getDb();
   const rows = filter.activeOnly
@@ -23,28 +38,29 @@ export async function listGroceryItems(filter: { activeOnly?: boolean } = {}) {
   return rows.map(rowToGroceryItem);
 }
 
-export async function createGroceryItem(input: { name: string; quantity?: string; category?: string; supplier?: string; status?: GroceryStatus }) {
+export async function createGroceryItem(input: { name: string; quantity?: string; category?: string; supplier?: string; status?: GroceryStatus; recipes?: string[] }) {
   const db = await getDb();
   const result = await db.run(
-    "INSERT INTO grocery_items (name, quantity, category, supplier, status) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO grocery_items (name, quantity, category, supplier, status, recipes) VALUES (?, ?, ?, ?, ?, ?)",
     input.name.trim(),
     input.quantity || null,
     input.category || null,
     input.supplier || null,
-    input.status || "low"
+    input.status || "low",
+    storeRecipes(input.recipes)
   );
   const row = await db.get("SELECT * FROM grocery_items WHERE id = ?", result.lastID);
   return rowToGroceryItem(row);
 }
 
-export async function updateGroceryItem(id: number, input: Partial<{ name: string; quantity: string | null; category: string | null; supplier: string | null; status: GroceryStatus; purchased: boolean }>) {
+export async function updateGroceryItem(id: number, input: Partial<{ name: string; quantity: string | null; category: string | null; supplier: string | null; status: GroceryStatus; purchased: boolean; recipes: string[] }>) {
   const db = await getDb();
   const current = await db.get("SELECT * FROM grocery_items WHERE id = ?", id);
   if (!current) return null;
 
   await db.run(
     `UPDATE grocery_items
-     SET name = ?, quantity = ?, category = ?, supplier = ?, status = ?, purchased = ?, updated_at = CURRENT_TIMESTAMP
+     SET name = ?, quantity = ?, category = ?, supplier = ?, status = ?, purchased = ?, recipes = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
     input.name === undefined ? current.name : input.name.trim(),
     input.quantity === undefined ? current.quantity : input.quantity,
@@ -52,6 +68,7 @@ export async function updateGroceryItem(id: number, input: Partial<{ name: strin
     input.supplier === undefined ? current.supplier : input.supplier,
     input.status ?? current.status,
     input.purchased === undefined ? current.purchased : Number(input.purchased),
+    input.recipes === undefined ? current.recipes : storeRecipes(input.recipes),
     id
   );
 

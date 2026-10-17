@@ -164,22 +164,17 @@ export async function pushPlanToGrocery(from = todayIso()): Promise<GroceryPushR
   const [plan, existing] = await Promise.all([getMealPlan(from), listGroceryItems()]);
   const byName = new Map(existing.map((item) => [item.name.trim().toLowerCase(), item]));
 
-  // Collapse repeats across the week so three chicken dinners ask for chicken once.
-  const wanted = new Map<string, RecipeIngredient>();
-  for (const entry of plan) {
-    for (const ingredient of entry.recipe?.ingredients || []) {
-      const key = ingredient.name.trim().toLowerCase();
-      if (!key || wanted.has(key)) continue;
-      wanted.set(key, ingredient);
-    }
-  }
+  const wanted = ingredientsByRecipe(plan);
 
   const added: string[] = [];
   let skipped = 0;
-  for (const [key, ingredient] of wanted) {
+  for (const [key, { ingredient, recipes }] of wanted) {
     const match = byName.get(key);
 
     if (match && !match.purchased) {
+      // Already listed: still file it under this week's recipes, so the list folds by recipe.
+      const merged = mergeRecipeTitles(match.recipes, recipes);
+      if (merged.length !== match.recipes.length) await updateGroceryItem(match.id, { recipes: merged });
       skipped += 1;
       continue;
     }
@@ -190,7 +185,8 @@ export async function pushPlanToGrocery(from = todayIso()): Promise<GroceryPushR
       await updateGroceryItem(match.id, {
         purchased: false,
         status: "low",
-        quantity: ingredient.quantity || match.quantity
+        quantity: ingredient.quantity || match.quantity,
+        recipes
       });
       added.push(ingredient.name.trim());
       continue;
@@ -200,12 +196,36 @@ export async function pushPlanToGrocery(from = todayIso()): Promise<GroceryPushR
       name: ingredient.name.trim(),
       quantity: ingredient.quantity || undefined,
       category: ingredient.category || "Meal plan",
-      status: "low"
+      status: "low",
+      recipes
     });
     added.push(ingredient.name.trim());
   }
 
   return { added: added.length, skipped, items: added };
+}
+
+/**
+ * Collapses repeats across the week, so three chicken dinners ask for chicken
+ * once, while remembering every recipe that needs it.
+ */
+export function ingredientsByRecipe(plan: Pick<MealPlanEntry, "recipe">[]) {
+  const wanted = new Map<string, { ingredient: RecipeIngredient; recipes: string[] }>();
+  for (const entry of plan) {
+    const title = entry.recipe?.title?.trim();
+    for (const ingredient of entry.recipe?.ingredients || []) {
+      const key = ingredient.name.trim().toLowerCase();
+      if (!key) continue;
+      const seen = wanted.get(key) ?? { ingredient, recipes: [] };
+      if (title && !seen.recipes.includes(title)) seen.recipes.push(title);
+      wanted.set(key, seen);
+    }
+  }
+  return wanted;
+}
+
+export function mergeRecipeTitles(current: string[], incoming: string[]): string[] {
+  return [...current, ...incoming.filter((title) => !current.includes(title))];
 }
 
 const RECIPE_SCHEMA = {

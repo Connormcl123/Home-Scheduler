@@ -27,6 +27,11 @@ export function fetchTasks() {
   return request<Task[]>("/api/tasks");
 }
 
+/** The same list the dashboard summary carries: due today or earlier, or undated. */
+export function fetchTodayTasks() {
+  return request<Task[]>("/api/tasks?today=true");
+}
+
 export function createTask(input: { title: string; notes?: string; dueDate?: string; priority?: Priority }) {
   return request<Task>("/api/tasks", { method: "POST", body: JSON.stringify(input) });
 }
