@@ -156,6 +156,10 @@ export function updateGroceryItem(id: number, input: Partial<{ name: string; qua
   return request<GroceryItem>(`/api/grocery/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
+export function clearGroceryList() {
+  return request<{ ok: true; deleted: number }>("/api/grocery", { method: "DELETE" });
+}
+
 export function deleteGroceryItem(id: number) {
   return request<void>(`/api/grocery/${id}`, { method: "DELETE" });
 }

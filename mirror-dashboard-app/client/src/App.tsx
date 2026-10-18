@@ -28,6 +28,7 @@ import {
   createTask,
   createTravelInspiration,
   createWatchlistItem,
+  clearGroceryList,
   deleteGroceryItem,
   deleteNote,
   deleteRssFeed,
@@ -2185,6 +2186,7 @@ function GroceryPanel() {
   const [status, setStatus] = useState<GroceryStatus>("low");
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
   const activeItems = items.filter((item) => !item.purchased);
   const purchasedItems = items.filter((item) => item.purchased);
   const recipeGroups = groupByRecipe(activeItems);
@@ -2255,6 +2257,9 @@ function GroceryPanel() {
           <button onClick={() => setQuickAddOpen(true)} className="touch-button bg-emerald-600 px-7 text-white">
             <Plus className="mr-2 h-7 w-7" /> Quick Add
           </button>
+          <button onClick={() => setClearOpen(true)} disabled={!items.length} className="touch-button bg-rose-100 px-7 text-rose-700 disabled:opacity-40">
+            <Trash2 className="mr-2 h-6 w-6" /> Clear list
+          </button>
           <p className="rounded-full bg-amber-100 px-5 py-3 text-xl font-bold text-amber-800">{activeItems.length} to buy this week</p>
         </div>
       </div>
@@ -2301,7 +2306,53 @@ function GroceryPanel() {
       </div>
       {quickAddOpen && <QuickGroceryModal onClose={() => setQuickAddOpen(false)} onAdd={quickAddItem} />}
       {shareOpen && <GroceryShareModal items={activeItems} onClose={() => setShareOpen(false)} />}
+      {clearOpen && (
+        <ClearGroceryModal
+          count={items.length}
+          onClose={() => setClearOpen(false)}
+          onCleared={async () => {
+            setClearOpen(false);
+            await load();
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+/** A tap on a wall screen is easy to make by accident, so emptying the list asks first. */
+function ClearGroceryModal({ count, onClose, onCleared }: { count: number; onClose: () => void; onCleared: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function clearAll() {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await clearGroceryList();
+      await onCleared();
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8" onClick={onClose}>
+      <div className="w-[640px] rounded-3xl bg-amb-sheet p-8 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <h3 className="font-display text-5xl">Clear the grocery list?</h3>
+        <p className="mt-3 text-2xl text-amb-muted">
+          This deletes all {count} {count === 1 ? "item" : "items"}, including ones already bought. It cannot be undone.
+        </p>
+        {failed && <p className="mt-3 text-xl font-bold text-rose-700">Could not clear the list. Try again.</p>}
+        <div className="mt-8 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="touch-button bg-amb-well px-8 text-amb-ink">Cancel</button>
+          <button type="button" onClick={clearAll} disabled={busy} className="touch-button bg-rose-600 px-8 text-white disabled:opacity-60">
+            {busy ? "Clearing..." : "Delete all"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

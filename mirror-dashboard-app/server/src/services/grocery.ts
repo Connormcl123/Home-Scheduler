@@ -76,6 +76,13 @@ export async function updateGroceryItem(id: number, input: Partial<{ name: strin
   return rowToGroceryItem(row);
 }
 
+/** Empties the list, bought items included. Returns how many were removed. */
+export async function deleteAllGroceryItems() {
+  const db = await getDb();
+  const result = await db.run("DELETE FROM grocery_items");
+  return result.changes ?? 0;
+}
+
 export async function deleteGroceryItem(id: number) {
   const db = await getDb();
   await db.run("DELETE FROM grocery_items WHERE id = ?", id);

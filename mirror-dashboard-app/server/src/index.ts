@@ -8,7 +8,7 @@ import { getDashboard } from "./services/dashboard.js";
 import { getCalendarEvents, moveCalendarEvent } from "./services/calendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
 import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
-import { createGroceryItem, deleteGroceryItem, groceryText, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
+import { createGroceryItem, deleteAllGroceryItems, deleteGroceryItem, groceryText, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
 import { BudgetError, deleteBudget, listBudgets, renameOldCategories, setBudget, updateBudget } from "./services/budgets.js";
 import { FINANCE_CATEGORIES } from "./services/finance/categories.js";
 import { arrangementsFor } from "./services/trips/arrange.js";
@@ -443,6 +443,15 @@ app.patch("/api/grocery/:id", async (req, res, next) => {
     const item = await updateGroceryItem(Number(req.params.id), req.body);
     if (!item) return res.status(404).json({ error: "Grocery item not found." });
     res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// The Grocery tab's Clear list button, after the wall asks to confirm.
+app.delete("/api/grocery", async (_req, res, next) => {
+  try {
+    res.json({ ok: true, deleted: await deleteAllGroceryItems() });
   } catch (error) {
     next(error);
   }
