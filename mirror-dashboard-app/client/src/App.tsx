@@ -3301,17 +3301,23 @@ function FinancePanel({ quotes, initialSummary }: { quotes: FinanceQuote[]; init
         </div>
       </div>
 
-      <div className="mt-3 grid h-44 shrink-0 grid-cols-[1fr_1fr_1fr] gap-4">
-        <div className="overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
-          <h3 className="text-2xl font-black">Accounts</h3>
-          <div className="mt-2 grid max-h-28 grid-cols-2 gap-2 overflow-y-auto pr-1">
-            {summary.accounts.slice(0, 6).map((account) => (
-              <div key={account.id} className="rounded-2xl bg-amb-well p-4">
-                <p className="truncate text-lg font-bold text-amb-muted">{account.institution}</p>
-                <p className="truncate text-xl font-black">{account.name}</p>
-                <p className={`mt-2 text-2xl font-black ${account.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(account.balance)}</p>
+      {/* Accounts gets the widest slot and compact four-across tiles so every
+          account shows at once; past eight they scroll instead of being cut. */}
+      <div className="mt-3 grid h-[17rem] shrink-0 grid-cols-[2fr_1fr_1fr] gap-4">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-amb-card p-4 shadow-sm">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-2xl font-black">Accounts</h3>
+            <p className="text-lg font-bold text-amb-muted">{summary.accounts.length} connected</p>
+          </div>
+          <div className="mt-2 grid min-h-0 flex-1 auto-rows-min grid-cols-4 gap-2 overflow-y-auto pr-1">
+            {summary.accounts.map((account) => (
+              <div key={account.id} className="min-w-0 rounded-2xl bg-amb-well px-3 py-2">
+                <p className="truncate text-sm font-bold leading-tight text-amb-muted">{account.institution}</p>
+                <p className="line-clamp-2 break-words text-base font-black leading-tight">{account.name}</p>
+                <p className={`mt-1 text-xl font-black leading-tight ${account.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(account.balance)}</p>
               </div>
             ))}
+            {!summary.accounts.length && <p className="col-span-4 rounded-2xl bg-amb-well px-4 py-3 text-lg font-bold text-amb-muted">No accounts connected yet.</p>}
           </div>
         </div>
 
