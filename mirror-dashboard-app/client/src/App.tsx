@@ -4,6 +4,7 @@ import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
 import { Screensaver } from "./screensaver/Screensaver";
 import { groupByRecipe, type RecipeGroup } from "./grocery/groceryGroups";
+import { groceryQuickCategories, twemojiUrl, type QuickCategory } from "./grocery/quickAdd";
 import { SlideQr } from "./SlideQr";
 import { mergeNavOrder } from "./navOrder";
 import { PackagesPanel } from "./packages/PackagesPanel";
@@ -332,172 +333,6 @@ const travelCandidates: TravelCandidate[] = [
     route: ["Fly into DCA", "Central hotel base", "Morning museum rhythm"]
   }
 ];
-
-const groceryQuickCategories = [
-  {
-    category: "Dairy",
-    color: "#38bdf8",
-    icon: "🥛",
-    items: [
-      { name: "Milk", icon: "🥛" },
-      { name: "Eggs", icon: "🥚" },
-      { name: "Butter", icon: "🧈" },
-      { name: "Cheese", icon: "🧀" },
-      { name: "Yogurt", icon: "🥣" },
-      { name: "Creamer", icon: "☕" }
-    ]
-  },
-  {
-    category: "Fruit",
-    color: "#fb7185",
-    icon: "🍎",
-    items: [
-      { name: "Apples", icon: "🍎" },
-      { name: "Bananas", icon: "🍌" },
-      { name: "Berries", icon: "🫐" },
-      { name: "Grapes", icon: "🍇" },
-      { name: "Oranges", icon: "🍊" },
-      { name: "Lemons", icon: "🍋" }
-    ]
-  },
-  {
-    category: "Meat",
-    color: "#f97316",
-    icon: "🥩",
-    items: [
-      { name: "Chicken", icon: "🍗" },
-      { name: "Ground beef", icon: "🥩" },
-      { name: "Steak", icon: "🥩" },
-      { name: "Bacon", icon: "🥓" },
-      { name: "Turkey", icon: "🍖" },
-      { name: "Fish", icon: "🐟" }
-    ]
-  },
-  {
-    category: "Vegetables",
-    color: "#22c55e",
-    icon: "🥕",
-    items: [
-      { name: "Lettuce", icon: "🥬" },
-      { name: "Carrots", icon: "🥕" },
-      { name: "Onions", icon: "🧅" },
-      { name: "Peppers", icon: "🫑" },
-      { name: "Potatoes", icon: "🥔" },
-      { name: "Broccoli", icon: "🥦" }
-    ]
-  },
-  {
-    category: "Spices",
-    color: "#a855f7",
-    icon: "🧂",
-    items: [
-      { name: "Salt", icon: "🧂" },
-      { name: "Pepper", icon: "🧂" },
-      { name: "Garlic powder", icon: "🧄" },
-      { name: "Paprika", icon: "🌶️" },
-      { name: "Cinnamon", icon: "🥄" },
-      { name: "Italian seasoning", icon: "🌿" }
-    ]
-  },
-  {
-    category: "Pantry",
-    color: "#eab308",
-    icon: "🍞",
-    items: [
-      { name: "Bread", icon: "🍞" },
-      { name: "Rice", icon: "🍚" },
-      { name: "Pasta", icon: "🍝" },
-      { name: "Cereal", icon: "🥣" },
-      { name: "Flour", icon: "🌾" },
-      { name: "Sugar", icon: "🍚" }
-    ]
-  },
-  {
-    category: "Frozen",
-    color: "#06b6d4",
-    icon: "❄️",
-    items: [
-      { name: "Frozen pizza", icon: "🍕" },
-      { name: "Frozen veggies", icon: "🥦" },
-      { name: "Ice cream", icon: "🍨" },
-      { name: "Waffles", icon: "🧇" },
-      { name: "Fries", icon: "🍟" },
-      { name: "Smoothie fruit", icon: "🫐" }
-    ]
-  },
-  {
-    category: "Household",
-    color: "#64748b",
-    icon: "🧼",
-    items: [
-      { name: "Paper towels", icon: "🧻" },
-      { name: "Toilet paper", icon: "🧻" },
-      { name: "Dish soap", icon: "🧼" },
-      { name: "Trash bags", icon: "🗑️" },
-      { name: "Laundry soap", icon: "🧺" },
-      { name: "Batteries", icon: "🔋" }
-    ]
-  }
-];
-
-const groceryIconCodes: Record<string, string> = {
-  Dairy: "1f95b",
-  Milk: "1f95b",
-  Eggs: "1f95a",
-  Butter: "1f9c8",
-  Cheese: "1f9c0",
-  Yogurt: "1f963",
-  Creamer: "2615",
-  Fruit: "1f34e",
-  Apples: "1f34e",
-  Bananas: "1f34c",
-  Berries: "1fad0",
-  Grapes: "1f347",
-  Oranges: "1f34a",
-  Lemons: "1f34b",
-  Meat: "1f969",
-  Chicken: "1f357",
-  "Ground beef": "1f969",
-  Steak: "1f969",
-  Bacon: "1f953",
-  Turkey: "1f356",
-  Fish: "1f41f",
-  Vegetables: "1f955",
-  Lettuce: "1f96c",
-  Carrots: "1f955",
-  Onions: "1f9c5",
-  Peppers: "1fad1",
-  Potatoes: "1f954",
-  Broccoli: "1f966",
-  Spices: "1f9c2",
-  Salt: "1f9c2",
-  Pepper: "1f9c2",
-  "Garlic powder": "1f9c4",
-  Paprika: "1f336-fe0f",
-  Cinnamon: "1f944",
-  "Italian seasoning": "1f33f",
-  Pantry: "1f35e",
-  Bread: "1f35e",
-  Rice: "1f35a",
-  Pasta: "1f35d",
-  Cereal: "1f963",
-  Flour: "1f33e",
-  Sugar: "1f35a",
-  Frozen: "2744-fe0f",
-  "Frozen pizza": "1f355",
-  "Frozen veggies": "1f966",
-  "Ice cream": "1f368",
-  Waffles: "1f9c7",
-  Fries: "1f35f",
-  "Smoothie fruit": "1fad0",
-  Household: "1f9fc",
-  "Paper towels": "1f9fb",
-  "Toilet paper": "1f9fb",
-  "Dish soap": "1f9fc",
-  "Trash bags": "1f5d1-fe0f",
-  "Laundry soap": "1f9fa",
-  Batteries: "1f50b"
-};
 
 const groceryWhatsappPhone = "17742650686";
 
@@ -2232,9 +2067,10 @@ function GroceryPanel() {
   }
 
   async function quickAddItem(itemName: string, itemCategory: string) {
-    const existing = items.find((item) => item.name.toLowerCase() === itemName.toLowerCase() && item.category === itemCategory && !item.purchased);
+    // Name alone, like the meal-plan push and Siri, so a bought item comes back instead of a second row.
+    const existing = items.find((item) => item.name.toLowerCase() === itemName.toLowerCase());
     if (existing) {
-      await updateGroceryItem(existing.id, { status: "low" });
+      await updateGroceryItem(existing.id, { status: "low", purchased: false });
       await load();
       return;
     }
@@ -2420,7 +2256,7 @@ function GroceryItemRow({ item, onChanged, compact = false }: { item: GroceryIte
 }
 
 function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, category: string) => Promise<void> }) {
-  const [selectedCategory, setSelectedCategory] = useState<(typeof groceryQuickCategories)[number] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<QuickCategory | null>(null);
   const [busyItem, setBusyItem] = useState("");
 
   async function addAndClose(name: string, category: string) {
@@ -2432,7 +2268,7 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-8">
-      <div className="flex max-h-[86vh] w-[980px] flex-col rounded-3xl bg-amb-sheet p-7 shadow-2xl">
+      <div className="flex max-h-[88vh] w-[1400px] max-w-[94vw] flex-col rounded-3xl bg-amb-sheet p-7 shadow-2xl">
         <div className="flex items-center justify-between border-b border-mirror-line pb-5">
           <div>
             <p className="text-lg font-bold uppercase text-amb-muted">Quick Add</p>
@@ -2445,11 +2281,11 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
         </div>
 
         {!selectedCategory ? (
-          <div className="mt-6 grid grid-cols-4 gap-4 overflow-y-auto pr-1">
+          <div className="mt-6 grid grid-cols-5 gap-4 overflow-y-auto pr-1">
             {groceryQuickCategories.map((group) => (
               <button key={group.category} onClick={() => setSelectedCategory(group)} className="min-h-40 rounded-3xl bg-amb-card p-5 text-left shadow-sm transition active:scale-95">
                 <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${group.color}24` }}>
-                  <GroceryThumbnail name={group.category} alt={group.category} />
+                  <GroceryThumbnail emoji={group.icon} alt={group.category} />
                 </span>
                 <span className="mt-5 block text-3xl font-black">{group.category}</span>
                 <span className="mt-1 block text-lg font-bold text-amb-muted">{group.items.length} common items</span>
@@ -2457,11 +2293,12 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
             ))}
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-3 gap-4 overflow-y-auto pr-1">
+          <div className="mt-6 grid grid-cols-4 content-start gap-4 overflow-y-auto pr-1">
             {selectedCategory.items.map((item) => (
               <QuickGroceryButton
                 key={`${selectedCategory.category}-${item.name}`}
                 name={item.name}
+                icon={item.icon}
                 category={selectedCategory.category}
                 color={selectedCategory.color}
                 busy={busyItem === item.name}
@@ -2475,23 +2312,22 @@ function QuickGroceryModal({ onClose, onAdd }: { onClose: () => void; onAdd: (na
   );
 }
 
-function QuickGroceryButton({ name, category, color, busy, onAdd }: { name: string; category: string; color: string; busy: boolean; onAdd: () => void }) {
+function QuickGroceryButton({ name, icon, category, color, busy, onAdd }: { name: string; icon: string; category: string; color: string; busy: boolean; onAdd: () => void }) {
   return (
     <button onClick={onAdd} disabled={busy} className="grid min-h-32 grid-cols-[76px_1fr] items-center gap-4 rounded-3xl bg-amb-card p-5 text-left shadow-sm transition active:scale-95 disabled:opacity-60">
       <span className="flex h-20 w-20 items-center justify-center rounded-3xl text-5xl shadow-sm" style={{ backgroundColor: `${color}24` }}>
-        <GroceryThumbnail name={name} alt={name} />
+        <GroceryThumbnail emoji={icon} alt={name} />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-3xl font-black text-amb-ink">{name}</span>
+        <span className="line-clamp-2 break-words text-2xl font-black leading-tight text-amb-ink">{name}</span>
         <span className="block truncate text-lg font-bold uppercase text-amb-muted">{busy ? "Adding..." : category}</span>
       </span>
     </button>
   );
 }
 
-function GroceryThumbnail({ name, alt }: { name: string; alt: string }) {
-  const code = groceryIconCodes[name] || groceryIconCodes.Pantry;
-  return <img className="h-12 w-12 object-contain" src={`https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`} alt={alt} />;
+function GroceryThumbnail({ emoji, alt }: { emoji: string; alt: string }) {
+  return <img className="h-12 w-12 object-contain" src={twemojiUrl(emoji)} alt={alt} loading="lazy" />;
 }
 
 function GroceryShareModal({ items, onClose }: { items: GroceryItem[]; onClose: () => void }) {
