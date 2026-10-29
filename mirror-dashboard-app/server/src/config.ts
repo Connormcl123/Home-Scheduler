@@ -53,12 +53,6 @@ export const config = {
     // Never more often than every 5 minutes: each check is a Gmail search.
     checkMinutes: Math.max(5, Number(process.env.PACKAGES_CHECK_MINUTES) || 10)
   },
-  screensaver: {
-    /** Minutes without a touch before the wall shows photos. */
-    idleMinutes: Math.max(1, Number(process.env.SCREENSAVER_IDLE_MINUTES) || 5),
-    /** How long each photo stays up when there are several. */
-    slideSeconds: Math.max(10, Number(process.env.SCREENSAVER_SLIDE_SECONDS) || 60)
-  },
   trips: {
     /** Flights are priced from here; PBI is the family's airport. */
     homeAirport: process.env.HOME_AIRPORT || "PBI",

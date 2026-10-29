@@ -34,7 +34,6 @@ import { generateMorningStory, getHomePulse, getMorningStory } from "./services/
 import { createRecipe, deleteRecipe, generateRecipe, getMealPlan, listRecipes, pushPlanToGrocery, setMeal, suggestWeek } from "./services/recipes.js";
 import { createShareDeps } from "./services/share/deps.js";
 import { SHARE_IMAGE_DIR } from "./services/share/images.js";
-import { getScreensaverSettings, SCREENSAVER_DIR } from "./services/screensaver.js";
 import { handleShare, moveSharedItem, retryShare } from "./services/share/pipeline.js";
 import { listShares } from "./services/share/store.js";
 import { createGmailRouteDeps } from "./services/gmail/deps.js";
@@ -851,16 +850,6 @@ app.post("/api/share/:id/retry", async (req, res, next) => {
 // Cover photos saved from shares. fallthrough: false turns a missing file into a 404 instead of the app shell.
 // The file type is trusted from the remote server's Content-Type, so nosniff stops the browser guessing another one.
 app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
-
-// Idle-screen family photos (data/screensaver on the Pi, never in git).
-app.get("/api/screensaver", async (_req, res, next) => {
-  try {
-    res.json(await getScreensaverSettings());
-  } catch (error) {
-    next(error);
-  }
-});
-app.use("/screensaver", express.static(SCREENSAVER_DIR, { fallthrough: false, maxAge: "1d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
 
 app.use("/api/packages", createPackagesRouter({ list: listPackages, events: listEvents, checkNow: checkPackagesNow, hide: hidePackage }));
 

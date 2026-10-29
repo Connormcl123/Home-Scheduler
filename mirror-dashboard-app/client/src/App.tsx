@@ -2,7 +2,6 @@ import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEv
 import { motion } from "motion/react";
 import { greetingFor, useAmbient } from "./ambient";
 import { ShareBanner } from "./ShareBanner";
-import { Screensaver } from "./screensaver/Screensaver";
 import { groupByRecipe, type RecipeGroup } from "./grocery/groceryGroups";
 import { groceryQuickCategories, twemojiUrl, type QuickCategory } from "./grocery/quickAdd";
 import { SlideQr } from "./SlideQr";
@@ -878,7 +877,6 @@ function DashboardApp() {
       )}
       <ShareBanner onArrived={handleShareArrived} onOpen={openShare} onVisibleChange={setShareBannerUp} />
       <PackageBanner blocked={shareBannerUp} onOpen={openPackageEvent} />
-      <Screensaver />
       <OnScreenKeyboard
         visible={keyboardVisible}
         getTarget={() => keyboardTargetRef.current}
