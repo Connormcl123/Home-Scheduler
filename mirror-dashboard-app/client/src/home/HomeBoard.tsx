@@ -39,7 +39,6 @@ export function HomeBoard({
   useEffect(() => {
     const load = () => {
       fetchMealPlan().then(setMeals).catch(() => undefined);
-      fetchGroceryItems(true).then(setGrocery).catch(() => undefined);
       fetchTravelDeals().then((data) => setDeals(data.deals)).catch(() => undefined);
       fetchNotes().then((notes) => setNote(dashboard.todayNote ?? latest(notes))).catch(() => undefined);
     };
@@ -47,6 +46,14 @@ export function HomeBoard({
     const timer = window.setInterval(load, 300_000);
     return () => window.clearInterval(timer);
   }, [dashboard.todayNote]);
+
+  // The grocery list changes from the phone and the Grocery tab, so it refreshes every minute.
+  useEffect(() => {
+    const load = () => fetchGroceryItems(true).then(setGrocery).catch(() => undefined);
+    load();
+    const timer = window.setInterval(load, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
@@ -362,32 +369,42 @@ function Dinner({ meals, now, onOpen }: { meals: MealPlanEntry[]; now: Date; onO
 }
 
 /** How much is needed, then the list itself run together like a note on the fridge. */
+/**
+ * The whole list, out first, two columns in a panel that fills the rest of the
+ * column and drags to scroll. Only the heading opens the Grocery tab, so a
+ * scroll never lands on another page. Quantities stay on the Grocery tab.
+ */
 function Grocery({ items, onOpen }: { items: GroceryItem[]; onOpen: () => void }) {
   const needed = items.filter((item) => !item.purchased);
   const out = needed.filter((item) => item.status === "out");
   const ordered = [...out, ...needed.filter((item) => item.status !== "out")];
   return (
-    <button type="button" onClick={onOpen} className="flex min-h-0 flex-col gap-2 text-left active:opacity-60">
-      <Heading icon={ShoppingBasket}>Grocery</Heading>
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <button type="button" onClick={onOpen} className="flex shrink-0 items-baseline justify-between gap-4 text-left active:opacity-60">
+        <Heading icon={ShoppingBasket}>Grocery</Heading>
+        {needed.length > 0 && (
+          <span className="flex items-baseline gap-2">
+            <span className="font-display text-[40px] leading-none text-amb-ink">{needed.length}</span>
+            <span className="text-xl font-semibold text-amb-ink">to buy</span>
+            {out.length > 0 && <span className="text-lg text-amb-muted">{out.length} out</span>}
+          </span>
+        )}
+      </button>
       {!needed.length ? (
         <p className="text-xl text-amb-muted">The list is empty.</p>
       ) : (
-        <>
-          <p className="flex items-baseline gap-3">
-            <span className="font-display text-[52px] leading-none text-amb-ink">{needed.length}</span>
-            <span className="text-xl font-semibold text-amb-ink">to buy</span>
-            {out.length > 0 && <span className="text-lg text-amb-muted">{out.length} out, {needed.length - out.length} running low</span>}
-          </p>
-          <p className="line-clamp-3 text-xl leading-snug">
-            {ordered.map((item, index) => (
-              <span key={item.id} className={item.status === "out" ? "font-semibold text-amb-ink" : "text-amb-muted"}>
-                {item.name.charAt(0).toUpperCase() + item.name.slice(1)}{index < ordered.length - 1 ? ", " : ""}
+        <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-x-6 overflow-y-auto rounded-3xl border border-amb-border bg-amb-card px-5 py-3">
+          {ordered.map((item) => (
+            <li key={item.id} className="flex min-w-0 items-center gap-3 border-b border-amb-border py-2.5">
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.status === "out" ? "bg-rose-500" : "bg-amber-400"}`} />
+              <span className={`truncate text-xl leading-snug text-amb-ink ${item.status === "out" ? "font-semibold" : ""}`}>
+                {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
               </span>
-            ))}
-          </p>
-        </>
+            </li>
+          ))}
+        </ul>
       )}
-    </button>
+    </div>
   );
 }
 
