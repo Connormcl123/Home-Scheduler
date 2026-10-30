@@ -152,6 +152,10 @@ export function updateGroceryItem(id: number, input: Partial<{ name: string; qua
   return request<GroceryItem>(`/api/grocery/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
+export function setDisplayPower(power: "on" | "off") {
+  return request<{ ok: boolean }>(`/api/display/${power}`, { method: "POST" });
+}
+
 export function clearGroceryList() {
   return request<{ ok: true; deleted: number }>("/api/grocery", { method: "DELETE" });
 }

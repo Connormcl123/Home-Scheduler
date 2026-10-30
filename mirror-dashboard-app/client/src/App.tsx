@@ -20,7 +20,7 @@ import { stepIndex } from "./packages/packageText";
 import { guardWindowOpen } from "./kioskGuard";
 import { acceptsDragScroll, dragAxis, flingStep, releaseVelocity, type ScrollSample } from "./dragScroll";
 import type { ShareImport, ApiIntegrationStatus, HomeCard, HomeCardKind, MealPlanEntry, PackageEvent, PackagesResponse, Recipe, StorySlideKind, HomePulse, MorningStory, StorySlide, TravelDeal, TravelDealsResponse, AssistantAction, AssistantConversationSummary, AssistantStatus, CalendarEvent, DashboardSummary, FinanceQuote, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, NewsArticle, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult } from "@mirror-dashboard/shared";
-import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Package, Plus, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
+import { ArrowDownRight, ArrowUp, ArrowUpRight, BedDouble, Bot, ChefHat, UtensilsCrossed, Send, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock3, CloudSun, CreditCard, DollarSign, ExternalLink, Home, Landmark, Luggage, MapPinned, Moon, PieChart, Plane, Route, type LucideIcon, Newspaper, Package, Plus, Power, RefreshCw, Save, Settings, ShoppingBasket, Sparkles, StickyNote, SunMedium, Trash2, Utensils, Wallet, WifiOff, X } from "lucide-react";
 import {
   createGroceryItem,
   createPlaidLinkToken,
@@ -29,6 +29,7 @@ import {
   createTravelInspiration,
   createWatchlistItem,
   clearGroceryList,
+  setDisplayPower,
   deleteGroceryItem,
   deleteNote,
   deleteRssFeed,
@@ -349,6 +350,7 @@ function DashboardApp() {
   const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   // The moon button pins the night palette; otherwise it follows the clock.
   const [darkMode, setDarkMode] = useState(() => safeStorageGet("mirror-dashboard-force-night") === "yes");
+  const [screenOff, setScreenOff] = useState(false);
   const [burnInStep, setBurnInStep] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [externalLink, setExternalLink] = useState<string | null>(null);
@@ -807,6 +809,16 @@ function DashboardApp() {
           <button onClick={() => setDarkMode((value) => !value)} className="touch-button w-full border border-amb-border bg-amb-card text-amb-ink" aria-label="Toggle dark mode">
             {darkMode ? <SunMedium className="h-8 w-8" /> : <Moon className="h-8 w-8" />}
           </button>
+          <button
+            onClick={() => {
+              setScreenOff(true);
+              void setDisplayPower("off").catch(() => undefined);
+            }}
+            className="touch-button w-full border border-amb-border bg-amb-card text-amb-ink"
+            aria-label="Turn the screen off"
+          >
+            <Power className="h-8 w-8" />
+          </button>
           <div className="h-px w-14 bg-amb-border" />
           {orderedNavItems.map((item) => {
             const Icon = item.icon;
@@ -856,6 +868,7 @@ function DashboardApp() {
           </div>
         </section>
       </div>
+      {screenOff && <ScreenOffCover onWake={() => setScreenOff(false)} />}
       {externalLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-8">
           <div className="w-full max-w-3xl rounded-[28px] bg-amb-sheet p-8">
@@ -5345,3 +5358,26 @@ function clearField(field: HTMLInputElement | HTMLTextAreaElement | null) {
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+/**
+ * Black cover while the monitor sleeps. The first touch wakes the monitor; the
+ * cover lifts a beat after the finger does, so that tap never lands on the page.
+ */
+function ScreenOffCover({ onWake }: { onWake: () => void }) {
+  const woken = useRef(false);
+  const wake = () => {
+    if (woken.current) return;
+    woken.current = true;
+    void setDisplayPower("on").catch(() => undefined);
+  };
+  return (
+    <div
+      className="fixed inset-0 z-[200] cursor-none bg-black"
+      onPointerDown={wake}
+      onPointerUp={() => {
+        wake();
+        window.setTimeout(onWake, 350);
+      }}
+      aria-label="Tap to turn the screen on"
+    />
+  );
+}

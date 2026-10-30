@@ -26,6 +26,7 @@ import { createTask, deleteTask, listTasks, updateTask } from "./services/tasks.
 import { createEnrichedTravelInspiration, deleteTravelInspiration, generateTravelItinerary, listTravelInspirations, updateTravelInspiration } from "./services/travelInspirations.js";
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
+import { setDisplayPower } from "./services/display.js";
 import { addGroceriesFromVoice, createCalendarEventFromVoice, createTaskFromVoice, openTasksForVoice, VoiceCommandError } from "./services/voiceCommands.js";
 import { AssistantError, getAssistantStatus } from "./services/assistant.js";
 import { chatInConversation, deleteConversation, getConversation, listConversations } from "./services/assistantHistory.js";
@@ -448,6 +449,11 @@ app.patch("/api/grocery/:id", async (req, res, next) => {
 });
 
 // The Grocery tab's Clear list button, after the wall asks to confirm.
+app.post("/api/display/:power", async (req, res) => {
+  if (req.params.power !== "on" && req.params.power !== "off") return res.status(404).json({ error: "Use on or off" });
+  res.json({ ok: await setDisplayPower(req.params.power === "on") });
+});
+
 app.delete("/api/grocery", async (_req, res, next) => {
   try {
     res.json({ ok: true, deleted: await deleteAllGroceryItems() });
