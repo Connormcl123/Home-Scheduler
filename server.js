@@ -11,12 +11,15 @@ const types = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
-  ".webp": "image/webp"
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".json": "application/json"
 };
 
 const server = http.createServer((request, response) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host}`);
-  const file = requestUrl.pathname === "/" ? "index.html" : decodeURIComponent(requestUrl.pathname.slice(1));
+  let file = requestUrl.pathname === "/" ? "index.html" : decodeURIComponent(requestUrl.pathname.slice(1));
+  if (file.endsWith("/")) file += "index.html";
   const fullPath = path.resolve(root, file);
 
   if (!fullPath.startsWith(root)) {
@@ -26,6 +29,12 @@ const server = http.createServer((request, response) => {
   }
 
   fs.readFile(fullPath, (error, data) => {
+    if (error && error.code === "EISDIR") {
+      response.writeHead(301, { Location: requestUrl.pathname + "/" });
+      response.end();
+      return;
+    }
+
     if (error) {
       response.writeHead(404);
       response.end("Not found");

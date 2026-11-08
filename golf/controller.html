@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#12361f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Swing Golf – Controller</title>
+    <link rel="stylesheet" href="css/controller.css" />
+  </head>
+  <body>
+    <section id="join-screen" class="screen">
+      <h1>Swing <span>Golf</span></h1>
+      <p class="muted">Your phone is the club.</p>
+      <form id="join-form">
+        <label>Game code<input id="code-input" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD" required /></label>
+        <label>Your name<input id="name-input" maxlength="14" autocomplete="nickname" placeholder="Player" required /></label>
+        <button type="submit" class="primary" id="join-btn">Join game</button>
+      </form>
+      <p id="join-error" class="error"></p>
+      <p class="muted small">Motion sensors need permission – tap Allow if asked. Keep a tight grip, and give yourself room to swing!</p>
+    </section>
+
+    <section id="main-screen" class="screen" hidden>
+      <header>
+        <span id="me-dot" class="dot"></span>
+        <b id="me-name"></b>
+        <span id="conn" class="conn">connected</span>
+      </header>
+
+      <div id="status" class="status"></div>
+
+      <div id="lobby-panel" hidden>
+        <div id="lobby-players" class="players"></div>
+        <div id="host-controls" hidden>
+          <div class="opts"><span>Holes</span><button data-holes="3">3</button><button data-holes="6">6</button></div>
+          <div class="opts"><span>Difficulty</span><button data-difficulty="easy">Easy</button><button data-difficulty="normal">Normal</button><button data-difficulty="pro">Pro</button></div>
+          <button id="start-btn" class="primary">Start round</button>
+        </div>
+        <p id="guest-wait" class="muted">Waiting for the host to start…</p>
+      </div>
+
+      <div id="turn-panel" hidden>
+        <div class="info">
+          <div><small>Club</small><b id="club-name"></b><small id="club-full"></small></div>
+          <div><small>To pin</small><b id="to-pin"></b><small id="lie"></small></div>
+        </div>
+        <div class="controls">
+          <div class="pair">
+            <button class="ctl" data-club="-1">◀</button><span>Club</span><button class="ctl" data-club="1">▶</button>
+          </div>
+          <div class="pair">
+            <button class="ctl" data-aim="-1">⟲</button><span>Aim</span><button class="ctl" data-aim="1">⟳</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="next-btn" class="primary" hidden>Next ▶</button>
+
+      <div id="pad" class="pad" data-state="wait">
+        <div class="pad-meter"><div id="pad-fill"></div></div>
+        <div id="pad-label">Wait for your turn</div>
+        <div id="pad-sub" class="small"></div>
+      </div>
+
+      <details class="settings">
+        <summary>Settings</summary>
+        <label>Swing strength
+          <select id="strength">
+            <option value="700">Gentle (kids / small spaces)</option>
+            <option value="1100" selected>Normal</option>
+            <option value="1600">Strong</option>
+          </select>
+        </label>
+        <label>Control mode
+          <select id="mode">
+            <option value="motion">Motion (swing the phone)</option>
+            <option value="swipe">Swipe (flick up on the pad)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="lefty" /> Left-handed / flip slice-hook</label>
+        <p id="sensor-info" class="muted small"></p>
+      </details>
+    </section>
+
+    <script src="vendor/peerjs.min.js"></script>
+    <script type="module" src="js/controller.js"></script>
+  </body>
+</html>

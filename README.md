@@ -12,6 +12,11 @@ This version is intentionally local and dependency-free so it can be tested on t
 - Choose a local photo album folder in Chromium-based browsers.
 - Idle mode automatically moves to the Photos panel after 45 seconds.
 
+## Swing Golf
+
+The `golf/` folder holds a separate party game: a Wii-style golf game where phones are the clubs
+(gyroscope swings) and the TV shows the course. See [golf/README.md](golf/README.md).
+
 ## Run Locally
 
 Open `index.html` directly in a browser for a quick look, or serve the folder for the full test path.

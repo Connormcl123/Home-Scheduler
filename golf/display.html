@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Swing Golf – Big Screen</title>
+    <link rel="stylesheet" href="css/display.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <section id="hud" hidden>
+      <div class="card hole-card">
+        <div class="hole-title"><b id="hud-hole"></b> <span id="hud-par"></span></div>
+        <div id="hud-name" class="muted"></div>
+        <ul id="hud-players"></ul>
+      </div>
+
+      <div class="right-col">
+        <canvas id="map"></canvas>
+        <div class="card wind">
+          <div id="wind-arrow">➤</div>
+          <div><small class="muted">Wind</small><br /><b id="wind-speed"></b></div>
+        </div>
+      </div>
+
+      <div id="hud-shot" class="card shot-card" hidden>
+        <div class="row"><b id="hud-player"></b><span id="hud-strokes" class="muted"></span></div>
+        <div id="hud-club" class="club"></div>
+        <div id="hud-full" class="muted"></div>
+        <div id="hud-topin"></div>
+        <div id="hud-lie" class="muted"></div>
+        <div id="swing-readout" class="muted small"></div>
+      </div>
+
+      <div id="meter" hidden>
+        <div class="meter-track"><div id="meter-fill"></div><div class="meter-full"></div></div>
+        <small>POWER</small>
+      </div>
+    </section>
+
+    <div id="banner"><div id="banner-title"></div><div id="banner-sub"></div></div>
+
+    <section id="lobby" class="overlay">
+      <div class="lobby-inner">
+        <h1>Swing <span>Golf</span></h1>
+        <p class="tagline">Your phone is the club. Swing it like you mean it.</p>
+        <div class="lobby-grid">
+          <div class="join-box">
+            <div id="qr"></div>
+            <div class="join-text">
+              <div class="muted">Scan with your phone, or open</div>
+              <div id="join-url" class="url"></div>
+              <div class="muted">Game code</div>
+              <div id="join-code" class="code"></div>
+              <div id="conn-status" class="status"></div>
+              <p id="https-warning" class="warn" hidden>
+                This page is on plain http. Phones only share motion sensors with https pages – host it on
+                GitHub Pages / Netlify, or use a tunnel (see README).
+              </p>
+            </div>
+          </div>
+          <div class="players-box">
+            <h2>Players</h2>
+            <ul id="lobby-players"></ul>
+            <div class="opts">
+              <span class="muted">Holes</span>
+              <button data-holes="3">3</button><button data-holes="6">6</button>
+            </div>
+            <div class="opts">
+              <span class="muted">Difficulty</span>
+              <button data-difficulty="easy">Easy</button><button data-difficulty="normal">Normal</button><button data-difficulty="pro">Pro</button>
+            </div>
+            <button id="start-btn" class="primary" disabled>Start round</button>
+            <p class="muted small">The first phone to join can also start the round.</p>
+          </div>
+        </div>
+        <div class="how">
+          <div><b>1</b> Hold your phone like a club grip – bottom in your hands, screen facing forward.</div>
+          <div><b>2</b> Press and hold the big button, then swing. Speed = power, phone twist = slice / hook.</div>
+          <div><b>3</b> Cast or screen-share this tab to the TV. Press <kbd>F</kbd> for fullscreen.</div>
+        </div>
+        <p class="muted small">
+          No phone handy? <a id="test-link" target="_blank">Open a test controller in a new tab</a> ·
+          Keyboard: ←/→ aim, ↑/↓ club, hold Space to swing, Enter to continue ·
+          <a href="#" id="new-code">new code</a>
+        </p>
+      </div>
+    </section>
+
+    <section id="scorecard" class="overlay" hidden>
+      <div class="score-inner">
+        <h2 id="score-title"></h2>
+        <div id="score-table"></div>
+        <p id="score-hint" class="muted"></p>
+        <button id="next-btn" class="primary">Next</button>
+      </div>
+    </section>
+
+    <div id="chip" class="chip">Join code <b id="chip-code"></b></div>
+    <button id="fullscreen-btn" class="chip fs" title="Fullscreen (F)">⛶</button>
+
+    <script src="vendor/peerjs.min.js"></script>
+    <script src="vendor/qrcode.js"></script>
+    <script type="module" src="js/display.js"></script>
+  </body>
+</html>
