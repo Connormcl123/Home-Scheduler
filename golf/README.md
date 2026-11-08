@@ -66,9 +66,52 @@ node server.js          # from the repo root, then open http://localhost:4173/go
 On the same computer, click **Open a test controller in a new tab** in the lobby. That tab talks to the display over
 a `BroadcastChannel` (no internet needed) and uses swipe mode with the mouse.
 
-To test with a real phone against your local server you need https; the quickest way is a tunnel, e.g.
-`npx localtunnel --port 4173` or `cloudflared tunnel --url http://localhost:4173`, then open the tunnel URL + `/golf/`
-on the computer as well so the QR code points at it.
+## Running on your own server
+
+Any machine with Node 18+ works (a PC, a Raspberry Pi, a home server). Phones need **https** for motion sensors,
+so pick one of these:
+
+**A. HTTPS with mkcert (best on your home network)**
+
+```bash
+git clone <this repo> && cd Home-Scheduler
+# install mkcert: https://github.com/FiloSottile/mkcert (e.g. `brew install mkcert`, `choco install mkcert`, `apt install mkcert`)
+mkcert -install
+mkcert 192.168.1.50 localhost          # use your server's LAN IP
+HTTPS_CERT=./192.168.1.50+1.pem HTTPS_KEY=./192.168.1.50+1-key.pem PORT=8443 node server.js
+```
+
+The server prints `https://<your-ip>:8443/golf/`. Open that on the TV computer. Each phone has to trust the mkcert
+root certificate once: copy the `rootCA.pem` from `mkcert -CAROOT` to the phone and install it (iPhone:
+Settings → General → VPN & Device Management, then Settings → General → About → Certificate Trust Settings;
+Android: Settings → Security → Install a certificate → CA certificate).
+
+PowerShell: `$env:HTTPS_CERT="..."; $env:HTTPS_KEY="..."; $env:PORT=8443; node server.js`
+
+**B. A quick self-signed certificate (no install on phones)**
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=swing-golf" -keyout key.pem -out cert.pem
+HTTPS_CERT=cert.pem HTTPS_KEY=key.pem PORT=8443 node server.js
+```
+
+Each browser shows a "not secure" warning the first time; tap *Advanced → Proceed*. This usually works on Android
+Chrome. iPhone Safari is stricter, so use option A or C there if motion doesn't register.
+
+**C. A tunnel (real https certificate, nothing to install on phones)**
+
+```bash
+node server.js                                   # plain http on port 4173
+cloudflared tunnel --url http://localhost:4173   # or: npx localtunnel --port 4173
+```
+
+Open the printed `https://….trycloudflare.com/golf/` URL on the TV computer so the QR code points at it.
+
+Plain `http://<ip>:4173/golf/` with no certificate still works for the TV and for swipe mode on phones, just not
+for motion swings.
+
+The TV and phones still find each other through the free public PeerJS server, so your server needs internet access.
+Once connected, swing data goes directly between the devices.
 
 ## Tuning
 

@@ -1,5 +1,7 @@
 const http = require("node:http");
+const https = require("node:https");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const port = Number(process.env.PORT || 4173);
@@ -16,7 +18,12 @@ const types = {
   ".json": "application/json"
 };
 
-const server = http.createServer((request, response) => {
+// Optional HTTPS: set HTTPS_CERT and HTTPS_KEY to PEM files (phones need https for motion sensors).
+const certFile = process.env.HTTPS_CERT;
+const keyFile = process.env.HTTPS_KEY;
+const useHttps = Boolean(certFile && keyFile);
+
+function handler(request, response) {
   const requestUrl = new URL(request.url, `http://${request.headers.host}`);
   let file = requestUrl.pathname === "/" ? "index.html" : decodeURIComponent(requestUrl.pathname.slice(1));
   if (file.endsWith("/")) file += "index.html";
@@ -46,8 +53,19 @@ const server = http.createServer((request, response) => {
     });
     response.end(data);
   });
-});
+}
+
+const server = useHttps
+  ? https.createServer({ cert: fs.readFileSync(certFile), key: fs.readFileSync(keyFile) }, handler)
+  : http.createServer(handler);
 
 server.listen(port, () => {
-  console.log(`Home Mirror running at http://localhost:${port}`);
+  const scheme = useHttps ? "https" : "http";
+  console.log(`Home Mirror running at ${scheme}://localhost:${port}`);
+  for (const addrs of Object.values(os.networkInterfaces())) {
+    for (const a of addrs || []) {
+      if (a.family === "IPv4" && !a.internal) console.log(`  on your network: ${scheme}://${a.address}:${port}/golf/`);
+    }
+  }
+  if (!useHttps) console.log("  (phones need https for motion sensors – see golf/README.md)");
 });

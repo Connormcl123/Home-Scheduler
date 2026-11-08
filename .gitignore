@@ -6,3 +6,4 @@ secrets/
 *credentials*.json
 *token*.json
 swing-golf-netlify.zip
+*.pem
