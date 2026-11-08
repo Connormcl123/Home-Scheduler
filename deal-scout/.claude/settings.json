@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch",
+      "Read",
+      "Write(reports/**)",
+      "Edit(reports/**)",
+      "Write(data/**)",
+      "Edit(data/**)",
+      "mcp__claude_ai_Gmail"
+    ]
+  }
+}
