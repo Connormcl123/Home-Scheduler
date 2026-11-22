@@ -5,17 +5,21 @@ import { listLocalCalendarEvents } from "./localCalendar.js";
 import { getSettings } from "./settings.js";
 import { getDb } from "../db.js";
 
+const FEED_DAYS = 45;
+const EDITABLE_DAYS = 366;
+
 export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const settings = await getSettings();
   const feedUrls = settings.calendarFeedUrls.length ? settings.calendarFeedUrls : settings.calendarFeedUrl ? [settings.calendarFeedUrl] : [];
 
   const now = new Date();
-  const horizon = addDays(now, 45);
-  const [localEvents, eventGroups] = await Promise.all([
-    listLocalCalendarEvents({ from: addDays(now, -1), to: horizon }),
-    Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index, now, horizon)))
+  // Events made here can be set up to a year out, so they are listed that far.
+  const [localEvents, eventGroups, overrides] = await Promise.all([
+    listLocalCalendarEvents({ from: addDays(now, -1), to: addDays(now, EDITABLE_DAYS) }),
+    Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index))),
+    loadOverrides()
   ]);
-  const events = applyOverrides([...localEvents, ...eventGroups.flat()], await loadOverrides())
+  const events = [...localEvents, ...placeFeedEvents(eventGroups.flat(), overrides, now)]
     .sort((a, b) => a.start.localeCompare(b.start));
 
   return events.length ? events : mockCalendarEvents();
@@ -59,7 +63,16 @@ function applyOverrides(events: CalendarEvent[], overrides: Map<string, Override
   });
 }
 
-export async function moveCalendarEvent(id: string, start: string, end?: string | null) {
+/** The window applies to where an event is now, so a moved one does not vanish once its first day passes. */
+export function placeFeedEvents(events: CalendarEvent[], overrides: Map<string, OverrideRow>, now: Date): CalendarEvent[] {
+  return applyOverrides(events, overrides).filter((event) => {
+    const start = new Date(event.start);
+    return start >= addDays(now, -1) && start <= addDays(now, event.moved ? EDITABLE_DAYS : FEED_DAYS);
+  });
+}
+
+/** False when there is no such event to move. */
+export async function moveCalendarEvent(id: string, start: string, end?: string | null): Promise<boolean> {
   const db = await getDb();
   const startIso = new Date(start).toISOString();
   const endIso = end ? new Date(end).toISOString() : null;
@@ -67,8 +80,8 @@ export async function moveCalendarEvent(id: string, start: string, end?: string 
   // Local events are ours to edit outright; anything from a feed gets an override.
   const localMatch = /^local-(\d+)$/.exec(id);
   if (localMatch) {
-    await db.run("UPDATE local_calendar_events SET start = ?, end = ? WHERE id = ?", startIso, endIso, Number(localMatch[1]));
-    return;
+    const result = await db.run("UPDATE local_calendar_events SET start = ?, end = ? WHERE id = ?", startIso, endIso, Number(localMatch[1]));
+    return Boolean(result.changes);
   }
 
   await db.run(
@@ -77,9 +90,10 @@ export async function moveCalendarEvent(id: string, start: string, end?: string 
      ON CONFLICT(event_id) DO UPDATE SET start = excluded.start, end = excluded.end, updated_at = CURRENT_TIMESTAMP`,
     id, startIso, endIso
   );
+  return true;
 }
 
-async function fetchCalendarFeed(feedUrl: string, feedIndex: number, now: Date, horizon: Date): Promise<CalendarEvent[]> {
+async function fetchCalendarFeed(feedUrl: string, feedIndex: number): Promise<CalendarEvent[]> {
   try {
     const response = await fetch(normalizeFeedUrl(feedUrl));
     if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
@@ -95,11 +109,7 @@ async function fetchCalendarFeed(feedUrl: string, feedIndex: number, now: Date, 
         end: item.end ? toIsoDateTime(item.end) : undefined,
         location: item.location,
         source: "ical"
-      }))
-      .filter((event) => {
-        const start = new Date(event.start);
-        return start >= addDays(now, -1) && start <= horizon;
-      });
+      }));
   } catch (error) {
     console.warn(`Calendar feed unavailable (${feedIndex + 1}), skipping:`, error);
     return [];

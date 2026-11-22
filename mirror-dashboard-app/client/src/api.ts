@@ -236,6 +236,10 @@ export function moveCalendarEvent(id: string, start: string, end?: string | null
   });
 }
 
+export function createCalendarEvent(title: string, start: string, end: string) {
+  return request<CalendarEvent[]>("/api/calendar/events", { method: "POST", body: JSON.stringify({ title, start, end }) });
+}
+
 export function fetchCalendarEvents() {
   return request<CalendarEvent[]>("/api/calendar/events");
 }

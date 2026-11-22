@@ -20,7 +20,8 @@ export async function getDashboard(): Promise<DashboardSummary> {
   return {
     generatedAt: new Date().toISOString(),
     calendar: calendar.slice(0, 8),
-    tasks: tasks.slice(0, 8),
+    // Every open one: Home fills its column and scrolls for the rest.
+    tasks: tasks.filter((task) => !task.completed),
     todayNote,
     weather,
     news,

@@ -10,6 +10,8 @@ import { PackagesPanel } from "./packages/PackagesPanel";
 import { PackageMeter } from "./packages/PackageMeter";
 import { PackageBanner } from "./packages/PackageBanner";
 import { HomeBoard } from "./home/HomeBoard";
+import { EventEditor } from "./calendar/EventEditor";
+import { isWholeDay } from "./calendar/eventTime";
 import { BudgetsPanel } from "./finance/BudgetsPanel";
 import { TripPlanner } from "./travel/TripPlanner";
 import { CarouselControls, DealCarousel } from "./travel/DealCarousel";
@@ -71,6 +73,7 @@ import {
   generateRecipe,
   deleteRecipe,
   pushPlanToGrocery,
+  createCalendarEvent,
   moveCalendarEvent,
   fetchHomePulse,
   fetchMorningStory,
@@ -458,7 +461,7 @@ function DashboardApp() {
     const timer = window.setInterval(() => {
       fetchTodayTasks()
         .then((tasks) => {
-          const latest = tasks.slice(0, 8);
+          const latest = tasks.filter((task) => !task.completed);
           setDashboard((current) => (JSON.stringify(current.tasks) === JSON.stringify(latest) ? current : { ...current, tasks: latest }));
         })
         .catch(() => undefined);
@@ -630,7 +633,7 @@ function DashboardApp() {
   }, []);
 
   const content = useMemo(() => {
-    if (view === "calendar") return <CalendarPanel events={dashboard.calendar} />;
+    if (view === "calendar") return <CalendarPanel events={dashboard.calendar} onChanged={refreshDashboard} />;
     if (view === "grocery") return <GroceryPanel />;
     if (view === "recipes") return <RecipesPanel onChanged={refreshDashboard} refreshKey={shareVersion} focusRecipeId={focusRecipeId} onFocusHandled={clearFocusRecipe} />;
     if (view === "tasks") return <TaskPanel initialTasks={dashboard.tasks} onChanged={refreshDashboard} />;
@@ -1359,7 +1362,7 @@ function WeatherCard({ dashboard }: { dashboard: DashboardSummary }) {
   );
 }
 
-function CalendarPanel({ events }: { events: CalendarEvent[] }) {
+function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChanged: () => void }) {
   const [weekEvents, setWeekEvents] = useState(events.map(normalizeEventEnd));
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("Week");
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -1371,6 +1374,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [panDx, setPanDx] = useState(0);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
+  const [calendarError, setCalendarError] = useState("");
+  const [addingEvent, setAddingEvent] = useState(false);
+  // A drag that moved an event must not also open it.
+  const chipMovedRef = useRef(false);
   const panRef = useRef<{ startX: number; moved: boolean } | null>(null);
   const weekStart = addClientDays(startOfWeek(new Date()), weekOffset * 7);
   const days = Array.from({ length: 7 }, (_, index) => addClientDays(weekStart, index));
@@ -1378,18 +1385,25 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   const endHour = 22;
   const hourHeight = 64;
   const dayWidthPercent = 100 / 7;
-
-  useEffect(() => {
-    setWeekEvents(events.map(normalizeEventEnd));
-  }, [events]);
+  // All-day, early and late events have no place on the hour grid; they get a row above it.
+  const offGrid = (event: CalendarEvent) => {
+    const hour = new Date(event.start).getHours();
+    return isWholeDay(event) || hour < startHour || hour >= endHour;
+  };
 
   // The dashboard payload caps the calendar at eight events for the Home
-  // summary, which is not enough once you can page into other weeks.
+  // summary, so each refresh of it fetches the full list rather than showing it.
   useEffect(() => {
+    let current = true;
     fetchCalendarEvents()
-      .then((all) => setWeekEvents(all.map(normalizeEventEnd)))
+      .then((all) => {
+        if (current) setWeekEvents(all.map(normalizeEventEnd));
+      })
       .catch(() => undefined);
-  }, []);
+    return () => {
+      current = false;
+    };
+  }, [events]);
 
   function panWeek(delta: number) {
     setWeekOffset((current) => current + delta);
@@ -1406,23 +1420,39 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     );
   }
 
-  function addLocalEvent() {
-    if (!newEventTitle.trim()) return;
+  function showSaved(all: CalendarEvent[]) {
+    setWeekEvents(all.map(normalizeEventEnd));
+    setCalendarError("");
+    onChanged();
+  }
+
+  async function saveEventTimes(id: string, start: Date, end: Date) {
+    showSaved(await moveCalendarEvent(id, start.toISOString(), end.toISOString()));
+  }
+
+  function saveDrag(original: CalendarEvent, start: Date, end: Date) {
+    saveEventTimes(original.id, start, end).catch(() => {
+      setWeekEvents((current) => current.map((event) => (event.id === original.id ? original : event)));
+      setCalendarError("That move did not save, so the event is back where it was.");
+    });
+  }
+
+  async function addLocalEvent() {
+    if (!newEventTitle.trim() || addingEvent) return;
     const start = new Date(`${newEventDate}T${newEventStart}:00`);
     const end = new Date(`${newEventDate}T${newEventEnd}:00`);
     if (end.getTime() <= start.getTime()) end.setTime(start.getTime() + 60 * 60 * 1000);
 
-    const localEvent: CalendarEvent = {
-      id: `local-${Date.now()}`,
-      title: newEventTitle.trim(),
-      start: start.toISOString(),
-      end: end.toISOString(),
-      source: "demo"
-    };
-
-    setWeekEvents((current) => [...current, localEvent].sort((a, b) => a.start.localeCompare(b.start)));
-    setNewEventTitle("");
-    setIsEventModalOpen(false);
+    setAddingEvent(true);
+    try {
+      showSaved(await createCalendarEvent(newEventTitle.trim(), start.toISOString(), end.toISOString()));
+      setNewEventTitle("");
+      setIsEventModalOpen(false);
+    } catch {
+      setCalendarError("That event did not save. Check the day and times, then try again.");
+    } finally {
+      setAddingEvent(false);
+    }
   }
 
   function beginDrag(event: ReactPointerEvent<HTMLDivElement>, calendarEvent: CalendarEvent) {
@@ -1435,6 +1465,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     const end = new Date(calendarEvent.end || calendarEvent.start);
     const duration = end.getTime() - start.getTime();
     const offsetY = event.clientY - target.getBoundingClientRect().top;
+    const pressX = event.clientX;
+    const pressY = event.clientY;
+    let moved: { start: Date; end: Date } | null = null;
+    chipMovedRef.current = false;
     let frame = 0;
     let latestPointer: PointerEvent | null = null;
 
@@ -1445,10 +1479,14 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       const nextStart = new Date(days[dayIndex]);
       nextStart.setHours(startHour, minutesFromStart, 0, 0);
       const nextEnd = new Date(nextStart.getTime() + duration);
-      updateEventTime(calendarEvent.id, { start: nextStart, end: nextEnd });
+      moved = { start: nextStart, end: nextEnd };
+      updateEventTime(calendarEvent.id, moved);
     }
 
     function move(pointerEvent: PointerEvent) {
+      // A finger wobbles; under the slop it is still a tap.
+      if (!chipMovedRef.current && dragAxis(pointerEvent.clientX - pressX, pointerEvent.clientY - pressY) === "pending") return;
+      chipMovedRef.current = true;
       latestPointer = pointerEvent;
       if (frame) return;
       frame = window.requestAnimationFrame(() => {
@@ -1461,10 +1499,15 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      // The last move may still be waiting for its frame.
+      if (chipMovedRef.current && latestPointer) applyMove(latestPointer);
+      if (moved) saveDrag(calendarEvent, moved.start, moved.end);
     }
 
     window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   }
 
   function beginResize(event: ReactPointerEvent<HTMLDivElement>, calendarEvent: CalendarEvent) {
@@ -1475,6 +1518,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
     if (!grid) return;
     const weekGrid = grid;
     const start = new Date(calendarEvent.start);
+    const pressX = event.clientX;
+    const pressY = event.clientY;
+    let moved: { start: Date; end: Date } | null = null;
+    chipMovedRef.current = false;
     let frame = 0;
     let latestPointer: PointerEvent | null = null;
 
@@ -1484,10 +1531,14 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       const nextEnd = new Date(start);
       nextEnd.setHours(startHour, minutesFromStart, 0, 0);
       if (nextEnd.getTime() <= start.getTime()) nextEnd.setTime(start.getTime() + 15 * 60 * 1000);
-      updateEventTime(calendarEvent.id, { end: nextEnd });
+      moved = { start, end: nextEnd };
+      updateEventTime(calendarEvent.id, moved);
     }
 
     function move(pointerEvent: PointerEvent) {
+      // A finger wobbles; under the slop it is still a tap.
+      if (!chipMovedRef.current && dragAxis(pointerEvent.clientX - pressX, pointerEvent.clientY - pressY) === "pending") return;
+      chipMovedRef.current = true;
       latestPointer = pointerEvent;
       if (frame) return;
       frame = window.requestAnimationFrame(() => {
@@ -1500,10 +1551,15 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      // The last move may still be waiting for its frame.
+      if (chipMovedRef.current && latestPointer) applyMove(latestPointer);
+      if (moved) saveDrag(calendarEvent, moved.start, moved.end);
     }
 
     window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   }
 
   return (
@@ -1578,10 +1634,10 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
               {weekEvents.filter((item) => isSameClientDate(new Date(item.start), new Date())).slice(0, 5).map((item) => {
                 const colors = eventColor(item);
                 return (
-                  <div key={item.id} className="rounded-2xl p-3" style={{ background: colors.soft }}>
-                    <p className="text-sm font-bold" style={{ color: colors.text }}>{formatTimeOnly(item.start)}</p>
+                  <button key={item.id} type="button" onClick={() => setDetailEvent(item)} className="block w-full rounded-2xl p-3 text-left active:scale-95" style={{ background: colors.soft }}>
+                    <p className="text-sm font-bold" style={{ color: colors.text }}>{formatEventStart(item)}</p>
                     <p className="truncate text-lg font-bold text-amb-ink">{item.title}</p>
-                  </div>
+                  </button>
                 );
               })}
               {!weekEvents.some((item) => isSameClientDate(new Date(item.start), new Date())) && (
@@ -1621,16 +1677,16 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
         >
           {calendarMode !== "Week" && (
             <div className="absolute inset-0 z-20 bg-amb-sheet p-5">
-              {calendarMode === "Day" && <CalendarDayView events={weekEvents} day={new Date()} />}
+              {calendarMode === "Day" && <CalendarDayView events={weekEvents} day={new Date()} onOpenEvent={setDetailEvent} />}
               {calendarMode === "Month" && (
                 <CalendarMonthView
                   events={weekEvents}
                   monthDate={new Date()}
                   onOpenEvent={setDetailEvent}
-                  onMoved={setWeekEvents}
+                  onMoved={showSaved}
                 />
               )}
-              {calendarMode === "Schedule" && <CalendarScheduleView events={weekEvents} />}
+              {calendarMode === "Schedule" && <CalendarScheduleView events={weekEvents} onOpenEvent={setDetailEvent} />}
             </div>
           )}
           <div
@@ -1650,6 +1706,33 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
               })}
             </div>
           </div>
+          {weekEvents.some((item) => offGrid(item) && days.some((day) => isSameClientDate(day, new Date(item.start)))) && (
+            <div className="grid max-h-40 shrink-0 grid-cols-[86px_1fr] overflow-y-auto border-b border-mirror-line">
+              <p className="self-center text-center text-sm font-bold leading-tight text-amb-muted">All day, early, late</p>
+              <div className="grid grid-cols-7">
+                {days.map((day) => (
+                  <div key={day.toISOString()} className="min-w-0 space-y-1 border-r border-mirror-line p-1.5 last:border-r-0">
+                    {weekEvents.filter((item) => offGrid(item) && isSameClientDate(day, new Date(item.start))).map((item) => {
+                      const colors = eventColor(item);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          data-event-chip
+                          onClick={() => setDetailEvent(item)}
+                          className="block w-full rounded-lg border-l-4 px-2 py-1.5 text-left active:scale-95"
+                          style={{ background: colors.soft, borderColor: colors.color }}
+                        >
+                          <p className="text-xs font-bold" style={{ color: colors.text }}>{formatEventStart(item)}</p>
+                          <p className="truncate text-sm font-bold text-amb-ink">{item.title}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid min-h-0 flex-1 grid-cols-[86px_1fr] overflow-y-auto">
             <div className="relative bg-amb-card" style={{ height: (endHour - startHour) * hourHeight }}>
               {Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index).map((hour) => (
@@ -1676,13 +1759,16 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                 if (dayIndex < 0) return null;
                 const top = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * hourHeight;
                 const height = Math.max(58, (end.getTime() - start.getTime()) / (60 * 60 * 1000) * hourHeight);
-                if (top < 0 || top > (endHour - startHour) * hourHeight) return null;
+                if (offGrid(calendarEvent)) return null;
                 const colors = eventColor(calendarEvent);
 
                 return (
                   <div
                     key={calendarEvent.id}
                     onPointerDown={(pointerEvent) => beginDrag(pointerEvent, calendarEvent)}
+                    onClick={() => {
+                      if (!chipMovedRef.current) setDetailEvent(calendarEvent);
+                    }}
                     data-event-chip
                     className="absolute overflow-hidden cursor-grab select-none rounded-xl border-l-[6px] px-2.5 py-1.5 shadow-sm active:cursor-grabbing"
                     style={{
@@ -1711,7 +1797,23 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
           </div>
         </div>
       </div>
-      {detailEvent && <EventDetailDialog calendarEvent={detailEvent} onClose={() => setDetailEvent(null)} />}
+      {detailEvent && (
+        <EventEditor
+          key={detailEvent.id}
+          event={detailEvent}
+          color={eventColor(detailEvent).color}
+          onClose={() => setDetailEvent(null)}
+          onSave={async (start, end) => {
+            await saveEventTimes(detailEvent.id, start, end);
+            setDetailEvent(null);
+          }}
+        />
+      )}
+      {calendarError && (
+        <button type="button" onClick={() => setCalendarError("")} role="alert" className="absolute bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-amber-100 px-6 py-3 text-lg font-bold text-amber-900">
+          {calendarError}
+        </button>
+      )}
       {isEventModalOpen && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-8">
           <div className="w-full max-w-3xl rounded-[28px] bg-amb-sheet p-7 shadow-xl">
@@ -1726,8 +1828,8 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
                 <input value={newEventStart} onChange={(event) => setNewEventStart(event.target.value)} className="touch-input" type="time" />
                 <input value={newEventEnd} onChange={(event) => setNewEventEnd(event.target.value)} className="touch-input" type="time" />
               </div>
-              <button onClick={addLocalEvent} className="touch-button bg-[#ffcf5a] text-slate-900"><Plus className="mr-2 h-7 w-7" /> Add to Calendar</button>
-              <p className="text-lg font-semibold text-amb-muted">This adds a local display event for now. Google/iCloud write-back comes in the calendar persistence phase.</p>
+              <button onClick={addLocalEvent} disabled={addingEvent} className="touch-button bg-[#ffcf5a] text-slate-900"><Plus className="mr-2 h-7 w-7" /> Add to Calendar</button>
+              <p className="text-lg font-semibold text-amb-muted">This saves to the dashboard only. It is not added to Google or iCloud.</p>
             </div>
           </div>
         </div>
@@ -1736,7 +1838,7 @@ function CalendarPanel({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-function CalendarDayView({ events, day }: { events: CalendarEvent[]; day: Date }) {
+function CalendarDayView({ events, day, onOpenEvent }: { events: CalendarEvent[]; day: Date; onOpenEvent: (event: CalendarEvent) => void }) {
   const dayEvents = events.filter((event) => isSameClientDate(new Date(event.start), day)).sort((a, b) => a.start.localeCompare(b.start));
   return (
     <div className="flex h-full flex-col">
@@ -1747,70 +1849,17 @@ function CalendarDayView({ events, day }: { events: CalendarEvent[]; day: Date }
         </div>
         <p className="rounded-full bg-[#fff3c4] px-5 py-3 text-xl font-bold text-slate-700">{dayEvents.length} events</p>
       </div>
-      <div className="mt-5 space-y-4 overflow-y-auto pr-2">
+      <div className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
         {dayEvents.map((event) => {
           const colors = eventColor(event);
           return (
-            <div key={event.id} className="rounded-3xl border-l-[12px] p-5" style={{ background: colors.soft, borderColor: colors.color }}>
-              <p className="text-lg font-bold" style={{ color: colors.text }}>{formatTimeOnly(event.start)} - {formatTimeOnly(event.end || event.start)}</p>
+            <button key={event.id} type="button" onClick={() => onOpenEvent(event)} className="block w-full rounded-3xl border-l-[12px] p-5 text-left active:scale-[0.99]" style={{ background: colors.soft, borderColor: colors.color }}>
+              <p className="text-lg font-bold" style={{ color: colors.text }}>{formatEventStart(event)}{isWholeDay(event) ? "" : ` - ${formatTimeOnly(event.end || event.start)}`}</p>
               <p className="text-3xl font-bold text-amb-ink">{event.title}</p>
-            </div>
+            </button>
           );
         })}
         {!dayEvents.length && <p className="rounded-3xl bg-amb-well p-8 text-2xl font-bold text-amb-muted">No events today.</p>}
-      </div>
-    </div>
-  );
-}
-
-function EventDetailDialog({ calendarEvent, onClose }: { calendarEvent: CalendarEvent; onClose: () => void }) {
-  const colors = eventColor(calendarEvent);
-  const start = new Date(calendarEvent.start);
-  const end = calendarEvent.end ? new Date(calendarEvent.end) : null;
-  const sourceLabel: Record<string, string> = {
-    ical: "Subscribed calendar",
-    google: "Google Calendar",
-    local: "Added here",
-    voice: "Added by voice",
-    demo: "Example"
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-10" onClick={onClose}>
-      <div
-        className="w-full max-w-2xl overflow-hidden rounded-[28px] bg-amb-sheet"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="p-8" style={{ borderTop: `10px solid ${colors.color}` }}>
-          <p className="text-sm font-black uppercase tracking-widest" style={{ color: colors.text }}>
-            {sourceLabel[calendarEvent.source] || calendarEvent.source}
-          </p>
-          <h2 className="mt-3 text-4xl font-black leading-tight text-amb-ink">{calendarEvent.title}</h2>
-
-          <div className="mt-6 space-y-3 border-t border-mirror-line pt-5 text-2xl">
-            <p className="font-bold text-amb-ink">
-              {start.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-            </p>
-            <p className="text-amb-muted">
-              {formatTimeOnly(calendarEvent.start)}{end ? ` - ${formatTimeOnly(end.toISOString())}` : ""}
-            </p>
-            {calendarEvent.location && (
-              <p className="text-amb-muted">{calendarEvent.location}</p>
-            )}
-            {calendarEvent.moved && (
-              <p className="rounded-2xl bg-amber-100 p-4 text-lg font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
-                Moved on this dashboard. The original calendar still has it at its old time.
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={onClose}
-            className="mt-7 min-h-16 w-full rounded-2xl bg-sky-600 text-2xl font-black text-white active:scale-95"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -1967,7 +2016,7 @@ function CalendarMonthView({
                       style={{ background: colors.soft, borderLeft: `4px solid ${colors.color}` }}
                     >
                       <p className="truncate text-xs font-bold" style={{ color: colors.text }}>
-                        {formatTimeOnly(calendarEvent.start)}
+                        {formatEventStart(calendarEvent)}
                       </p>
                       <p className="line-clamp-2 text-sm font-bold leading-tight text-amb-ink">
                         {calendarEvent.title}
@@ -1995,7 +2044,7 @@ function CalendarMonthView({
   );
 }
 
-function CalendarScheduleView({ events }: { events: CalendarEvent[] }) {
+function CalendarScheduleView({ events, onOpenEvent }: { events: CalendarEvent[]; onOpenEvent: (event: CalendarEvent) => void }) {
   const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start));
   return (
     <div className="flex h-full flex-col">
@@ -2003,19 +2052,19 @@ function CalendarScheduleView({ events }: { events: CalendarEvent[] }) {
         <p className="text-lg font-bold uppercase text-amb-muted">Schedule View</p>
         <h3 className="text-5xl font-bold text-amb-ink">Upcoming Events</h3>
       </div>
-      <div className="mt-5 space-y-3 overflow-y-auto pr-2">
+      <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
         {sorted.map((event) => {
           const colors = eventColor(event);
           return (
-            <div key={event.id} className="grid grid-cols-[180px_1fr] items-center gap-4 rounded-3xl bg-amb-card p-4">
+            <button key={event.id} type="button" onClick={() => onOpenEvent(event)} className="grid w-full grid-cols-[180px_1fr] items-center gap-4 rounded-3xl bg-amb-card p-4 text-left active:scale-[0.99]">
               <div>
                 <p className="text-lg font-bold text-amb-muted">{new Date(event.start).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</p>
-                <p className="text-xl font-bold" style={{ color: colors.text }}>{formatTimeOnly(event.start)}</p>
+                <p className="text-xl font-bold" style={{ color: colors.text }}>{formatEventStart(event)}</p>
               </div>
               <div className="rounded-2xl border-l-[10px] p-4" style={{ background: colors.soft, borderColor: colors.color }}>
                 <p className="text-2xl font-bold text-amb-ink">{event.title}</p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -5113,6 +5162,10 @@ function formatEventTime(value: string) {
 
 function formatTimeOnly(value: string) {
   return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatEventStart(event: CalendarEvent) {
+  return isWholeDay(event) ? "All day" : formatTimeOnly(event.start);
 }
 
 function formatHour(hour: number) {

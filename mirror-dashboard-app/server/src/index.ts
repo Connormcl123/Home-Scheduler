@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { getDb } from "./db.js";
 import { getDashboard } from "./services/dashboard.js";
 import { getCalendarEvents, moveCalendarEvent } from "./services/calendar.js";
+import { createLocalCalendarEvent } from "./services/localCalendar.js";
 import { getFinanceSummary } from "./services/finance/index.js";
 import { createFinanceWatchlistItem, deleteFinanceWatchlistItem, listFinanceWatchlist, updateFinanceWatchlistItem } from "./services/financeWatchlist.js";
 import { createGroceryItem, deleteAllGroceryItems, deleteGroceryItem, groceryText, listGroceryItems, updateGroceryItem } from "./services/grocery.js";
@@ -70,8 +71,23 @@ app.patch("/api/calendar/events/:id", async (req, res, next) => {
     const { start, end } = req.body || {};
     if (!start) return res.status(400).json({ error: "start is required." });
     if (Number.isNaN(new Date(start).getTime())) return res.status(400).json({ error: "start must be a valid timestamp." });
-    await moveCalendarEvent(req.params.id, start, end);
+    if (end && !(new Date(end).getTime() > new Date(start).getTime())) return res.status(400).json({ error: "end must be after start." });
+    if (!(await moveCalendarEvent(req.params.id, start, end))) return res.status(404).json({ error: "No such event." });
     res.json(await getCalendarEvents());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/calendar/events", async (req, res, next) => {
+  try {
+    const { title, start, end } = req.body || {};
+    if (typeof title !== "string" || !title.trim()) return res.status(400).json({ error: "title is required." });
+    const from = new Date(start).getTime();
+    const to = new Date(end).getTime();
+    if (!start || !end || !(to > from)) return res.status(400).json({ error: "end must be after start." });
+    await createLocalCalendarEvent({ title, start: new Date(from).toISOString(), end: new Date(to).toISOString() });
+    res.status(201).json(await getCalendarEvents());
   } catch (error) {
     next(error);
   }

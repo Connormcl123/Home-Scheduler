@@ -264,12 +264,10 @@ function DayRail({ events, now, onOpen }: { events: CalendarEvent[]; now: Date; 
   );
 }
 
-/** A real checklist: ticking here finishes the task. */
+/** A real checklist that fills the column and drags to scroll: ticking here finishes the task. */
 function TaskList({ tasks, now, onOpen }: { tasks: Task[]; now: Date; onOpen: () => void }) {
   const [done, setDone] = useState<Set<number>>(() => new Set());
   const open = tasks.filter((task) => !task.completed && !done.has(task.id));
-  // Four fit above the trip band; the rest are a tap away on the Tasks tab.
-  const shown = open.slice(0, 4);
 
   async function finish(task: Task) {
     setDone((current) => new Set(current).add(task.id));
@@ -285,14 +283,17 @@ function TaskList({ tasks, now, onOpen }: { tasks: Task[]; now: Date; onOpen: ()
   }
 
   return (
-    <section className="flex min-h-0 flex-col gap-3">
-      <button type="button" onClick={onOpen} className="self-start active:opacity-60"><Heading icon={ListChecks}>Tasks</Heading></button>
+    <section className="flex min-h-0 flex-1 flex-col gap-3">
+      <button type="button" onClick={onOpen} className="flex shrink-0 items-baseline justify-between gap-4 text-left active:opacity-60">
+        <Heading icon={ListChecks}>Tasks</Heading>
+        {open.length > 0 && <span className="text-lg text-amb-muted">{open.length} to do</span>}
+      </button>
       {!open.length && <p className="text-xl leading-snug text-amb-muted">Nothing to do. Say &ldquo;Hey Siri, add a task&rdquo; to add one.</p>}
-      <ul className="flex flex-col gap-1">
-        {shown.map((task) => {
+      <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {open.map((task) => {
           const due = dueLabel(task.dueDate, now);
           return (
-            <li key={task.id} className="flex min-w-0 items-center gap-4">
+            <li key={task.id} className="flex min-w-0 shrink-0 items-center gap-4">
               <button
                 type="button"
                 onClick={() => finish(task)}
@@ -311,7 +312,6 @@ function TaskList({ tasks, now, onOpen }: { tasks: Task[]; now: Date; onOpen: ()
           );
         })}
       </ul>
-      {open.length > shown.length && <p className="pl-[72px] text-lg font-semibold text-amb-muted">{open.length - shown.length} more</p>}
     </section>
   );
 }
@@ -320,9 +320,9 @@ function TaskList({ tasks, now, onOpen }: { tasks: Task[]; now: Date; onOpen: ()
 function NoteQuote({ note, onOpen }: { note: Note; onOpen: () => void }) {
   const left = new Date(`${note.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   return (
-    <button type="button" onClick={onOpen} className="flex min-h-0 flex-col gap-2 text-left active:opacity-60">
+    <button type="button" onClick={onOpen} className="flex shrink-0 flex-col gap-2 text-left active:opacity-60">
       <Heading icon={StickyNote}>Note</Heading>
-      <p className="line-clamp-4 border-l-[3px] border-amb-accent pl-5 font-display text-[29px] italic leading-[1.22] text-amb-ink">{note.body}</p>
+      <p className="line-clamp-2 border-l-[3px] border-amb-accent pl-5 font-display text-[29px] italic leading-[1.22] text-amb-ink">{note.body}</p>
       <p className="pl-6 text-base text-amb-muted">Left {left}</p>
     </button>
   );
