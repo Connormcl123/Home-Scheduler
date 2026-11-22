@@ -12,6 +12,21 @@ export function addDays(date: Date, days: number) {
   return next;
 }
 
+/** "today at 1:30 PM", "tomorrow, all day", "Fri, Dec 4 at 1:30 PM": always the day, so next week never reads as today. */
+export function eventWhen(event: { start: string; end?: string }, now: Date) {
+  const start = new Date(event.start);
+  const day = todayIso(start);
+  const label = day === todayIso(now)
+    ? "today"
+    : day === todayIso(addDays(now, 1))
+      ? "tomorrow"
+      : start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const fromMidnight = !start.getHours() && !start.getMinutes();
+  // 20 hours rather than 24, as Home does, for the day the clocks change.
+  if (fromMidnight && event.end && new Date(event.end).getTime() - start.getTime() >= 20 * 3_600_000) return `${label}, all day`;
+  return `${label} at ${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+}
+
 export function toIsoDateTime(value: Date | string | number | undefined) {
   if (!value) return new Date().toISOString();
   return new Date(value).toISOString();

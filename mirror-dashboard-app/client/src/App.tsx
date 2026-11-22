@@ -1277,7 +1277,7 @@ function MorningStoryPlayer({ story, onClose }: { story: MorningStory; onClose: 
               <div className="space-y-3">
                 {slide.agenda.map((entry, position) => (
                   <div key={position} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4">
-                    <span className="w-24 shrink-0 text-xl font-black text-white/80">{entry.time}</span>
+                    <span className="w-44 shrink-0 text-xl font-black leading-tight text-white/80">{entry.time}</span>
                     <span className="min-w-0 flex-1 truncate text-2xl font-bold text-white">{entry.title}</span>
                   </div>
                 ))}

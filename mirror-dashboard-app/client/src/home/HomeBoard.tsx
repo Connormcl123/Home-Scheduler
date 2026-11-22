@@ -109,17 +109,18 @@ function TripBand({
       </div>
       <DealCarousel deals={deals} index={index} onIndex={onIndex} onOpen={onOpen} size="home" accentOf={dealAccent}>
         {(deal, centred) => (
-          <div className="relative flex h-full flex-col justify-between p-5">
-            <div>
+          // The card is 136px: a title, two lines and the chips only fit this tightly.
+          <div className="relative flex h-full flex-col justify-between px-5 py-2">
+            <div className="min-w-0">
               <p className="flex items-baseline gap-2.5">
-                <span className="text-3xl leading-none">{deal.emoji}</span>
-                <span className="truncate font-display text-[30px] leading-tight">{deal.destination}</span>
+                <span className="text-[26px] leading-none">{deal.emoji}</span>
+                <span className="truncate font-display text-[30px] leading-[1.15]">{deal.destination}</span>
               </p>
-              <p className="mt-1 line-clamp-2 text-lg font-semibold leading-snug text-white/90">{centred ? deal.headline : deal.country}</p>
+              <p className="line-clamp-2 text-[17px] font-semibold leading-tight text-white/90">{centred ? deal.headline : deal.country}</p>
             </div>
-            <div className="flex flex-wrap gap-2 text-base font-bold">
-              {deal.estCost && <span className="rounded-full bg-white/25 px-3.5 py-1.5">{deal.estCost}</span>}
-              {deal.bestMonths && <span className="rounded-full bg-white/25 px-3.5 py-1.5">{deal.bestMonths}</span>}
+            <div className="flex min-w-0 gap-2 text-base font-bold leading-5">
+              {deal.estCost && <span className="shrink-0 rounded-full bg-white/25 px-3.5 py-1">{deal.estCost}</span>}
+              {deal.bestMonths && <span className="truncate rounded-full bg-white/25 px-3.5 py-1">{deal.bestMonths}</span>}
             </div>
           </div>
         )}

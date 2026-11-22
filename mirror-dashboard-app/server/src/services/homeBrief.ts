@@ -13,7 +13,7 @@ import { getFinanceSummary } from "./finance/index.js";
 import { getTonightsMeal } from "./recipes.js";
 import { listPackageViews } from "./packages/store.js";
 import { describePackages } from "./packages/text.js";
-import { todayIso } from "../utils/dates.js";
+import { eventWhen, todayIso } from "../utils/dates.js";
 
 function currency(value: number | null | undefined) {
   if (value === null || value === undefined) return "--";
@@ -58,7 +58,7 @@ function describeContext(ctx: Awaited<ReturnType<typeof collectContext>>) {
     `It is ${time}.`,
     "",
     "Upcoming events:",
-    ctx.events.map((event) => `- ${new Date(event.start).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })} ${event.title}`).join("\n") || "- none",
+    ctx.events.map((event) => `- ${eventWhen(event, ctx.now)}: ${event.title}`).join("\n") || "- none",
     "",
     "Open tasks:",
     ctx.tasks.map((task) => `- ${task.title}${task.dueDate ? ` (due ${task.dueDate})` : ""} [${task.priority}]`).join("\n") || "- none",
@@ -142,8 +142,8 @@ function fallbackPulse(ctx: Awaited<ReturnType<typeof collectContext>>): HomePul
     cards.push({
       kind: "event",
       title: next.title,
-      detail: new Date(next.start).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }),
-      bullets: ctx.events.slice(1, 3).map((event) => `${new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} ${event.title}`),
+      detail: eventWhen(next, ctx.now),
+      bullets: ctx.events.slice(1, 3).map((event) => `${event.title}, ${eventWhen(event, ctx.now)}`),
       urgency: "soon"
     });
   }
@@ -181,7 +181,7 @@ function fallbackPulse(ctx: Awaited<ReturnType<typeof collectContext>>): HomePul
   return {
     generatedAt: new Date().toISOString(),
     headline: next
-      ? `Next up: ${next.title} at ${new Date(next.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`
+      ? `Next up: ${next.title.trim()}, ${eventWhen(next, ctx.now)}.`
       : "Nothing scheduled right now.",
     cards,
     source: "local"
@@ -361,7 +361,7 @@ export async function generateMorningStory(forDate = todayIso()): Promise<Mornin
         return {
           ...slide,
           agenda: ctx.events.slice(0, 5).map((event) => ({
-            time: new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+            time: eventWhen(event, ctx.now),
             title: event.title
           }))
         };

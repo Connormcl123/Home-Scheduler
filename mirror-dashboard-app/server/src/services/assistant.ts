@@ -7,7 +7,7 @@ import { createLocalCalendarEvent } from "./localCalendar.js";
 import { getNoteByDate, upsertNote } from "./notes.js";
 import { createTask, deleteTask, listTasks, updateTask } from "./tasks.js";
 import { getWeather } from "./weather.js";
-import { todayIso } from "../utils/dates.js";
+import { eventWhen, todayIso } from "../utils/dates.js";
 import { generateRecipe, getMealPlan, listRecipes, pushPlanToGrocery, setMeal } from "./recipes.js";
 
 export class AssistantError extends Error {
@@ -375,7 +375,7 @@ async function buildLiveContext() {
 
   const eventLines = events
     .slice(0, 6)
-    .map((event) => `- ${new Date(event.start).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })} ${event.title}`)
+    .map((event) => `- ${eventWhen(event, now)}: ${event.title}`)
     .join("\n");
 
   return [

@@ -175,6 +175,7 @@ export const groceryQuickCategories: QuickCategory[] = [
       item("Rice", "🍚"),
       item("Brown rice", "🍚"),
       item("Pasta", "🍝"),
+      item("Mac n cheese", "🧀"),
       item("Spaghetti", "🍝"),
       item("Noodles", "🍜"),
       item("Quinoa", "🌾"),
