@@ -79,5 +79,9 @@ export const config = {
   },
   voice: {
     webhookToken: process.env.ALEXA_WEBHOOK_TOKEN || ""
+  },
+  clips: {
+    // Shared with the TikTok clipper's MIRROR_TOKEN; empty refuses every upload.
+    token: process.env.CLIPS_TOKEN || ""
   }
 };

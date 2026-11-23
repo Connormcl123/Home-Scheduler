@@ -490,6 +490,16 @@ export interface TripPlan {
   createdAt: string;
 }
 
+/** A clip the TikTok clipper posted, copied to the wall by the clipper. */
+export interface PostedClip {
+  id: string;
+  caption: string;
+  show: string | null;
+  postedAt: string;
+  videoUrl: string;
+  posterUrl: string;
+}
+
 export interface TravelDeal {
   id: number;
   generatedFor: string;

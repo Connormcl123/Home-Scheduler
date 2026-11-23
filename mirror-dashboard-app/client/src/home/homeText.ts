@@ -72,6 +72,24 @@ export function dueLabel(dueDate: string | null | undefined, now: Date): { text:
   return { text: `Due ${monthDay}`, late: false };
 }
 
+/** "just now", "12 min ago", "3 hours ago", "yesterday", "Tuesday", then "Nov 14". */
+export function postedAgo(iso: string, now: Date): string {
+  const when = new Date(iso);
+  const minutes = Math.max(0, Math.round((now.getTime() - when.getTime()) / 60_000));
+  if (minutes < 2) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (dateKey(when) === dateKey(now)) return `${Math.round(minutes / 60)} hour${minutes < 90 ? "" : "s"} ago`;
+  const days = Math.round((new Date(`${dateKey(now)}T12:00:00`).getTime() - new Date(`${dateKey(when)}T12:00:00`).getTime()) / (24 * HOUR));
+  if (days === 1) return "yesterday";
+  if (days < 7) return when.toLocaleDateString("en-US", { weekday: "long" });
+  return when.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** The caption without its hashtags, which are for TikTok rather than the kitchen. */
+export function captionText(caption: string): string {
+  return caption.replace(/(^|\s)#\S+/g, " ").replace(/\s+/g, " ").trim() || caption.trim();
+}
+
 /** Where spending sits in the budget, and where an even pace would have it by today. */
 export function moneyPace(spent: number, limit: number, now: Date): { spentPercent: number; expectedPercent: number; over: boolean } {
   const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();

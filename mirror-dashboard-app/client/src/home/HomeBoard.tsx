@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { CalendarDays, Check, ListChecks, Newspaper, Plane, ShoppingBasket, StickyNote, UtensilsCrossed, Wallet, type LucideIcon } from "lucide-react";
-import type { CalendarEvent, DashboardSummary, GroceryItem, MealPlanEntry, NewsArticle, Note, Task, TravelDeal } from "@mirror-dashboard/shared";
-import { fetchGroceryItems, fetchMealPlan, fetchNotes, fetchTravelDeals, updateTask } from "../api";
+import { CalendarDays, Check, Clapperboard, ListChecks, Newspaper, Plane, ShoppingBasket, StickyNote, UtensilsCrossed, Wallet, X, type LucideIcon } from "lucide-react";
+import type { CalendarEvent, DashboardSummary, GroceryItem, MealPlanEntry, NewsArticle, Note, PostedClip, Task, TravelDeal } from "@mirror-dashboard/shared";
+import { fetchClips, fetchGroceryItems, fetchMealPlan, fetchNotes, fetchTravelDeals, updateTask } from "../api";
 import { dateKey } from "../packages/packageText";
-import { allDay, coming, dueLabel, laneOf, moneyPace, railHours, timeOf, todays } from "./homeText";
+import { allDay, captionText, coming, dueLabel, laneOf, moneyPace, postedAgo, railHours, timeOf, todays } from "./homeText";
 import { CarouselControls, DealCarousel, useCarouselIndex } from "../travel/DealCarousel";
 import { dealAccent } from "../travel/dealAccent";
 
@@ -34,12 +34,15 @@ export function HomeBoard({
   const [grocery, setGrocery] = useState<GroceryItem[]>([]);
   const [deals, setDeals] = useState<TravelDeal[]>([]);
   const [note, setNote] = useState<Note | null>(null);
+  const [clips, setClips] = useState<PostedClip[]>([]);
+  const [playing, setPlaying] = useState<PostedClip | null>(null);
 
   // The dashboard summary covers calendar, tasks, money and news; the rest refresh here.
   useEffect(() => {
     const load = () => {
       fetchMealPlan().then(setMeals).catch(() => undefined);
       fetchTravelDeals().then((data) => setDeals(data.deals)).catch(() => undefined);
+      fetchClips().then(setClips).catch(() => undefined);
       fetchNotes().then((notes) => setNote(dashboard.todayNote ?? latest(notes))).catch(() => undefined);
     };
     load();
@@ -76,11 +79,13 @@ export function HomeBoard({
         </motion.div>
       </div>
 
-      {deals.length > 0 && (
-        <motion.div className="shrink-0" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(4)}>
-          <TripBand deals={deals} onOpen={onOpenDeal} onAll={() => onNavigate("travel")} />
+      {(deals.length > 0 || clips.length > 0) && (
+        <motion.div className="flex shrink-0 gap-10" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={rise(4)}>
+          {deals.length > 0 && <TripBand deals={deals} onOpen={onOpenDeal} onAll={() => onNavigate("travel")} />}
+          {clips.length > 0 && <ClipBand clips={clips} now={now} wide={!deals.length} onPlay={setPlaying} />}
         </motion.div>
       )}
+      {playing && <ClipPlayer clip={playing} now={now} onClose={() => setPlaying(null)} />}
     </div>
   );
 }
@@ -99,7 +104,7 @@ function TripBand({
   // clock, the day or the money beside it.
   const [index, onIndex] = useCarouselIndex();
   return (
-    <div className="flex h-[140px] items-stretch gap-6">
+    <div className="flex h-[140px] min-w-0 flex-1 items-stretch gap-6">
       <div className="flex w-48 shrink-0 flex-col justify-center gap-3">
         <button type="button" onClick={onAll} className="self-start text-left active:opacity-60">
           <Heading icon={Plane}>Trip ideas</Heading>
@@ -125,6 +130,63 @@ function TripBand({
           </div>
         )}
       </DealCarousel>
+    </div>
+  );
+}
+
+/**
+ * What the TikTok clipper posted last, beside the trips. Tiles that do not fit
+ * wrap onto a hidden second row rather than being cut in half.
+ */
+function ClipBand({ clips, now, wide, onPlay }: { clips: PostedClip[]; now: Date; wide: boolean; onPlay: (clip: PostedClip) => void }) {
+  const today = clips.filter((clip) => dateKey(new Date(clip.postedAt)) === dateKey(now)).length;
+  return (
+    <div className={`flex h-[140px] min-w-0 items-stretch gap-6 ${wide ? "flex-1" : "w-[800px] shrink-0"}`}>
+      <div className="flex w-40 shrink-0 flex-col justify-center">
+        <Heading icon={Clapperboard}>Just posted</Heading>
+        <p className="mt-1 font-display text-[26px] leading-tight text-amb-ink">{today ? `${today} today` : postedAgo(clips[0].postedAt, now)}</p>
+        <p className="text-base text-amb-muted">on TikTok</p>
+      </div>
+      <div className="flex h-[140px] min-w-0 flex-1 flex-wrap gap-x-4 overflow-hidden">
+        {clips.map((clip) => (
+          <button key={clip.id} type="button" onClick={() => onPlay(clip)} className="flex h-[140px] w-[300px] gap-3 text-left active:opacity-70">
+            <span className="relative h-full w-[79px] shrink-0 overflow-hidden rounded-xl bg-amb-well">
+              <Thumb src={clip.posterUrl} className="h-full w-full" />
+            </span>
+            <span className="flex min-w-0 flex-col justify-center gap-1">
+              {clip.show && <span className="truncate text-base font-medium text-amb-muted">{clip.show}</span>}
+              <span className="line-clamp-3 text-[18px] font-semibold leading-tight text-amb-ink">{captionText(clip.caption)}</span>
+              <span className="text-base text-amb-muted">{postedAgo(clip.postedAt, now)}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The clip itself, with sound: it only plays because someone tapped it. */
+function ClipPlayer({ clip, now, onClose }: { clip: PostedClip; now: Date; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center gap-12 bg-slate-950/90 p-8" onClick={onClose}>
+      <video
+        src={clip.videoUrl}
+        poster={clip.posterUrl}
+        autoPlay
+        controls
+        playsInline
+        className="h-full max-h-[1000px] rounded-3xl bg-black"
+        style={{ aspectRatio: "9 / 16" }}
+        onClick={(event) => event.stopPropagation()}
+      />
+      <div className="flex w-[520px] flex-col gap-4 text-white" onClick={(event) => event.stopPropagation()}>
+        {clip.show && <p className="text-2xl font-semibold text-white/70">{clip.show}</p>}
+        <p className="font-display text-[42px] leading-tight">{captionText(clip.caption)}</p>
+        <p className="text-xl text-white/70">Posted to TikTok {postedAgo(clip.postedAt, now)}</p>
+        <button type="button" onClick={onClose} className="touch-button mt-4 w-48 gap-2 bg-white/15 text-white">
+          <X className="h-7 w-7" /> Close
+        </button>
+      </div>
     </div>
   );
 }

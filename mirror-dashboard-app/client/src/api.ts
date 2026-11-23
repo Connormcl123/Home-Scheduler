@@ -1,4 +1,4 @@
-import type { BudgetSummary, BudgetView, TripArrangements, TripPlan, TripSelection, ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse } from "@mirror-dashboard/shared";
+import type { BudgetSummary, BudgetView, TripArrangements, TripPlan, TripSelection, ShareImport, ShareKind, ShareResult, ApiIntegrationStatus, CalendarEvent, GroceryPushResult, MealPlanEntry, Recipe, HomePulse, MorningStory, TravelDealsResponse, AssistantChatResponse, AssistantConversation, AssistantConversationSummary, AssistantStatus, DashboardSummary, FinanceCategoryRule, FinanceTransaction, FinanceWatchlistItem, GroceryItem, GroceryStatus, Note, PersonalFinanceSummary, PlaidConnectionStatus, Priority, RssFeed, Task, TravelInspiration, TravelItineraryResult, PackageEventsResponse, PackagesResponse, PostedClip } from "@mirror-dashboard/shared";
 
 export async function fetchDashboard(): Promise<DashboardSummary> {
   const response = await fetch("/api/dashboard");
@@ -219,6 +219,10 @@ export function commitTrip(input: { dealId: number; selection: TripSelection; we
 
 export function fetchTripPlans() {
   return request<TripPlan[]>("/api/travel/trips");
+}
+
+export function fetchClips() {
+  return request<PostedClip[]>("/api/clips");
 }
 
 export function fetchTravelDeals() {

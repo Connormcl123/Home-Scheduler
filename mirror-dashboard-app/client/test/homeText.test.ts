@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CalendarEvent } from "@mirror-dashboard/shared";
-import { allDay, coming, dueLabel, laneOf, moneyPace, railHours, timeOf, todays } from "../src/home/homeText";
+import { allDay, captionText, coming, dueLabel, laneOf, moneyPace, postedAgo, railHours, timeOf, todays } from "../src/home/homeText";
 
 const at = (day: number, hour: number, minute = 0) => new Date(2026, 8, day, hour, minute).toISOString();
 const event = (id: string, start: string, end?: string): CalendarEvent => ({ id, title: id, start, end, source: "ical" });
@@ -49,4 +49,20 @@ test("budget pace compares spending with an even month", () => {
 
 test("times are short and lower case", () => {
   assert.equal(timeOf(new Date(2026, 8, 18, 9, 45)), "9:45 am");
+});
+
+test("a posted clip says how long ago, then the day, then the date", () => {
+  const ago = (day: number, hour: number, minute = 0) => postedAgo(new Date(2026, 8, day, hour, minute).toISOString(), now);
+  assert.equal(ago(18, 15, 29), "just now");
+  assert.equal(ago(18, 15, 5), "25 min ago");
+  assert.equal(ago(18, 14, 30), "1 hour ago");
+  assert.equal(ago(18, 9), "7 hours ago");
+  assert.equal(ago(17, 23), "yesterday");
+  assert.equal(ago(15, 12), "Tuesday");
+  assert.equal(ago(2, 12), "Sep 2");
+});
+
+test("hashtags are dropped from a clip's caption on the wall", () => {
+  assert.equal(captionText("Jen makes it official. #MormonWives #SLOMW"), "Jen makes it official.");
+  assert.equal(captionText("#only #tags"), "#only #tags");
 });

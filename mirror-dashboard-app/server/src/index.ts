@@ -28,6 +28,7 @@ import { createEnrichedTravelInspiration, deleteTravelInspiration, generateTrave
 import { todayIso } from "./utils/dates.js";
 import { getWeather } from "./services/weather.js";
 import { setDisplayPower } from "./services/display.js";
+import { CLIP_DIR, clipUploadAllowed, isClipId, listClips, looksLike, publishClip, saveClipFile, type ClipFile } from "./services/clips.js";
 import { addGroceriesFromVoice, createCalendarEventFromVoice, createTaskFromVoice, openTasksForVoice, VoiceCommandError } from "./services/voiceCommands.js";
 import { AssistantError, getAssistantStatus } from "./services/assistant.js";
 import { chatInConversation, deleteConversation, getConversation, listConversations } from "./services/assistantHistory.js";
@@ -873,6 +874,49 @@ app.post("/api/share/:id/retry", async (req, res, next) => {
 // The file type is trusted from the remote server's Content-Type, so nosniff stops the browser guessing another one.
 app.use("/media", express.static(SHARE_IMAGE_DIR, { fallthrough: false, maxAge: "30d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
 
+app.get("/api/clips", async (_req, res, next) => {
+  try {
+    res.json(await listClips());
+  } catch (error) {
+    next(error);
+  }
+});
+
+// The TikTok clipper on the PC sends each posted clip here: the video, its cover, then the details.
+const clipFileRoutes: Array<[ClipFile, string, string]> = [["video", "video/mp4", "25mb"], ["poster", "image/jpeg", "2mb"]];
+for (const [kind, type, limit] of clipFileRoutes) {
+  app.put(`/api/clips/:id/${kind}`, express.raw({ type, limit }), async (req, res, next) => {
+    try {
+      if (!clipUploadAllowed(req.get("authorization"))) return res.status(401).json({ error: "Wrong or missing clips token." });
+      if (!isClipId(req.params.id)) return res.status(400).json({ error: "Bad clip id." });
+      if (!Buffer.isBuffer(req.body) || !looksLike(kind, req.body)) return res.status(415).json({ error: `Expected ${type}.` });
+      await saveClipFile(req.params.id, kind, req.body);
+      res.sendStatus(204);
+    } catch (error) {
+      next(error);
+    }
+  });
+}
+
+app.put("/api/clips/:id", async (req, res, next) => {
+  try {
+    if (!clipUploadAllowed(req.get("authorization"))) return res.status(401).json({ error: "Wrong or missing clips token." });
+    if (!isClipId(req.params.id)) return res.status(400).json({ error: "Bad clip id." });
+    const { caption, show, postedAt } = req.body || {};
+    if (typeof caption !== "string" || !caption.trim() || Number.isNaN(new Date(postedAt).getTime())) {
+      return res.status(400).json({ error: "caption and postedAt are required." });
+    }
+    if (!(await publishClip(req.params.id, { caption, show: typeof show === "string" ? show : null, postedAt }))) {
+      return res.status(409).json({ error: "Send the video and the poster first." });
+    }
+    res.json(await listClips());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use("/clips", express.static(CLIP_DIR, { fallthrough: false, maxAge: "30d", setHeaders: (res) => res.set("X-Content-Type-Options", "nosniff") }));
+
 app.use("/api/packages", createPackagesRouter({ list: listPackages, events: listEvents, checkNow: checkPackagesNow, hide: hidePackage }));
 
 // Gmail sign-in pages. Loopback only: the Pi itself or the SSH tunnel (docs/gmail-setup.md).
@@ -906,8 +950,8 @@ app.use((error: unknown, req: express.Request, res: express.Response, _next: exp
     console.error(error);
     return res.status(500).json({ ...failure, message: "Something went wrong on the Pi saving that share." });
   }
-  // Saved photos: a missing file is a plain 404, not a server error.
-  if (req.path.startsWith("/media")) {
+  // Saved photos and clips: a missing file is a plain 404, an oversized upload a 413, not a server error.
+  if (req.path.startsWith("/media") || req.path.startsWith("/clips") || req.path.startsWith("/api/clips")) {
     const status = error && typeof error === "object" && typeof (error as { status?: unknown }).status === "number" ? (error as { status: number }).status : 500;
     if (status >= 500) console.error(error);
     return res.sendStatus(status);

@@ -317,6 +317,15 @@ export async function initializeSchema(database: Database) {
   await ensureColumn(database, "travel_deals", "image_url", "TEXT");
   await ensureColumn(database, "recipes", "source_url", "TEXT");
   await ensureColumn(database, "recipes", "source_name", "TEXT");
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS posted_clips (
+      id TEXT PRIMARY KEY,
+      caption TEXT NOT NULL,
+      show TEXT,
+      posted_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
   // JSON array of recipe titles, so the grocery list can fold items by recipe.
   await ensureColumn(database, "grocery_items", "recipes", "TEXT");
   // A shared link is saved once; manual and AI recipes have no link and are not affected.
