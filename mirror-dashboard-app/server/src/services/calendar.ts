@@ -8,18 +8,22 @@ import { getDb } from "../db.js";
 const FEED_DAYS = 45;
 const EDITABLE_DAYS = 366;
 
-export async function getCalendarEvents(): Promise<CalendarEvent[]> {
+/** By default, the days Home and the assistant care about; the Calendar tab asks for a wider range to page through. */
+export async function getCalendarEvents(range?: { from: Date; to: Date }): Promise<CalendarEvent[]> {
   const settings = await getSettings();
   const feedUrls = settings.calendarFeedUrls.length ? settings.calendarFeedUrls : settings.calendarFeedUrl ? [settings.calendarFeedUrl] : [];
 
   const now = new Date();
-  // Events made here can be set up to a year out, so they are listed that far.
+  // Events made or moved here can be set up to a year out, so they are listed that far.
+  const window: FeedWindow = range
+    ? { ...range, movedTo: range.to }
+    : { from: addDays(now, -1), to: addDays(now, FEED_DAYS), movedTo: addDays(now, EDITABLE_DAYS) };
   const [localEvents, eventGroups, overrides] = await Promise.all([
-    listLocalCalendarEvents({ from: addDays(now, -1), to: addDays(now, EDITABLE_DAYS) }),
+    listLocalCalendarEvents({ from: window.from, to: window.movedTo }),
     Promise.all(feedUrls.map((feedUrl, index) => fetchCalendarFeed(feedUrl, index))),
     loadOverrides()
   ]);
-  const events = [...localEvents, ...placeFeedEvents(eventGroups.flat(), overrides, now)]
+  const events = [...localEvents, ...placeFeedEvents(eventGroups.flat(), overrides, window)]
     .sort((a, b) => a.start.localeCompare(b.start));
 
   return events.length ? events : mockCalendarEvents();
@@ -63,11 +67,13 @@ function applyOverrides(events: CalendarEvent[], overrides: Map<string, Override
   });
 }
 
+export type FeedWindow = { from: Date; to: Date; movedTo: Date };
+
 /** The window applies to where an event is now, so a moved one does not vanish once its first day passes. */
-export function placeFeedEvents(events: CalendarEvent[], overrides: Map<string, OverrideRow>, now: Date): CalendarEvent[] {
+export function placeFeedEvents(events: CalendarEvent[], overrides: Map<string, OverrideRow>, window: FeedWindow): CalendarEvent[] {
   return applyOverrides(events, overrides).filter((event) => {
     const start = new Date(event.start);
-    return start >= addDays(now, -1) && start <= addDays(now, event.moved ? EDITABLE_DAYS : FEED_DAYS);
+    return start >= window.from && start <= (event.moved ? window.movedTo : window.to);
   });
 }
 

@@ -94,9 +94,14 @@ app.post("/api/calendar/events", async (req, res, next) => {
   }
 });
 
-app.get("/api/calendar/events", async (_req, res, next) => {
+app.get("/api/calendar/events", async (req, res, next) => {
   try {
-    res.json(await getCalendarEvents());
+    if (req.query.from === undefined && req.query.to === undefined) return res.json(await getCalendarEvents());
+    const from = new Date(String(req.query.from));
+    const to = new Date(String(req.query.to));
+    // Two years at most: the feeds are read whole either way, but the reply stays small.
+    if (!(to > from) || to.getTime() - from.getTime() > 800 * 86_400_000) return res.status(400).json({ error: "from and to must be a range of up to two years." });
+    res.json(await getCalendarEvents({ from, to }));
   } catch (error) {
     next(error);
   }

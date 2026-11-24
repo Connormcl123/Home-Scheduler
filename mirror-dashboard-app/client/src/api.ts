@@ -244,8 +244,9 @@ export function createCalendarEvent(title: string, start: string, end: string) {
   return request<CalendarEvent[]>("/api/calendar/events", { method: "POST", body: JSON.stringify({ title, start, end }) });
 }
 
-export function fetchCalendarEvents() {
-  return request<CalendarEvent[]>("/api/calendar/events");
+export function fetchCalendarEvents(range?: { from: Date; to: Date }) {
+  const query = range ? `?${new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() })}` : "";
+  return request<CalendarEvent[]>(`/api/calendar/events${query}`);
 }
 
 export function fetchRecipes() {

@@ -224,6 +224,7 @@ const burnInOffsets = [
   { x: 0, y: -4 }
 ];
 
+// Event chips use the pale `soft` fill in both themes, so their titles are always dark slate.
 const profilePalette = [
   { name: "Family", color: "#3b82f6", soft: "#dbeafe", text: "#1d4ed8" },
   { name: "Home", color: "#f59e0b", soft: "#fef3c7", text: "#b45309" },
@@ -1372,6 +1373,8 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
   const [newEventEnd, setNewEventEnd] = useState("10:00");
   // Which week is on screen. 0 is this week; drag the grid sideways to move.
   const [weekOffset, setWeekOffset] = useState(0);
+  // Which month Month view shows. 0 is this month.
+  const [monthOffset, setMonthOffset] = useState(0);
   const [panDx, setPanDx] = useState(0);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
   const [calendarError, setCalendarError] = useState("");
@@ -1392,10 +1395,13 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
   };
 
   // The dashboard payload caps the calendar at eight events for the Home
-  // summary, so each refresh of it fetches the full list rather than showing it.
+  // summary, so the tab fetches its own list: a year either way, for paging
+  // through weeks and months. A save or a dashboard refresh reloads it.
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     let current = true;
-    fetchCalendarEvents()
+    const now = new Date();
+    fetchCalendarEvents({ from: addClientDays(now, -366), to: addClientDays(now, 366) })
       .then((all) => {
         if (current) setWeekEvents(all.map(normalizeEventEnd));
       })
@@ -1403,7 +1409,7 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
     return () => {
       current = false;
     };
-  }, [events]);
+  }, [events, reloadKey]);
 
   function panWeek(delta: number) {
     setWeekOffset((current) => current + delta);
@@ -1420,14 +1426,16 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
     );
   }
 
-  function showSaved(all: CalendarEvent[]) {
-    setWeekEvents(all.map(normalizeEventEnd));
+  // The save's own reply covers only the coming weeks, so the wider list is fetched again.
+  function showSaved() {
+    setReloadKey((key) => key + 1);
     setCalendarError("");
     onChanged();
   }
 
   async function saveEventTimes(id: string, start: Date, end: Date) {
-    showSaved(await moveCalendarEvent(id, start.toISOString(), end.toISOString()));
+    await moveCalendarEvent(id, start.toISOString(), end.toISOString());
+    showSaved();
   }
 
   function saveDrag(original: CalendarEvent, start: Date, end: Date) {
@@ -1445,7 +1453,8 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
 
     setAddingEvent(true);
     try {
-      showSaved(await createCalendarEvent(newEventTitle.trim(), start.toISOString(), end.toISOString()));
+      await createCalendarEvent(newEventTitle.trim(), start.toISOString(), end.toISOString());
+      showSaved();
       setNewEventTitle("");
       setIsEventModalOpen(false);
     } catch {
@@ -1636,7 +1645,7 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
                 return (
                   <button key={item.id} type="button" onClick={() => setDetailEvent(item)} className="block w-full rounded-2xl p-3 text-left active:scale-95" style={{ background: colors.soft }}>
                     <p className="text-sm font-bold" style={{ color: colors.text }}>{formatEventStart(item)}</p>
-                    <p className="truncate text-lg font-bold text-amb-ink">{item.title}</p>
+                    <p className="truncate text-lg font-bold text-slate-900">{item.title}</p>
                   </button>
                 );
               })}
@@ -1681,7 +1690,9 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
               {calendarMode === "Month" && (
                 <CalendarMonthView
                   events={weekEvents}
-                  monthDate={new Date()}
+                  monthDate={new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1)}
+                  monthOffset={monthOffset}
+                  onMonth={setMonthOffset}
                   onOpenEvent={setDetailEvent}
                   onMoved={showSaved}
                 />
@@ -1724,7 +1735,7 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
                           style={{ background: colors.soft, borderColor: colors.color }}
                         >
                           <p className="text-xs font-bold" style={{ color: colors.text }}>{formatEventStart(item)}</p>
-                          <p className="truncate text-sm font-bold text-amb-ink">{item.title}</p>
+                          <p className="truncate text-sm font-bold text-slate-900">{item.title}</p>
                         </button>
                       );
                     })}
@@ -1781,7 +1792,7 @@ function CalendarPanel({ events, onChanged }: { events: CalendarEvent[]; onChang
                     }}
                   >
                     <p className="text-xs font-bold leading-tight" style={{ color: colors.text }}>{formatTimeOnly(calendarEvent.start)} - {formatTimeOnly(calendarEvent.end || calendarEvent.start)}</p>
-                    <p className="mt-0.5 line-clamp-2 text-base font-bold leading-tight text-amb-ink">{calendarEvent.title}</p>
+                    <p className="mt-0.5 line-clamp-2 text-base font-bold leading-tight text-slate-900">{calendarEvent.title}</p>
                     <div
                       onPointerDown={(pointerEvent) => beginResize(pointerEvent, calendarEvent)}
                       className="absolute bottom-0.5 left-1/2 h-2 w-10 -translate-x-1/2 rounded-full opacity-60"
@@ -1855,7 +1866,7 @@ function CalendarDayView({ events, day, onOpenEvent }: { events: CalendarEvent[]
           return (
             <button key={event.id} type="button" onClick={() => onOpenEvent(event)} className="block w-full rounded-3xl border-l-[12px] p-5 text-left active:scale-[0.99]" style={{ background: colors.soft, borderColor: colors.color }}>
               <p className="text-lg font-bold" style={{ color: colors.text }}>{formatEventStart(event)}{isWholeDay(event) ? "" : ` - ${formatTimeOnly(event.end || event.start)}`}</p>
-              <p className="text-3xl font-bold text-amb-ink">{event.title}</p>
+              <p className="text-3xl font-bold text-slate-900">{event.title}</p>
             </button>
           );
         })}
@@ -1868,17 +1879,24 @@ function CalendarDayView({ events, day, onOpenEvent }: { events: CalendarEvent[]
 function CalendarMonthView({
   events,
   monthDate,
+  monthOffset,
+  onMonth,
   onOpenEvent,
   onMoved
 }: {
   events: CalendarEvent[];
   monthDate: Date;
+  monthOffset: number;
+  onMonth: (offset: number) => void;
   onOpenEvent: (event: CalendarEvent) => void;
-  onMoved: (events: CalendarEvent[]) => void;
+  onMoved: () => void;
 }) {
   const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const gridStart = startOfWeek(first);
-  const monthDays = Array.from({ length: 35 }, (_, index) => addClientDays(gridStart, index));
+  // Five weeks, or six when the month starts late in the week and runs long.
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const weeks = Math.ceil((first.getDay() + daysInMonth) / 7);
+  const monthDays = Array.from({ length: weeks * 7 }, (_, index) => addClientDays(gridStart, index));
 
   // A press only becomes a drag after being held, so a tap still opens the
   // event and a scroll does not pick one up by accident.
@@ -1955,12 +1973,12 @@ function CalendarMonthView({
 
     setSaving(true);
     try {
-      const updated = await moveCalendarEvent(
+      await moveCalendarEvent(
         calendarEvent.id,
         nextStart.toISOString(),
         new Date(nextStart.getTime() + duration).toISOString()
       );
-      onMoved(updated.map(normalizeEventEnd));
+      onMoved();
     } catch {
       // Leave the event where it was; the list is refetched on the next load.
     } finally {
@@ -1970,12 +1988,25 @@ function CalendarMonthView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-end justify-between border-b border-mirror-line pb-4">
-        <div>
-          <p className="text-lg font-bold uppercase text-amb-muted">Month View</p>
-          <h3 className="text-5xl font-bold text-amb-ink">
-            {monthDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-          </h3>
+      <div className="flex shrink-0 items-end justify-between gap-6 border-b border-mirror-line pb-4">
+        <div className="flex items-end gap-4">
+          <button onClick={() => onMonth(monthOffset - 1)} className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amb-well text-amb-ink active:scale-95" aria-label="Previous month">
+            <ChevronLeft className="h-9 w-9" />
+          </button>
+          <div className="w-[420px] text-center">
+            <p className="text-lg font-bold uppercase text-amb-muted">Month View</p>
+            <h3 className="text-5xl font-bold text-amb-ink">
+              {monthDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+            </h3>
+          </div>
+          <button onClick={() => onMonth(monthOffset + 1)} className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amb-well text-amb-ink active:scale-95" aria-label="Next month">
+            <ChevronRight className="h-9 w-9" />
+          </button>
+          {monthOffset !== 0 && (
+            <button onClick={() => onMonth(0)} className="h-16 rounded-2xl bg-sky-600 px-6 text-xl font-black text-white active:scale-95">
+              This month
+            </button>
+          )}
         </div>
         <p className="text-base font-semibold text-amb-muted">
           {saving ? "Moving..." : "Tap an event for details, or hold to drag it to another day"}
@@ -2018,7 +2049,7 @@ function CalendarMonthView({
                       <p className="truncate text-xs font-bold" style={{ color: colors.text }}>
                         {formatEventStart(calendarEvent)}
                       </p>
-                      <p className="line-clamp-2 text-sm font-bold leading-tight text-amb-ink">
+                      <p className="line-clamp-2 text-sm font-bold leading-tight text-slate-900">
                         {calendarEvent.title}
                       </p>
                     </button>
@@ -2045,7 +2076,9 @@ function CalendarMonthView({
 }
 
 function CalendarScheduleView({ events, onOpenEvent }: { events: CalendarEvent[]; onOpenEvent: (event: CalendarEvent) => void }) {
-  const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start));
+  // The tab holds a year of past events for paging back; the schedule is what is still to come.
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+  const sorted = events.filter((event) => new Date(event.end || event.start) >= startOfToday).sort((a, b) => a.start.localeCompare(b.start));
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-mirror-line pb-4">
@@ -2062,7 +2095,7 @@ function CalendarScheduleView({ events, onOpenEvent }: { events: CalendarEvent[]
                 <p className="text-xl font-bold" style={{ color: colors.text }}>{formatEventStart(event)}</p>
               </div>
               <div className="rounded-2xl border-l-[10px] p-4" style={{ background: colors.soft, borderColor: colors.color }}>
-                <p className="text-2xl font-bold text-amb-ink">{event.title}</p>
+                <p className="text-2xl font-bold text-slate-900">{event.title}</p>
               </div>
             </button>
           );
