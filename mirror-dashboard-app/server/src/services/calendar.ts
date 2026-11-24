@@ -104,22 +104,74 @@ async function fetchCalendarFeed(feedUrl: string, feedIndex: number): Promise<Ca
     const response = await fetch(normalizeFeedUrl(feedUrl));
     if (!response.ok) throw new Error(`iCal fetch failed: ${response.status}`);
 
-    const text = await response.text();
-    const parsed = ical.parseICS(text);
-    return Object.values(parsed)
-      .filter((item: any) => item.type === "VEVENT" && item.start)
-      .map((item: any): CalendarEvent => ({
-        id: `${feedIndex}-${item.uid || `${item.summary}-${item.start}`}`,
-        title: item.summary || "Calendar event",
-        start: toIsoDateTime(item.start),
-        end: item.end ? toIsoDateTime(item.end) : undefined,
-        location: item.location,
-        source: "ical"
-      }));
+    return parseFeed(await response.text(), feedIndex, new Date());
   } catch (error) {
     console.warn(`Calendar feed unavailable (${feedIndex + 1}), skipping:`, error);
     return [];
   }
+}
+
+const DAY_MS = 86_400_000;
+// Wider than any range the Calendar tab asks for (a year either way).
+const REPEAT_DAYS = 400;
+const MAX_REPEATS = 1500;
+
+/** Every event in a feed, with each repeating one expanded into its dates around `now`. */
+export function parseFeed(text: string, feedIndex: number, now: Date): CalendarEvent[] {
+  const from = new Date(now.getTime() - REPEAT_DAYS * DAY_MS);
+  const to = new Date(now.getTime() + REPEAT_DAYS * DAY_MS);
+  return Object.values(ical.parseICS(text))
+    .filter((item: any) => item.type === "VEVENT" && item.start && item.status !== "CANCELLED")
+    .flatMap((item: any) => (item.rrule ? repeatsOf(item, feedIndex, from, to) : [feedEvent(item, `${feedIndex}-${item.uid || `${item.summary}-${item.start}`}`)]));
+}
+
+function feedEvent(item: any, id: string, start: Date = item.start, end: Date | undefined = item.end): CalendarEvent {
+  return {
+    id,
+    title: item.summary || "Calendar event",
+    start: toIsoDateTime(start),
+    end: end ? toIsoDateTime(end) : undefined,
+    location: item.location,
+    source: "ical"
+  };
+}
+
+// The rule is worked out on wall-clock time written as if it were UTC, so a
+// weekly 8:45 am stays 8:45 am across the clock change and a late-evening
+// event keeps its weekday, then each date is turned back into local time.
+const floating = (date: Date) =>
+  new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()));
+const unfloat = (date: Date) =>
+  new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
+// The parser keys skipped and changed dates by the UTC day of the local time.
+const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+
+function repeatsOf(item: any, feedIndex: number, from: Date, to: Date): CalendarEvent[] {
+  // The parser marks an all-day start with `dateOnly`.
+  const start: Date & { dateOnly?: boolean } = item.start;
+  const length = item.end ? item.end.getTime() - start.getTime() : 0;
+  const options = { ...item.rrule.origOptions, dtstart: floating(start) };
+  // A timed UNTIL is a real instant; an all-day one is already a plain date.
+  if (options.until && !start.dateOnly) options.until = floating(options.until);
+  // The parser builds the rule with the rrule package's own class; a second copy is not needed.
+  const RRule = item.rrule.constructor;
+  const skipped: Record<string, unknown> = item.exdate || {};
+  const changed: Record<string, any> = item.recurrences || {};
+  return (new RRule(options).between(floating(from), floating(to), true) as Date[])
+    .slice(0, MAX_REPEATS)
+    .map(unfloat)
+    .filter((date) => !skipped[dayKey(date)])
+    .map((date) => {
+      const id = `${feedIndex}-${item.uid}-${dateKeyOf(date)}`;
+      const moved = changed[dayKey(date)];
+      if (moved?.start) return moved.status === "CANCELLED" ? null : feedEvent({ ...item, ...moved }, id, moved.start, moved.end);
+      return feedEvent(item, id, date, item.end ? new Date(date.getTime() + length) : undefined);
+    })
+    .filter((event): event is CalendarEvent => Boolean(event));
+}
+
+function dateKeyOf(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export async function getCalendarProviderStatus() {
